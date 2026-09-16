@@ -24,23 +24,21 @@
 | 后端 §14 第 2 步 | Balance / Severity / Select / Normalize | ✅ 57 测试全过 |
 | 后端 §14 第 3 步 | DeepSeekClient + HttpDeepSeekClient | ✅ 69 测试 |
 | 后端 §14 第 4 步 | DomainCoreStore（官方存储接缝） | ✅ 82 测试 |
-| 后端 §14 第 5 步 | KeyResolver / ConfigService | ⬜ **下一步** |
+| 后端 §14 第 5 步 | KeyResolver / ConfigService | 🟡 密钥解析与配置模块已落地；`ConfigService` 待写 |
 | 后端 §14 第 6 步 | BalanceService / Scheduler | ⬜ |
 | 后端 §14 第 7 步 | HTTP routes（`connection.fetch`） | ⬜ |
 | 后端 §14 第 8 步 | UI 五条改动 | ⬜ |
 | 后端 §14 第 9~11 步 | 挂载验证 / 可观测 / 文档同步 | ⬜ |
 
 **验证命令**：`npx --no-install tsc --noEmit`（宿主）+ `npx --no-install vitest run`。
-当前：typecheck 绿，**82 tests passed**（7 个文件）。
+当前：宿主 + 客户端 typecheck 全绿，`npm run build` 通过，**103 tests passed**（10 个文件）。
 
 ## 三、下一步（严格顺序）
 
-1. **§14 第 5 步**：`src/services/key-resolver.ts` + `src/services/config-service.ts` + `src/config.ts`。
-   - 把 schemastery 的 `Config` 从 `src/index.ts` 抽到 `src/config.ts`，加上 `SETTINGS_NAMESPACE` 与 `resolveTimeoutMs()`（读 `DS_BALANCE_TIMEOUT_MS`，**每次请求读**）。
-   - 需要新增端口 `src/ports/credentials.ts`（`resolve` / `describe`），便于用替身测试。
-   - `KeyResolver` 的解析链：配置 `apiKey` → `credentials.resolve(apiKeyRef)` → `process.env[apiKeyRef]` → 抛 `NoKeyError`。**无 credentials seam 时捕获异常回落 `NO_KEY`。**
-   - `accountTag` = HMAC-SHA256(serverSalt, apiKey) 前 32 hex；serverSalt 落 `.salt`（路径用 `@deepseek-ai/dsh-home-paths` 的 `dshHomePath()`）。
-2. 依次推进 §14 第 6~7 步。
+1. **§14 第 5 步收尾**：`src/services/config-service.ts`（现读配置 + `scope.watch` 通知）与 `.salt` 的读写适配器（路径用 `@deepseek-ai/dsh-home-paths` 的 `dshHomePath()`，权限 0600，缺失则生成 32 字节随机）。
+2. **§14 第 6 步**：`BalanceService`（状态机 + inflight 合并 + stale/error 判定）与 `Scheduler`（`setTimeout` 链 + 抖动 + 指数退避 + `Retry-After`）。
+3. **§14 第 7 步**：`src/http/routes.ts`，用 `connection.fetch.register`（`requestBody` 必填、返回 `Response`、异步 disposer 用 `ctx.effect` 包）。
+4. `src/index.ts` 的组装点补全（现在只登记了命名空间）。
 
 ### 已落地的实现约定（后续沿用）
 
