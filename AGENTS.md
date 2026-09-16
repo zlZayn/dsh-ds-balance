@@ -22,14 +22,14 @@
 - 无 CI。结论一律来自本机实跑。
 - 阶段 0：勘察报告完成，结论均带源文件行号。
 - 阶段 1：16 项集成决策已拍板 → [决策记录](.agents/notes/2026-09-17-integration-decisions.md)
-- 构建产物：`npm run build` 三步全绿；`lib/client.js` 约 83 KB（含内联样式约 14 KB），`lib/index.js` 约 2 KB。
+- 构建产物：`npm run build` 三步全绿。体积不抄进文档 —— 用 `Get-ChildItem lib` 现查。
 - 阶段 6：已用 patch 层热挂载进本机 web profile（符号链接形态），宿主未重启。
 - 维护者已实机确认：条目可见、设置卡片渲染、圆环与标签正常。
 - 修复过并复测的实机缺陷：footer 三条目互挤、展开态条目不可见、折叠态与邻居贴住、点邻居却弹我们的浮层。
 - 维护者已实机验收全部界面：圆环与标签、点击浮层、折叠分组、与邻居插件共存。
 - 未验证：窄视口（<722px）下浮层的钳制表现。
 - **后端实现中**：阶段 0 探针实测通过；§14 第 1~2 步完成（领域层）。
-- 测试：`npx --no-install vitest run` → **57 passed**；`npx --no-install tsc --noEmit` 绿。
+- 测试与类型检查：跑 `npm run typecheck` 与 `npx --no-install vitest run`，或看 [CI](.github/workflows/ci.yml)。**数字不在本文档里抄。**
 - 后端构建产物与挂载验证：尚未开始（无 `lib/index.js` 的后端部分）。
 
 ## 待办
@@ -57,6 +57,14 @@
 - `inject` 门禁按服务名逐字判，点号键不展开成父级。
 - dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 不在 `0.1.6-alpha.1` 线上。
 - `dsh.client.inject` 只列真实客户端图行；`ui-slots` 与 `ui-primitives` 是 staticLinked 平台模块，列进去会被静默跳过。
+
+## 文档网络与自更新
+
+- **一条事实只有一个 home**：根 [README.md](README.md) 讲门面，本文件讲规则与仪表盘，子目录 `README.md` 讲「有什么 / 改哪」，子目录 `AGENTS.md` 讲「在这里怎么干」，[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 讲不变的设计，[.agents/notes/](.agents/notes/) 讲为什么。别处一律链接。
+- **能自证的不抄**：测试数字、产物体积、版本号一律指向 [CI](.github/workflows/ci.yml)、`package.json` 或现查命令；抄一次就要手动跟一次。
+- **能落成校验的不写散文**：红线 → [test/redlines.test.ts](test/redlines.test.ts)；发布态不变量 → [scripts/check-release.mjs](scripts/check-release.mjs)；文档链接与换行 → `check-links.py` / `check-line-endings.py`。
+- **改一处要查得到同步点**：每个子目录 `README.md` 的「变更影响路由」是同步清单入口；新增或改名文件后必须回填。
+- **坑按作用域分流**：只在某个子目录才会踩的坑写进该目录的 `AGENTS.md`（进入即自动注入），本文件只留跨模块、致命的那几条。
 
 ## 文档地图
 
