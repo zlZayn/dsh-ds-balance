@@ -84,8 +84,9 @@
 .body {
   border-top: 0.5px solid var(--dsw-alias-border-l2);
   margin: 0 16px;
-  /* 纵向节奏只有分组一个所有者：尾部间距由最后一组的 .groupLast 出。
-     官方 PluginCard 在这里写 8px，与组间距 12px 不同档，会让最后一条线贴得更近。 */
+  /* 分组之间的纵向节奏由 .group / .groupLast 负责，这里不再叠加。
+     注意 .footer 是本元素的孩子，不是兄弟：按钮下方到卡片下缘的留白由 .footer 自己的
+     padding-bottom 出，不要误以为这一层的 padding 是「最后一组到分割线」的间距。 */
   padding-bottom: 0;
 }
 
@@ -101,7 +102,10 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  padding: 12px 0 4px;
+  /* 上下各 12px：上边距走块间距单位，下边距是按钮到卡片下缘的留白。
+     官方 PluginCard 用 .body 的 padding-bottom 8px 加这一层的 4px 凑出同样的 12px；
+     这里让 footer 自己承担，避免「父层 padding 其实是子元素底距」的误读。 */
+  padding: 12px 0;
   border-top: 0.5px solid var(--dsw-alias-border-l2);
 }
 

@@ -22,9 +22,10 @@
 ### BalanceSettingsCard.module.css
 
 - 职责：卡片外壳与卡级提示的样式；取值逐条对齐官方 `ui-settings-plugins/PluginCard.module.css`。
-- 关键规则：`.card`（0.5px 边框 + radius 16）、`.header`、`.body`（border-top 0.5px + margin 0 16px + **padding-bottom 0**）、`.footer`（padding 12px 0 4px + border-top 0.5px）。
+- 关键规则：`.card`（0.5px 边框 + radius 16）、`.header`、`.body`（border-top 0.5px + margin 0 16px + **padding-bottom 0**）、`.footer`（**padding 12px 0** + border-top 0.5px）。
+- **`.footer` 是 `.body` 的孩子而不是兄弟**：按钮下方到卡片下缘的留白由 `.footer` 自己的 `padding-bottom` 出（12px）。官方是 `.body` 的 8px 加 footer 的 4px 凑出同样的 12px；此处让 footer 自持，避免误读。
 - 被谁依赖：`BalanceSettingsCard.tsx`。
-- 改后必测：`.body` 的 `padding-bottom` 保持 0（尾部间距归 `.groupLast`）；中性边框保持 0.5px。
+- 改后必测：`.body` 的 `padding-bottom` 保持 0（组间节奏归 `.group` / `.groupLast`）；`.footer` 的 `padding-bottom` 保持 12px（按钮到卡片下缘）；中性边框保持 0.5px。
 - 错误文本用 `var(--dsw-alias-state-error-primary)`；官方 `--dsw-alias-label-error` 从未定义。
 
 ### fields.tsx
@@ -74,7 +75,7 @@
 - `.group` 出顶部 12px，`.groupLast` 出尾部 12px。
 - `.body` 的 `padding-bottom` 是 0，卡片 body 不再贡献纵向节奏。
 - 只有卡片里的最后一组（刷新）带 `last`，由 `FieldGroup` 拼上 `.groupLast`。
-- 12px 是块间距单位；4px 只用于组级说明贴标题与卡片下缘的按钮外余量。
+- 12px 是块间距单位：组间距、字段上下边距、footer 分割线的上下距、按钮到卡片下缘的留白。4px 只用于组级说明贴标题。
 - 效果：最后一组到 footer 分割线的距离，收起时等于组间距、展开时等于「末字段到下一组」的距离。
 
 ## 依赖面
