@@ -83,5 +83,9 @@
     "react-dom": "^18.3.1",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-storage-domain": "^0.1.6-alpha.1",
+    "zod": "^4.6.5"
   }
 }

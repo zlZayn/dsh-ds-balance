@@ -23,23 +23,32 @@
 | 后端 §14 第 1 步 | Money / Errors | ✅ 24 测试 |
 | 后端 §14 第 2 步 | Balance / Severity / Select / Normalize | ✅ 57 测试全过 |
 | 后端 §14 第 3 步 | DeepSeekClient + HttpDeepSeekClient | ✅ 69 测试 |
-| 后端 §14 第 4 步 | DomainCoreStore（官方存储接缝） | ⬜ **下一步** |
-| 后端 §14 第 5 步 | KeyResolver / ConfigService | ⬜ |
+| 后端 §14 第 4 步 | DomainCoreStore（官方存储接缝） | ✅ 82 测试 |
+| 后端 §14 第 5 步 | KeyResolver / ConfigService | ⬜ **下一步** |
 | 后端 §14 第 6 步 | BalanceService / Scheduler | ⬜ |
 | 后端 §14 第 7 步 | HTTP routes（`connection.fetch`） | ⬜ |
 | 后端 §14 第 8 步 | UI 五条改动 | ⬜ |
 | 后端 §14 第 9~11 步 | 挂载验证 / 可观测 / 文档同步 | ⬜ |
 
 **验证命令**：`npx --no-install tsc --noEmit`（宿主）+ `npx --no-install vitest run`。
-当前：typecheck 绿，**69 tests passed**（6 个文件）。
+当前：typecheck 绿，**82 tests passed**（7 个文件）。
 
 ## 三、下一步（严格顺序）
 
-1. **§14 第 4 步**：`src/adapters/domain-core-store.ts`。
-   - 照抄 `dsh-usage-statistics-panel/src/store.ts` 的 `defineDomain` + `domainTable` + `ctx.open` 用法，**不照抄文档里的示意**。
-   - **吸收打开失败、不留未观察的 rejection**；`close()` 挂在 `ctx.effect` 的 disposer 上。
-   - `loadLatestSnapshot` 必须按 `accountTag` 过滤。
-2. 依次推进 §14 第 5~7 步。
+1. **§14 第 5 步**：`src/services/key-resolver.ts` + `src/services/config-service.ts` + `src/config.ts`。
+   - 把 schemastery 的 `Config` 从 `src/index.ts` 抽到 `src/config.ts`，加上 `SETTINGS_NAMESPACE` 与 `resolveTimeoutMs()`（读 `DS_BALANCE_TIMEOUT_MS`，**每次请求读**）。
+   - 需要新增端口 `src/ports/credentials.ts`（`resolve` / `describe`），便于用替身测试。
+   - `KeyResolver` 的解析链：配置 `apiKey` → `credentials.resolve(apiKeyRef)` → `process.env[apiKeyRef]` → 抛 `NoKeyError`。**无 credentials seam 时捕获异常回落 `NO_KEY`。**
+   - `accountTag` = HMAC-SHA256(serverSalt, apiKey) 前 32 hex；serverSalt 落 `.salt`（路径用 `@deepseek-ai/dsh-home-paths` 的 `dshHomePath()`）。
+2. 依次推进 §14 第 6~7 步。
+
+### 已落地的实现约定（后续沿用）
+
+- `KvTable` 的真实 API：`get`（同步、内存）/ `keys()` / `put`（**插入或覆盖**）/ `delete` / `update`（键不存在会 reject）。**插入用 `put`。**
+- 域记录 schema 用 **zod**（`^4.6.5`，已加进 `dependencies`，是运行时真依赖）；插件配置用 **schemastery**。
+- `@deepseek-ai/dsh-storage-domain` 按平台包分层：**peer + dev**。
+- 域声明**不写 `backend`** —— 路由归部署方。
+- 存储适配器构造期**永不抛错**，打开失败降级为「每次操作抛 `StorageError`」。
 3. **第 8 步的 UI 五条改动必须按序**：先 mock → 再 `model.ts` → 再组件。
    **顺序错了 mock 场景会全崩。**
 4. UI 改动与后端实现**放同一个提交**。
