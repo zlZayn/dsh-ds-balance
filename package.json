@@ -33,6 +33,7 @@
     "README.md"
   ],
   "engines": {
+    "dsh": "^0.1.6-alpha.1",
     "node": ">=20"
   },
   "dsh": {

@@ -6,13 +6,14 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import clsx from 'clsx'
 import {
   IconApiOutline14, IconChevronDownOutline14, IconGlobeOutline14, IconRefreshOutline14, IconWarningOutline16, Tag,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { interpolate } from '../locales.ts'
 import type { LocaleKey } from '../locales.ts'
 import {
-  ActionRow, classNames, FieldBadges, FieldFrame, FieldGroup, SecretControl, SelectorControl, TextControl,
+  ActionRow, FieldBadges, FieldFrame, FieldGroup, SecretControl, SelectorControl, TextControl,
 } from './fields.tsx'
 import type { FieldStatus, SelectorOption } from './fields.tsx'
 import { AUTO_CURRENCY, currencyCodes, useConfigForm } from './use-config-form.ts'
@@ -227,7 +228,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
       : null
 
   return (
-    <li className={classNames(css.card, open && css.cardOpen)}>
+    <li className={clsx(css.card, open && css.cardOpen)}>
       <button
         type="button"
         className={css.header}
@@ -241,7 +242,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
         {dirty ? <Tag tone="neutral" className={css.pending}>{t('settings.unsaved')}</Tag> : null}
         {/* 折叠箭头是纯装饰：包一层 aria-hidden，图标本身不接受这个属性。 */}
         <span className={css.chevronWrap} aria-hidden="true">
-          <IconChevronDownOutline14 className={classNames(css.chevron, open && css.chevronOpen)} />
+          <IconChevronDownOutline14 className={clsx(css.chevron, open && css.chevronOpen)} />
         </span>
       </button>
 

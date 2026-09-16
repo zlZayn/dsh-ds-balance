@@ -1,7 +1,7 @@
 /*
  * 宿主排版遗漏的补丁。
  *
- * 实情（取自运行中的安装字节，见 recon/10-footer-layout.md）：
+ * 实情（取自运行中的安装字节，见 .agents/notes/2026-09-17-footer-stack-override.md）：
  * - .footerActions 被写成不换行的 row flex，没有 flex-wrap、没有 gap；
  * - 已装的两方占用者都是「满宽 + flex:none」，三个条目在 276px 里必然互挤；
  * - 同一侧栏的另一个 list 槽容器 .panelList 是 flex-direction: column；

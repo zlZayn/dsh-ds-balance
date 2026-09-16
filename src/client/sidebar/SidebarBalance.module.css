@@ -2,7 +2,7 @@
    宿主容器已由 footer-stack.module.css 补成纵向堆叠，所以这里可以安全地声明整行宽度，
    与 .panelList 和 Settings 行的做法一致。
 
-   实情（证据见 recon/10-footer-layout.md）：
+   实情（证据见 .agents/notes/2026-09-17-footer-stack-override.md）：
    - 容器 .footerActions { flex:none; width:100%; min-width:0; display:flex }；
    - 官方 cordis 面板的 .layer 是 width:100%、flex:none；
    - 已装第三方插件 dsh-usage-statistics-panel 的 .entry 是 width:calc(100% + 4px)、flex:none；

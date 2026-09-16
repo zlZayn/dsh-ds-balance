@@ -197,7 +197,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
     setLocalCurrency(current.currency)
   }, [selection])
 
-  // 设置面板没有公开的「打开并跳到某一节」入口（见 recon/05-slot-runtime.md 的风险点），
+  // 设置面板没有公开的「打开并跳到某一节」入口（原生无公开入口），
   // 本阶段只做占位；父代理接上真实入口后替换这里。
   const handleOpenSettings = useCallback((): void => {}, [])
 

@@ -6,21 +6,12 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import clsx from 'clsx'
 import {
   DisclosureRow, IconChevronDownOutline14, IconInspectOutline12, Menu, Tag,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TagTone } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from './fields.module.css'
-
-/**
- * 拼接类名，假值与空串一律丢掉。
- * 本包没有 clsx 依赖（package.json 未声明，node_modules 也没有），所以自备这十行。
- * @param parts - 任意个类名或假值。
- * @returns 以单个空格连接的类名。
- */
-export function classNames(...parts: readonly (string | false | undefined | null)[]): string {
-  return parts.filter((part): part is string => typeof part === 'string' && part !== '').join(' ')
-}
 
 /** 一个配置分组的属性。展开状态由调用方持有：DisclosureRow 是完全受控组件。 */
 export interface FieldGroupProps {
@@ -47,7 +38,7 @@ export interface FieldGroupProps {
 export function FieldGroup(props: FieldGroupProps) {
   return (
     <DisclosureRow
-      className={classNames(css.group, props.last === true && css.groupLast)}
+      className={clsx(css.group, props.last === true && css.groupLast)}
       icon={props.icon}
       title={props.title}
       open={props.open}
@@ -223,7 +214,7 @@ export function SecretControl(props: SecretControlProps) {
       />
       <button
         type="button"
-        className={classNames(css.reveal, props.revealed && css.revealOn)}
+        className={clsx(css.reveal, props.revealed && css.revealOn)}
         aria-label={props.revealLabel}
         aria-pressed={props.revealed}
         title={props.revealLabel}

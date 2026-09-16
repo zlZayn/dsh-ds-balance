@@ -17,7 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { BalanceSettingsCard } from './settings/BalanceSettingsCard.tsx'
 import type { SettingsScope, SettingsScopeSnapshotLike } from './settings/use-config-form.ts'
 import { SidebarBalance } from './sidebar/SidebarBalance.tsx'
-// 副作用导入：修正宿主 .footerActions 的排版遗漏，见 recon/10-footer-layout.md。
+// 副作用导入：修正宿主 .footerActions 的排版遗漏，见 .agents/notes/2026-09-17-footer-stack-override.md。
 import './sidebar/footer-stack.module.css'
 import { NS, en, zh, type LocaleKey } from './locales.ts'
 
