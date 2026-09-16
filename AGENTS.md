@@ -13,7 +13,8 @@
 
 - `npm run build`：宿主 tsc + 客户端 tsc + esbuild 打包，三步缺一不可
 - `npm run typecheck`、`npm test`
-- 挂载（不重启宿主）：`dsh plugin --profile web add <仓库路径>` → 从 profile 的 `dsh.profile.bundles` 移除 → 把 insert 行写进 profile 的 `cordis.patch.yml`
+- 挂载（不重启宿主）：先 `dsh plugin --profile web add <仓库路径>`，再确认 profile 的 `dsh.profile.bundles` 里没有本插件，然后把 insert 行写进 profile 的 `cordis.patch.yml`
+- **重启前必须再确认一次**：`dsh.profile.bundles` 与 patch 同时存在会导致双挂载（宿主 reconcile 会把 bundles 那条回填）
 - 回滚：给 patch 里那行加 `disabled: true`，热生效
 
 ## 验证快照
@@ -21,15 +22,16 @@
 - 无 CI。结论一律来自本机实跑。
 - 阶段 0：勘察报告完成，结论均带源文件行号。
 - 阶段 1：16 项集成决策已拍板 → [决策记录](.agents/notes/2026-09-17-integration-decisions.md)
-- 阶段 2~5：`npm run build` 三步全绿；`lib/client.js` 约 80 KB（含内联样式约 13.6 KB），`lib/index.js` 约 2 KB。
+- 构建产物：`npm run build` 三步全绿；`lib/client.js` 约 83 KB（含内联样式约 14 KB），`lib/index.js` 约 2 KB。
 - 阶段 6：已用 patch 层热挂载进本机 web profile（符号链接形态），宿主未重启。
 - 维护者已实机确认：条目可见、设置卡片渲染、圆环与标签正常。
 - 修复过并复测的实机缺陷：footer 三条目互挤、展开态条目不可见、折叠态与邻居贴住、点邻居却弹我们的浮层。
-- 尚未验证：折叠分组与浮层改版后的最终形态。
+- 维护者已实机验收全部界面：圆环与标签、点击浮层、折叠分组、与邻居插件共存。
+- 未验证：窄视口（<722px）下浮层的钳制表现；无自动化测试。
 
 ## 待办
 
-- [ ] 首次 commit（此前全部改动都还没入库）
+- [x] 首次 commit（工程骨架 / 文档网络 / UI 实现三个）
 - [ ] `test/` 目录与双件（目前零测试）
 - [ ] 加 `LICENSE` 文件（`package.json` 已声明 MIT，`files` 里暂未列）
 - [ ] 脚本入口缺 `lint`；待定是否引入

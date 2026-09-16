@@ -6,14 +6,14 @@
 
 ## 文件
 
-- `index.tsx`：入口。注册词典、把宿主返回的 settings 作用域包成卡片依赖的最小面、向两个 slot 注册组件。`inject` 是运行时门禁，删任何一项都会让 `apply` 静默不跑。
+- `index.tsx`：入口。注册词典、把宿主返回的 settings 作用域包成卡片依赖的最小面、向两个 slot 注册组件。`inject` 是运行时门禁，三项为 `slots` / `locale` / `settingsScope`，删任何一项都会让 `apply` 静默不跑。
 - `locales.ts`：中英词典。`zh` 是键集真源，`en` 用 `Record<LocaleKey, string>` 做编译期完整性检查。同时把命名空间并进 `LocaleNamespaceMap`。
-- `model.ts`：纯函数视图模型。`severity` → 状态点、金额字符串格式化、币种回落选择、圆环比例、相对时间分档。**没有 React，没有阈值判断。**
+- `model.ts`：纯函数视图模型。`severity` → 状态点、金额字符串格式化、币种回落选择、相对时间分档。**没有 React，没有阈值判断。**（圆环恒为满环，不表达比例。）
 - `api-types.ts`：后端契约类型。本阶段只用来约束 mock。
 - `css-modules.d.ts`：CSS Modules 的环境声明。
-- `mock/`：开发场景数据，见 [mock/README.md](mock/README.md)。
-- `sidebar/`：左下角条目、悬停浮层、圆环。
-- `settings/`：设置卡片、字段控件、暂存与保存状态机。
+- `mock/`：开发场景数据，见 [mock/README.md](mock/README.md)。URL 参数 `?dsb=<场景键>` 切场景并写进 localStorage；`?dsb-dev` 会让 `isDevMode()` 返回真（当前仓库内没有消费方，切换器尚未接线）。
+- `sidebar/`：左下角条目（状态圆环 + 名称）、点击展开的浮层、宿主容器补丁 → [sidebar/README.md](sidebar/README.md)。浮层的刷新按钮带 `data-refreshing` / `data-cooling` 两个状态钩子，供 e2e 断言。
+- `settings/`：四组可折叠的配置卡片、字段控件、暂存与保存状态机 → [settings/README.md](settings/README.md)。
 
 ## 关键导出
 

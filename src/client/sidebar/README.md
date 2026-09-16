@@ -9,7 +9,7 @@
 ## 坐标
 
 - 入口是 [../index.tsx](../index.tsx)：它 import 本目录的 `SidebarBalance`，并以副作用导入 `footer-stack.module.css`。
-- 槽位声明、owner props 与渲染点都不在本目录，见根 [AGENTS.md](../../../AGENTS.md) 的「活跃坑」与 `recon/10-footer-layout.md`。
+- 槽位声明、owner props 与渲染点都不在本目录，见根 [AGENTS.md](../../../AGENTS.md) 的「活跃坑」与 [决策记录](../../../.agents/notes/2026-09-17-footer-stack-override.md)。
 - 宿主容器 `.footerActions` 的实情：不换行的 row flex、没有 `flex-direction`、没有 `gap`、没有 `flex-wrap`。
 
 ## 文件

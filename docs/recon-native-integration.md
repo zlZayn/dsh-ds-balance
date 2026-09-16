@@ -3,6 +3,10 @@
 勘察对象：`D:\ProjectSomething\deepseek-harness`（宿主源码）+ 本机运行实例 + 已装第三方插件。
 证据口径：所有结论附 `路径:行号`；未找到项已列关键词。像素值多来自源码常量，非屏幕实测。
 
+本文件是**阶段 0 的快照**，反映勘察当时的代码与判断，不回填后续变更。
+文末「阶段 1 待拍板清单」的**结论**见 [决策记录](../.agents/notes/2026-09-17-integration-decisions.md)；两者不一致时以决策记录为准。
+对外契约的最新版本见 [UI 侧契约与移交](ui-handoff.md)。
+
 ## 结论摘要
 
 - 两个目标 slot 均真实存在，均为加性 list 槽，新 id 注册不会遮蔽原生 UI。
@@ -119,7 +123,7 @@
 
 ## 0.5 现有余额插件与注册范例
 
-- **无余额类插件。** 本机 web profile 仅装 4 个仓外插件：`dsh-usage-statistics-panel` 0.2.2 / `dsh-opencode-session` 0.1.1 / `@xmanrui/dsh-im` 4.21.0 / `dsh-zhihu-search` 1.6.3。
+- **无余额类插件。** 阶段 0 时本机 web profile 仅装 4 个仓外插件：`dsh-usage-statistics-panel` 0.2.2 / `dsh-opencode-session` 0.1.1 / `@xmanrui/dsh-im` 4.21.0 / `dsh-zhihu-search` 1.6.3；此后本仓库的 `dsh-ds-balance` 也装进同一 profile（`link:` 依赖），因此现为 5 个。
 - 其中只有 `@xmanrui/dsh-im` 是符号链接（→ `D:\ProjectSomething\dsh-im`），其余是拷贝快照。
 
 ### 范例一：原生 `ui-cordis`（注册 `sidebar.footer.action` 的完整写法）
@@ -230,7 +234,7 @@
 - 浏览器半边**有**热更：`dsh-client-hmr` 轮询 `lib/client.js`，符号链接安装下 build 即换，无需刷新页面。
 - 开发环因此是：改客户端 → build → 浏览器自动换；改宿主 → 必重启。
 - 构建：`tsc && tsc -p tsconfig.client.json && node scripts/build-client.mjs`。
-- 挂载：只用官方 CLI `dsh plugin --profile web add <path>`（会顺带 reconcile `dsh.profile.bundles`）；不要手改 `cordis.patch.yml`。
+- 挂载：`dsh plugin --profile web add <path>` 先把包装进 profile 并登记进 `dsh.profile.bundles`；随后必须把该条从 `bundles` 移出、改把 insert 行写进 profile 的 `cordis.patch.yml`（`patchReload: 'live'` 会热挂载）。宿主 reconcile 会把 `bundles` 那条回填，**重启前必须再确认一次**，两条同时存在会导致双挂载。
 - 安装形态：`<DSH_HOME>/profiles/<profile>/node_modules/<pkg>` → 插件仓库。
 - 符号链接模式下 `npm run build` **直接写线上**，未验证的构建会立刻影响正在使用的界面。
 - 日志：无官方日志文件；宿主日志 = 启动终端控制台。
@@ -257,10 +261,11 @@
 - `DSH_HOME=C:\Users\speak\.dsh`；活动 profile `web`；`DSH_WEB_URL=http://127.0.0.1:3080`。
 - 宿主 `0.1.6-alpha.1`；进程 PID 11464，启动于 2026/9/17 01:57:02。
 - profiles：`web`（活动）/ `add` / `node_modules`。
-- web profile bundles：dsh-base / dsh-web-app / dsh-usage-statistics-panel / dsh-opencode-session / `@xmanrui/dsh-im` / dsh-zhihu-search。
-- `$DSH_HOME/cordis.patch.yml` 不存在；web profile 自己的 patch 是空数组。
+- web profile bundles：dsh-base / dsh-web-app / dsh-usage-statistics-panel / dsh-opencode-session / `@xmanrui/dsh-im` / dsh-zhihu-search（6 条）。
+- 本插件不在 `bundles` 里，它由 profile 的 `cordis.patch.yml` 单独插入一行，并在 `dependencies` 里以 `link:` 指向本仓库。
+- `$DSH_HOME/cordis.patch.yml` 不存在；web profile 自己的 patch 含本插件的 insert 行。
 - 工具链：git 2.55.0 / node v24.18.0 / pnpm 11.17.0 / npm 12.0.1 / corepack 0.35.0。
-- 工作区 `D:\ProjectSomething\dsh-ds-balance` 目前不是 git 仓库。
+- 工作区 `D:\ProjectSomething\dsh-ds-balance` 当时不是 git 仓库；此后已建仓，现有 3 个提交（工程骨架 / 文档网络 / UI 实现）。
 
 ## 附 B：sidebar 空间约束
 
@@ -285,29 +290,33 @@
 
 ---
 
-## 阶段 1 待拍板清单
+## 阶段 1 待拍板清单（已全部拍板 · 本节为阶段 0 快照）
 
-| 编号 | 决策 | 选项 | 倾向 |
+本节是阶段 0 列出的待拍板清单。**17 行已全部拍板**，右列是结论；完整理由与被否决的替代方案见 [决策记录](../.agents/notes/2026-09-17-integration-decisions.md)。
+
+| 编号 | 决策 | 选项 | 结论（已拍板） |
 |---|---|---|---|
-| Q1.1 | 左下角落点 | `sidebar.footer.action` | 已勘察确认，可用 |
-| Q1.2 | 设置页落点 | A `settings.section`（任务书写法）/ B `settings.plugin.item`（你 zhihu-search 先例） | 按任务书 A，需你确认 |
-| Q1.3 | 折叠态 SVG 形态 | 圆环 / 鲸鱼 / 其他 | 待你定 |
-| Q1.4 | 是否保留鲸鱼品牌图标 | 保留 / 不用 | 待你定 |
-| Q1.5 | 状态点实现 | A 复用 `StateDot` 原语 / B 自绘 CSS 圆点 | 建议 A |
-| Q1.6 | 浮层宽度与行数 | 420px（跟 CordisPanel）/ 自定义 | 待你定 |
-| Q1.7 | 刷新图标位置与交互 | 任务书已定：浮层右下角 16px `currentColor` | 确认即可 |
-| Q1.8 | 语言策略 | 跟随 dsh（zh/en 双词典）/ 固定中文 | 建议跟随 |
-| Q1.9 | 「启用左下角」关闭后的行为 | A 注册后 `return null` / B 不注册 / C 灰显 | 待你定 |
-| Q1.10 | 配置命名空间 | `ds-balance` / `balance` / `deepseek-balance` | 建议 `ds-balance` |
-| Q1.11 | 构建链 | 自研 esbuild 包装 | 你的 zhihu-search 已确认此路 |
-| Q1.12 | 宿主半边程度 | A 最小 settings schema / B 纯前端 state 不落盘 | 待你定 |
-| Q1.13 | 依赖锚点 | `^0.1.5-rc.2` / `^0.1.6-alpha.1` | 待你定 |
-| Q1.14 | 数字字段控件 | A `Input` + 校验 / B 照抄 `card-form` 的 `numberField` 模式自绘 | 待你定 |
-| Q1.15 | `severity` → 组件映射 | 见下表 | 待你确认 |
-| Q1.16 | 是否声明 `engines.dsh` | 写 / 不写 | 待你定 |
-| Q1.17 | 本报告文件名与位置 | `docs/recon-native-integration.md` | 待你定 |
+| Q1.1 | 左下角落点 | `sidebar.footer.action` | `sidebar.footer.action`（已勘察确认） |
+| Q1.2 | 设置页落点 | A `settings.section`（任务书写法）/ B `settings.plugin.item` | **B `settings.plugin.item`** —— 不采用任务书原稿的 A |
+| Q1.3 | 折叠态 SVG 形态 | 圆环 / 鲸鱼 / 其他 | 圆环（电量环形态） |
+| Q1.4 | 是否保留鲸鱼品牌图标 | 保留 / 不用 | 保留，放在浮层标题处 |
+| Q1.5 | 状态点实现 | A 复用 `StateDot` 原语 / B 自绘 CSS 圆点 | 自绘 `PercentRing`（状态取值域与 `StateDot` 对齐），原语未使用 |
+| Q1.6 | 浮层宽度与行数 | 420px（跟 CordisPanel）/ 自定义 | 不用 420px；改用官方 stat-dialog 的三行宽度 |
+| Q1.7 | 刷新图标位置与交互 | 任务书已定：浮层右下角 16px `currentColor` | 照任务书执行 |
+| Q1.8 | 语言策略 | 跟随 dsh（zh/en 双词典）/ 固定中文 | 跟随 dsh，zh/en 双词典 |
+| Q1.9 | 「启用左下角」关闭后的行为 | A 注册后 `return null` / B 不注册 / C 灰显 | 三选项均作废：该配置项已整体删除，左下角常驻注册 |
+| Q1.10 | 配置命名空间 | `ds-balance` / `balance` / `deepseek-balance` | `ds-balance` |
+| Q1.11 | 构建链 | 自研 esbuild 包装 | 自研 esbuild 包装 |
+| Q1.12 | 宿主半边程度 | A 最小 settings schema / B 纯前端 state 不落盘 | A 最小 settings schema |
+| Q1.13 | 依赖锚点 | `^0.1.5-rc.2` / `^0.1.6-alpha.1` | `^0.1.6-alpha.1` |
+| Q1.14 | 数字字段控件 | A `Input` + 校验 / B 照抄 `card-form` 的 `numberField` 模式自绘 | B：自绘，`type="text"` + `inputMode="numeric"` |
+| Q1.15 | `severity` → 组件映射 | 见下表 | 按下表实施 |
+| Q1.16 | 是否声明 `engines.dsh` | 写 / 不写 | 写；已落地：`package.json` 的 `engines.dsh` 为 `^0.1.6-alpha.1` |
+| Q1.17 | 本报告文件名与位置 | `docs/recon-native-integration.md` | 保持 `docs/recon-native-integration.md` |
 
-### Q1.15 映射草案
+### Q1.15 映射表（已实施）
+
+下表左列是后端契约的取值，中列写的是当时的候选原语；最终实现是**自绘的 `PercentRing`**（Q1.5 的 StateDot 决定已被 Q1.3 的圆环决定取代），取值域与 `StateDot` 的 `data-state` 对齐。
 
 | `severity` | StateDot | 颜色 token |
 |---|---|---|
@@ -324,5 +333,5 @@
 ## 来源
 
 - 勘察方法：4 个 subagent 并行只读扫描，结论均带 `路径:行号`。
-- 原始长文（临时，将被 `.gitignore` 忽略）：`recon/01-slots.md` / `recon/02-design-system.md` / `recon/03-native-precedents.md` / `recon/04-runtime-integration.md`。
+- 原始长文在 `recon/`（被 `.gitignore` 忽略，当前 12 份，编号 00–11）。
 - 关键规范原文：`deepseek-harness/docs/web-styling.md`。
