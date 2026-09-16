@@ -37,9 +37,6 @@
     "node": ">=20"
   },
   "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
     "client": {
       "platform": "web",
       "inject": [
@@ -51,7 +48,8 @@
     "build": "tsc && tsc -p tsconfig.client.json && node scripts/build-client.mjs",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:release": "node scripts/check-release.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",

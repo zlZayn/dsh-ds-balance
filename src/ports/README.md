@@ -1,0 +1,22 @@
+# src/ports/ — 端口层手册
+
+- 职责：定义上层依赖的**接口**（Layer 1）。只有类型与常量，没有实现。
+- 变更影响路由：改端口签名 → 同步实现（`src/adapters/`）与 [docs/backend-architecture.md](../../docs/backend-architecture.md) 的 §5。
+- 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
+- 回根 → [../../AGENTS.md](../../AGENTS.md)。
+
+## 文件
+
+- `clock.ts`：`Clock`。时间必须可注入，测试不许依赖真实时钟。
+- `logger.ts`：`Logger`。字段化结构化日志。
+- `metrics.ts`：`Metrics` 与 `noopMetrics`（测试与未接线装配用）。
+- `deepseek-client.ts`：`DeepSeekClient`、`DeepSeekCallOptions`、`TestConnectionResult`、`DEFAULT_BASE_URL`。
+- `core-store.ts`：`CoreStore`。**`loadLatestSnapshot` 必须按 `accountTag` 过滤** —— 凭据轮换后 tag 会变，旧快照不得混用。
+
+## 被谁依赖
+
+- `src/adapters/`（实现）、`src/services/`（消费）、`src/http/`（消费）。
+
+## 改后必测
+
+- `npx --no-install tsc --noEmit`（端口一改，实现立刻要跟上）。

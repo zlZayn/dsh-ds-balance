@@ -27,12 +27,16 @@
 - 维护者已实机确认：条目可见、设置卡片渲染、圆环与标签正常。
 - 修复过并复测的实机缺陷：footer 三条目互挤、展开态条目不可见、折叠态与邻居贴住、点邻居却弹我们的浮层。
 - 维护者已实机验收全部界面：圆环与标签、点击浮层、折叠分组、与邻居插件共存。
-- 未验证：窄视口（<722px）下浮层的钳制表现；无自动化测试。
+- 未验证：窄视口（<722px）下浮层的钳制表现。
+- **后端实现中**：阶段 0 探针实测通过；§14 第 1~2 步完成（领域层）。
+- 测试：`npx --no-install vitest run` → **57 passed**；`npx --no-install tsc --noEmit` 绿。
+- 后端构建产物与挂载验证：尚未开始（无 `lib/index.js` 的后端部分）。
 
 ## 待办
 
 - [x] 首次 commit（工程骨架 / 文档网络 / UI 实现三个）
-- [ ] `test/` 目录与双件（目前零测试）
+- [x] `test/` 目录与双件
+- [ ] 后端 §14 第 3~11 步 → 见 [docs/PLAN.md](docs/PLAN.md)
 - [ ] 加 `LICENSE` 文件（`package.json` 已声明 MIT，`files` 里暂未列）
 - [ ] 脚本入口缺 `lint`；待定是否引入
 - [ ] 设置卡片的折叠状态不持久化（v1 有意不做，官方仅一处先例）
@@ -41,6 +45,7 @@
 ## 活跃坑
 
 - **`sidebar.footer.action` 的宿主容器是 row flex（宿主遗漏）**：官方 cordis 面板与 `dsh-usage-statistics-panel` 都把根节点写成满宽且不收缩，横排下条目会被挤到 0 宽。我们已用 `:has()` 反选父元素把它改回纵向堆叠 → [决策](.agents/notes/2026-09-17-footer-stack-override.md)。依赖 `:has()` 与该锚点属性稳定。
+- **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包回填进 profile 的 `dsh.profile.bundles`**，与 patch 层的 insert 行形成**双挂载**（bundles 只在启动时读，所以下次重启才炸）。已选方案 A：开发期从 `package.json` 去掉 `dsh.bundle`，`node scripts/check-release.mjs` 在发布前卡住。
 - **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。
 - **不要在侧栏底部写 `aria-haspopup="dialog"`**：已装的 `dsh-usage-statistics-panel` 用它从自己按钮往上逐层 `querySelector` 来找设置触发按钮，假设整条底部只有一个这样的按钮；我们的按钮会被它先命中并被 `click()`，表现为「点邻居却弹出我们的浮层」。改用 `aria-expanded`。同一插件的另一条隐式契约：它的 MutationObserver 会扫 `[role="dialog"] nav button`，所以浮层里不要放 `<nav>` 包着的按钮。
 - **向上展开的浮层在「打开时」会盖住上方邻居那一格**：footer 条目纵向堆叠，`side: 'top'` 的浮层底边正落在邻居底边。这是既定取舍（官方 cordis 面板同构）—— 关闭时点邻居落到邻居身上才是关键，那由「不写 `aria-haspopup`」保证。曾试图用右侧哨兵让两者不相交，实机上看位置与触发元素脱节、不优雅，已回退。
@@ -65,4 +70,7 @@
 - 决策记录 → [.agents/notes/](.agents/notes/)
 - 源码手册 → [src/README.md](src/README.md)
 - 浏览器半边 → [src/client/README.md](src/client/README.md)
+- **进行中计划（跨上下文交接）** → [docs/PLAN.md](docs/PLAN.md)
+- 领域模型手册 → [src/domain/README.md](src/domain/README.md)
+- 测试手册 → [test/README.md](test/README.md)
 - 构建脚本 → [scripts/README.md](scripts/README.md)

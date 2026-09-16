@@ -117,6 +117,9 @@ Layer 0: 领域模型
 - **`deepseek-api-key` 连字符非法**，UI 侧默认值需改为 `DEEPSEEK_API_KEY`。
 - `deriveKeyRef('deepseek-official')` = `DEEPSEEK_OFFICIAL_API_KEY`，**不要用它**。
 - **无 credentials seam 时捕获异常，回落 `NO_KEY`**，测试要覆盖这条。
+- **已实测（阶段 0）**：本机 `resolve('DEEPSEEK_API_KEY')` 命中，`source: 'env'`，`valueLength: 35`。
+- **已实测**：`describe('DEEPSEEK_API_KEY')` → `{ configured: true, source: 'env', writable: false }`。
+  **环境层只读**，所以卡片**不许**把 `apiKeyRef` 做成「覆盖宿主凭据」的入口。
 
 ### 3.2 端点独立
 
@@ -630,6 +633,16 @@ scope.watch((next, prev) => {
 
 ## 十、存储
 
+### 10.0 生命周期（已实测）
+
+**用 `ctx.effect` 注册 `domain.close()` 就是正确写法，不需要把句柄提到模块级复用。**
+
+阶段 0 在宿主进程里做了两代 apply：第一代 `open` 成功 → patch 行置 `disabled` 触发 disposer → `close()` 成功 → 重新启用 → **同名 domain 再 `open` 成功**。
+
+源码印证：`reserved` 只在 `close()` 的 `onClosed` 钩子里释放，注释原文「only then does the name free up for reopening」。
+
+**必须吸收打开失败、不留未观察的 rejection** —— 已装插件的源码注释说它曾把整个宿主拖下水。
+
 ### 10.1 用官方接缝，不自建 sqlite
 
 `ctx.storageDomain.open(spec) → Promise<Domain<S>>`。
@@ -803,6 +816,25 @@ import { resolveDshHome, dshHomePath, dshCachePath, dshHomeDisplay } from '@deep
 - 模型融合判定 → [连接与官方模型机制的融合判定](model-integration-assessment.md)
 - 架构设计 → [架构说明](ARCHITECTURE.md)
 - 决策记录 → [.agents/notes/](../.agents/notes/)
+
+---
+
+## 十九、实现细则（维护者补充 7 条）
+
+1. **凭据轮换 → `accountTag` 变 → 旧快照失配**：加载快照时 tag 不匹配**视为空，不混用**。
+2. **`role('secret')` 的 redact 是自动还是手动**：`GET /api/v1/config` 是自己构造响应、不走 settings 读 —— **实现时必须先确认掩码是否自动生效**；不自动就手动掩。
+3. **handler 每次读最新 config**：配置是动态的（`scope.watch` 更新），闭包捕获旧配置会让用户改了阈值不生效。
+4. **handler 内部异常不能抛**：契约规定余额错误走 `200 + state: error`；抛出去会被宿主包成 500，前端拿不到 `error` 结构。**必须自己 catch 所有异常。**
+5. **`.salt` 丢失 → `accountTag` 全变 → 旧账本孤立**：文档写明，或改成从固定源派生。
+6. **UI 五条改动的先后顺序**：**先 mock → 再 `model.ts` → 再组件**。顺序错了 mock 场景会全崩。
+7. **`DS_BALANCE_TIMEOUT_MS` 每次请求读**：改环境变量后立即生效，不用重启。
+
+### 阶段 0 实测结论（已并入 §3.1 / §9.2 / §10）
+
+- `credentials.resolve('DEEPSEEK_API_KEY')` **命中**：`source: 'env'`、`writable: false`。**「凭据继承官方」成立。**
+- `writable: false` 的设计含义：**卡片不让用户覆盖宿主凭据**；`apiKey` 是插件自己的设置项，**两者语义分清**。
+- 存储域 × 热重挂**通过**：`close()` 释放 `reserved`，热重挂先拆后建。用 `ctx.effect` 关闭即正确。
+- `connection.fetch` 的 `/api` 可达性**成立**（组合里挂了 webserver）。
 
 ---
 

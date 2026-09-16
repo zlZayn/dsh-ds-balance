@@ -7,6 +7,8 @@
 
 - `index.ts`：宿主半边。只做一件事 —— 用 `ctx.settings.installSection` 登记设置命名空间 `ds-balance`，让配置能落进 `$DSH_HOME/settings.yaml`。零业务逻辑。
 - `client/`：浏览器半边。注册两个 slot 与词典，见 [client/README.md](client/README.md)。
+- `domain/`：领域层（Layer 0），纯逻辑，见 [domain/README.md](domain/README.md)。
+- `ports/` / `adapters/` / `services/` / `http/`：后端分层，建设中 —— 见 [docs/PLAN.md](../docs/PLAN.md) 与 [docs/backend-architecture.md](../docs/backend-architecture.md)。
 
 ## 关键导出
 
