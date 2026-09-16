@@ -170,12 +170,6 @@ namespace 必须匹配 `/^[a-z][a-z0-9-]*$/` → `ds-balance` 合法。
 
 ---
 
-## 附：宿主自身的一处文档 bug
-
-`ConnectionFetchRoute.path` 的 JSDoc 写「Absolute path below `/api`」，与实现要求的「含 `/api` 的完整 pathname」自相矛盾。**以实现与测试为准。**
-
----
-
 ## 参考
 
 - 原始核验（临时目录，被 `.gitignore` 忽略）：`recon/16-backend-doc-api-verification.md`

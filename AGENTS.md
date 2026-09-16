@@ -57,6 +57,7 @@
 - 架构设计 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 原生集成勘察 → [docs/recon-native-integration.md](docs/recon-native-integration.md)
 - 连接与官方模型机制的融合判定 → [docs/model-integration-assessment.md](docs/model-integration-assessment.md)
+- 后端架构（修正版，待架构师复审）→ [docs/backend-architecture.md](docs/backend-architecture.md)
 - 后端架构文档对照审查 → [docs/backend-architecture-review.md](docs/backend-architecture-review.md)
 - **UI 侧契约与移交（可原样转发给后端）** → [docs/ui-handoff.md](docs/ui-handoff.md)
 - 决策记录 → [.agents/notes/](.agents/notes/)
