@@ -25,20 +25,23 @@
 | 后端 §14 第 3 步 | DeepSeekClient + HttpDeepSeekClient | ✅ 69 测试 |
 | 后端 §14 第 4 步 | DomainCoreStore（官方存储接缝） | ✅ 82 测试 |
 | 后端 §14 第 5 步 | KeyResolver / ConfigService / .salt | ✅ 127 测试 |
-| 后端 §14 第 6 步 | BalanceService / Scheduler | ⬜ **下一步** |
+| 后端 §14 第 6 步 | BalanceService / Scheduler | ✅ 167 测试 |
+| 后端 §14 第 7 步 | HTTP routes（connection.fetch） | ⬜ **下一步** |
 | 后端 §14 第 7 步 | HTTP routes（`connection.fetch`） | ⬜ |
 | 后端 §14 第 8 步 | UI 五条改动 | ⬜ |
 | 后端 §14 第 9~11 步 | 挂载验证 / 可观测 / 文档同步 | ⬜ |
 
 **验证命令**：`npx --no-install tsc --noEmit`（宿主）+ `npx --no-install vitest run`。
-当前：`npm run typecheck` **三段全绿**（宿主 / 客户端 / 测试），`npm run build` 通过，**127 tests passed**（13 个文件）。
+当前：`npm run typecheck` **三段全绿**（宿主 / 客户端 / 测试），`npm run build` 通过，**167 tests passed**（15 个文件）。
 测试里有一份 **`test/redlines.test.ts`**：依赖分层、插件清单、构建链守卫、宿主写法、UI 约定共 14 条断言 —— 改红线等于改约定，要单独说明理由。
 
 ## 三、下一步（严格顺序）
 
-1. **§14 第 6 步**：`BalanceService`（状态机 + inflight 合并 + stale/error 判定）与 `Scheduler`（`setTimeout` 链 + 抖动 + 指数退避 + `Retry-After`）。
-2. **§14 第 7 步**：`src/http/routes.ts`，用 `connection.fetch.register`（`requestBody` 必填、返回 `Response`、异步 disposer 用 `ctx.effect` 包）。
-3. `src/index.ts` 的组装点补全（现在只登记了命名空间）。
+1. **§14 第 7 步**：`src/http/routes.ts`，用 `connection.fetch.register`（`requestBody` 必填、返回 `Response`、异步 disposer 用 `ctx.effect` 包）。
+   - **handler 必须自己 catch 所有异常**：契约规定余额错误走 `200 + state: error`，抛出去会被宿主包成 500。
+   - **每次请求读最新 config**；`path` 写死精确值、不带尾随斜杠。
+   - `GET /api/v1/config` 要确认 `role('secret')` 的掩码是自动还是手动（§19 第 2 条，**尚未验证**）。
+2. `src/index.ts` 的组装点补全（现在只登记了命名空间）。
 4. 组装点还要接：`@deepseek-ai/dsh-home-paths` 拼 `.salt` 路径、`ctx.storageDomain` 作 `DomainOpener`、`ctx.credentials` 作凭据端口。
 5. UI 五条改动（先 mock → 再 `model.ts` → 再组件），与后端放同一个提交。
 
