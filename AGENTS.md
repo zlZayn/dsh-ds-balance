@@ -28,7 +28,7 @@
 - 修复过并复测的实机缺陷：footer 三条目互挤、展开态条目不可见、折叠态与邻居贴住、点邻居却弹我们的浮层。
 - 维护者已实机验收全部界面：圆环与标签、点击浮层、折叠分组、与邻居插件共存。
 - 未验证：窄视口（<722px）下浮层的钳制表现。
-- **后端实现中**：阶段 0 探针实测通过；§14 第 1~5 步进行中 —— 进度见 [docs/PLAN.md](docs/PLAN.md)。
+- **后端实现中**：阶段 0 探针实测通过；§14 第 1~6 步完成 —— 进度见 [docs/PLAN.md](docs/PLAN.md)。
 - 测试与类型检查：跑 `npm run typecheck` 与 `npx --no-install vitest run`，或看 [CI](.github/workflows/ci.yml)。**数字不在本文档里抄。**
 - 后端构建产物与挂载验证：尚未开始（无 `lib/index.js` 的后端部分）。
 
@@ -36,7 +36,7 @@
 
 - [x] 首次 commit（工程骨架 / 文档网络 / UI 实现三个）
 - [x] `test/` 目录与双件
-- [ ] 后端 §14 第 3~11 步 → 见 [docs/PLAN.md](docs/PLAN.md)
+- [ ] 后端 §14 第 7~11 步 → 见 [docs/PLAN.md](docs/PLAN.md)
 - [ ] 加 `LICENSE` 文件（`package.json` 已声明 MIT，`files` 里暂未列）
 - [ ] 脚本入口缺 `lint`；待定是否引入
 - [ ] 设置卡片的折叠状态不持久化（v1 有意不做，官方仅一处先例）

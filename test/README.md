@@ -5,18 +5,18 @@
 - 变更影响路由：改 `src/domain/` 的判定规则 → 必须同步对应测试；改契约形状 → 同步 [docs/backend-architecture.md](../docs/backend-architecture.md) §13 的测试表。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 
-## 文件
+## 文件规则
 
-- `money.test.ts`：解析、格式化、往返、边界与非法输入。
-- `errors.test.ts`：错误码映射、`classify` 各分支、`parseRetryAfter`。
-- `severity.test.ts`：五档 + 阈值边界（取等号）+ 不可用压过阈值。
-- `select.test.ts`：稳定排序、偏好命中与回落、**数组顺序跳变不改变结果**。
-- `normalize.test.ts`：快照归一化、结构 / 金额错误分流、`parseErrorBody` 三种形状。
+- **一个被测模块一个同名测试文件**，平铺在 `test/` 下；清单以目录为准，**不在此复制**（复制必漂）。
+- `redlines.test.ts` 是唯一的例外：它不是某个模块的测试，而是**把约定变成断言**。改红线等于改约定，要单独说明理由。
 
 ## 覆盖范围（按类别）
 
-- 已覆盖：领域层（Layer 0）。
-- 待覆盖：端口替身下的服务状态机、调度退避、HTTP 契约快照 —— 见 [docs/backend-architecture.md](../docs/backend-architecture.md) §13。
+- 领域层：金额往返与边界、错误分类、严重度五档、币种选择、归一化与错误体解析。
+- 端口替身下的服务：密钥解析优先级与回落、配置现读、余额状态机、调度退避与抖动。
+- 适配器：HTTP 客户端各失败路径、存储记录往返与降级、盐文件生成与复用。
+- 约定守卫：`redlines.test.ts`。
+- 待覆盖：HTTP 路由的契约快照、真机端到端 —— 见 [docs/backend-architecture.md](../docs/backend-architecture.md) §13。
 
 ## 约定入口
 

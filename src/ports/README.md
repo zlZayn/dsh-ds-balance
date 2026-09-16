@@ -12,6 +12,7 @@
 - `metrics.ts`：`Metrics` 与 `noopMetrics`（测试与未接线装配用）。
 - `deepseek-client.ts`：`DeepSeekClient`、`DeepSeekCallOptions`、`TestConnectionResult`、`DEFAULT_BASE_URL`。
 - `core-store.ts`：`CoreStore`。**`loadLatestSnapshot` 必须按 `accountTag` 过滤** —— 凭据轮换后 tag 会变，旧快照不得混用。
+- `credentials.ts`：`Credentials` / `ResolvedCredential` / `CredentialDescription`。**`describe` 的类型里根本没有装值的槽**；装配里可能**没有**这个 seam，消费方必须自己兜。
 
 ## 被谁依赖
 
