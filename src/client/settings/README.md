@@ -14,7 +14,7 @@
 - 职责：卡片本体。持有卡片展开、密钥显隐、分组展开三份局部状态，外加一个保存起始标记（ref）；把 `useConfigForm` 的状态翻译成 JSX。
 - 关键导出：`BalanceSettingsCard`、`BalanceSettingsCardProps`，并转发 `SettingsScope`。
 - 分组：连接 → 展示 → 阈值 → 刷新。这是 UI 的排列顺序（按使用频率）；宿主 `Config` 的字段顺序是 连接 → 刷新 → 展示 → 阈值，**两者有意不同**，见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md) 的关键决策。
-- 默认展开：只有连接组（`DEFAULT_GROUP_OPEN`）。
+- 默认展开：四组全收起（`DEFAULT_GROUP_OPEN` 全 `false`），卡片一打开只占四行折叠头。
 - 组内有非法草稿时该组强制展开（`groupOpenNow`），否则 footer 的「请检查标红的字段」会指向一个收起来的组。
 - 被谁依赖：`src/client/index.tsx` 的 `SettingsSeatComponent`。
 - 改后必测：四组各自展开与收起；暂存、保存、放弃；非法数字禁用保存；密钥显隐切换；测试连接的三种结果。

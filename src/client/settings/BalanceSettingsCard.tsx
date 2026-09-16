@@ -34,9 +34,9 @@ export interface BalanceSettingsCardProps {
 /** 四个配置分组的键。 */
 type GroupKey = 'connection' | 'display' | 'thresholds' | 'refresh'
 
-/** 分组的默认展开状态：只有连接组展开，其余收着，卡片一打开就是短的。 */
+/** 分组的默认展开状态：四组全收着，卡片一打开只占四行折叠头。 */
 const DEFAULT_GROUP_OPEN: Readonly<Record<GroupKey, boolean>> = {
-  connection: true,
+  connection: false,
   display: false,
   thresholds: false,
   refresh: false,
