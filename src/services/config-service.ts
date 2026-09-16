@@ -7,6 +7,7 @@
  */
 
 import type { Currency, ThresholdPair } from '../domain/balance.js'
+import { ValidationError } from '../domain/errors.js'
 import { thresholdsOf } from '../domain/severity.js'
 import { resolveTimeoutMs, type Config } from '../config.js'
 
@@ -16,6 +17,13 @@ export interface ConfigSource {
   get(): Config
   /** 订阅变更，返回退订函数。 */
   watch(listener: (next: Config, previous: Config) => void): () => void
+  /**
+   * 把补丁合并进用户层并持久化。
+   *
+   * 可选：装配里可能没有设置服务，此时配置只读。**schema 校验失败会 reject**，
+   * 调用方要把它翻成 `422`。
+   */
+  update?(patch: Record<string, unknown>): Promise<void>
 }
 
 /** 构造参数。 */
@@ -43,6 +51,17 @@ export class ConfigService {
   /** 订阅配置变更。 */
   watch(listener: (next: Config, previous: Config) => void): () => void {
     return this.source.watch(listener)
+  }
+
+  /**
+   * 写回一份配置补丁。
+   * @param patch - 字段子集；键必须已被调用方过滤过。
+   * @throws {ValidationError} 配置源只读，或 schema 拒绝了这份补丁。
+   */
+  async update(patch: Record<string, unknown>): Promise<void> {
+    const update = this.source.update
+    if (update === undefined) throw new ValidationError('configuration store is not writable')
+    await update(patch)
   }
 
   /** 当前生效的阈值表（按币种）。 */

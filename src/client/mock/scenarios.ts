@@ -1,5 +1,9 @@
 /**
  * 勘察与开发用的 mock 场景。覆盖后端契约里所有状态组合。
+ *
+ * **不变量**：`selected` 由后端权威给出，所以每个场景里它要么是 `null`，
+ * 要么必须能在 `balances` 里找到同币种同金额的一条。覆写 `balances` 的场景
+ * 必须同时覆写 `selected`。这条由 `test/mock-scenarios.test.ts` 兜底。
  * @module dsh-ds-balance/client/mock/scenarios
  */
 
@@ -72,15 +76,22 @@ export const scenarios = {
   /** 未配置且带 NO_KEY 错误。 */
   noKey: make({ state: 'empty', severity: 'unknown', isAvailable: false, balances: [], selected: null, ageMs: 0, error: { code: 'NO_KEY', message: 'no API key configured' } }),
 
-  /** 多币种。 */
+  /** 多币种。`selected` 显式写出，不靠 `make()` 的默认值兜。 */
   multiCurrency: make({
     balances: [cny('110.00000000', '10.00000000', '100.00000000'), { currency: 'USD', total: '20.00000000', granted: '0.00000000', toppedUp: '20.00000000' }],
+    selected: { currency: 'CNY', total: '110.00000000' },
     thresholds: { CNY: { warn: '10.00000000', critical: '5.00000000' }, USD: { warn: '2.00000000', critical: '1.00000000' } },
   }),
 
-  /** 选定了账户里没有的币种（USD），账户只有 CNY。 */
+  /**
+   * 选定了账户里没有的币种（USD），账户只有 CNY。
+   *
+   * 不匹配由「`selected.currency` 与设置里的显示币种不等」判定 —— 所以场景本身
+   * 只需要保证 `selected` 是账户里真实存在的那个币种，剩下的交给设置值。
+   */
   currencyMismatch: make({
     balances: [cny('110.00000000', '10.00000000', '100.00000000')],
+    selected: { currency: 'CNY', total: '110.00000000' },
   }),
 
   /** 账户完全没有余额。 */

@@ -20,6 +20,7 @@ function status(patch: Partial<BalanceStatus> = {}): BalanceStatus {
     hasSnapshot: true,
     serverRefreshSeconds: 60,
     retryAfterMs: null,
+    lastSuccessAt: null,
     ...patch,
   }
 }

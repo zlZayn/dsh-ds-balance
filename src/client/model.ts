@@ -51,41 +51,46 @@ export function formatMoney(amount: string, currency: string): string {
 
 /** 币种选择结果。 */
 export interface CurrencySelection {
-  /** 实际用于展示的币种；账户无任何余额时为 null。 */
+  /** 实际用于展示的那条余额；`null` 表示后端没有给出可展示的币种。 */
   shown: BalanceInfo | null
-  /** 用户选定的币种是否存在于账户中。 */
+  /** 后端选定的币种是否就是设置里选的那个。 */
   matchesPreference: boolean
   /** 是否处于「自动」模式。 */
   auto: boolean
-  /** 是否连一个币种都没有。 */
+  /** 是否连一条可展示的余额都没有。 */
   empty: boolean
 }
 
 /**
- * 按用户偏好挑选要展示的币种。
+ * 从后端给出的 `selected` 读出展示币种。
  *
- * 规则：不静默、不惩罚、不偷偷改设置。
- * - `auto`：取账户第一个币种，永不报不匹配。
- * - 指定币种存在：用它。
- * - 指定币种不存在但账户有其他币种：回落到第一个，并标记不匹配。
- * - 账户完全没有余额：`shown` 为 null，标记为空。
+ * **前端不再自己挑币种**：挑选规则（偏好币种、CNY 优先、余额为 0 时跳过）是
+ * 后端的职责，前端只把结果映射成界面。设置里的显示币种作为查询参数传给后端。
  *
- * 不依赖数组顺序做语义判断，但回落到「第一个」时顺序是唯一可用依据。
+ * 读的字段只有两个：`selected.currency`（决定展示哪条）与 `selected` 是否为
+ * `null`（决定空态）。金额直接取 `balances` 里同币种那条 —— `selected` 只带
+ * `total`，浮层还要 `granted` 与 `toppedUp`。
+ *
+ * `balances` 里找不到 `selected.currency` 时返回 `shown: null` 而不是硬凑一条：
+ * 契约保证它一定在，真出现就是形状违约，宁可显示「暂无余额」也不要编一个金额。
+ * @param response - 后端响应。
+ * @param preference - 设置里的显示币种；`auto` 表示跟随账户。
+ * @returns 展示币种与三个布尔标记。
  */
-export function selectCurrency(response: BalanceResponse, preference: string): CurrencySelection {
+export function selectionOf(response: BalanceResponse, preference: string): CurrencySelection {
   const auto = preference === 'auto' || preference === ''
-  const list = response.balances
-  if (list.length === 0) {
+  const selected = response.selected
+  if (selected === null) {
     return { shown: null, matchesPreference: auto, auto, empty: true }
   }
-  if (auto) {
-    return { shown: list[0] ?? null, matchesPreference: true, auto, empty: false }
+  const wanted = selected.currency.toUpperCase()
+  const shown = response.balances.find((item) => item.currency.toUpperCase() === wanted) ?? null
+  return {
+    shown,
+    matchesPreference: auto || wanted === preference.toUpperCase(),
+    auto,
+    empty: shown === null,
   }
-  const wanted = list.find((item) => item.currency.toUpperCase() === preference.toUpperCase())
-  if (wanted !== undefined) {
-    return { shown: wanted, matchesPreference: true, auto, empty: false }
-  }
-  return { shown: list[0] ?? null, matchesPreference: false, auto, empty: false }
 }
 
 /** 浮层相对时间的档位。 */

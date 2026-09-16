@@ -30,7 +30,8 @@
     "lib",
     "!lib/**/*.map",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "dsh": "^0.1.6-alpha.1",
@@ -47,18 +48,20 @@
   "scripts": {
     "build": "tsc && tsc -p tsconfig.client.json && node scripts/build-client.mjs",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.test.json",
-    "test": "vitest run --passWithNoTests",
+    "test": "npm run build && vitest run",
     "test:watch": "vitest",
     "check:release": "node scripts/check-release.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-locale": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-ui-primitives": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-ui-settings": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-ui-settings-plugins": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-credentials": "^0.1.6-alpha.1",
+    "@deepseek-ai/dsh-home-paths": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-settings": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-storage-domain": "^0.1.6-alpha.1",
     "@deepseek-ai/schemastery": "^3.18.2",
@@ -67,6 +70,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-locale": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-ui-primitives": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-ui-renderer": "^0.1.6-alpha.1",
@@ -75,6 +79,7 @@
     "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-credentials": "^0.1.6-alpha.1",
+    "@deepseek-ai/dsh-home-paths": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-settings": "^0.1.6-alpha.1",
     "@deepseek-ai/dsh-storage-domain": "^0.1.6-alpha.1",
     "@deepseek-ai/schemastery": "^3.18.2",

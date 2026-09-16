@@ -1,5 +1,10 @@
 # ds-balance — 维护索引
 
+## 状态
+
+- **未发布、私有包**（`private: true`）。开发期刻意不声明 `dsh.bundle`，见下面的活跃坑。
+- 运行形态：装进某个 dsh profile 的 `node_modules`（符号链接），由 `cordis.patch.yml` 的 insert 行装载。
+
 ## 全局规则
 
 - 设计决策与防错清单 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
@@ -13,9 +18,21 @@
 
 - `npm run build`：宿主 tsc + 客户端 tsc + esbuild 打包，三步缺一不可
 - `npm run typecheck`、`npm test`
-- 挂载（不重启宿主）：先 `dsh plugin --profile web add <仓库路径>`，再确认 profile 的 `dsh.profile.bundles` 里没有本插件，然后把 insert 行写进 profile 的 `cordis.patch.yml`
+- 挂载（不重启宿主）：先 `dsh plugin --profile <profile> add <仓库路径>`，再确认 profile 的 `dsh.profile.bundles` 里没有本插件，然后把 insert 行写进 profile 的 `cordis.patch.yml`
 - **重启前必须再确认一次**：`dsh.profile.bundles` 与 patch 同时存在会导致双挂载（宿主 reconcile 会把 bundles 那条回填）
 - 回滚：给 patch 里那行加 `disabled: true`，热生效
+- **宿主半边改了代码必须重启宿主**：patch 行的 toggle 只会重新 `apply` **启动时已加载的那个模块**（已实测：改完重建再 toggle，跑的还是旧代码）。toggle 只能用来「拆掉再装上同一个模块」。
+
+## 事实来源（只查不抄）
+
+本文件与各文档一律不抄会漂的值，要精确值时现查：
+
+- 测试数量、类型检查结果 → `npm test` / `npm run typecheck`，或 [CI](.github/workflows/ci.yml) 的运行记录。
+- 产物体积与文件清单 → `Get-ChildItem lib`。
+- 版本号与依赖范围 → [package.json](package.json)。
+- 宿主兼容范围与客户端注入声明 → `package.json` 的 `engines.dsh` 与 `dsh.client`。
+- dsh 运行时行为（slot 名、服务门禁、存储接缝） → 宿主源码 `packages/` 下的对应包，行号以当前检出为准。
+- 发布态该有什么 → [scripts/check-release.mjs](scripts/check-release.mjs) 的断言集合。
 
 ## 验证快照
 
@@ -28,19 +45,25 @@
 - 修复过并复测的实机缺陷：footer 三条目互挤、展开态条目不可见、折叠态与邻居贴住、点邻居却弹我们的浮层。
 - 维护者已实机验收全部界面：圆环与标签、点击浮层、折叠分组、与邻居插件共存。
 - 未验证：窄视口（<722px）下浮层的钳制表现。
-- **后端实现中**：阶段 0 探针实测通过；§14 第 1~6 步完成 —— 进度见 [docs/PLAN.md](docs/PLAN.md)。
-- 测试与类型检查：跑 `npm run typecheck` 与 `npx --no-install vitest run`，或看 [CI](.github/workflows/ci.yml)。**数字不在本文档里抄。**
-- 后端构建产物与挂载验证：尚未开始（无 `lib/index.js` 的后端部分）。
+- **后端完成**：§14 第 1~10 步落地 —— 进度与偏离项见 [docs/PLAN.md](docs/PLAN.md)。
+- 端点实测（隔离实例，真实 dsh 宿主）：六个端点全部可用；`severity` 四档、`NO_KEY` / `UPSTREAM_401` / `UPSTREAM_5XX` 三条错误路径、`422` 校验、冷却、配置掩码逐条核过。
+- 持久化实测：重启宿主后快照按 `accountTag` 读回，`.salt` 复用；上游不可达时降级成 `stale` 而不是丢数据。
+- 界面实测（隔离实例 + 无头浏览器）：左下角圆环显示真实金额，浮层三段金额与相对时间正确，Escape 关闭，控制台零报错。
+- 测试与类型检查：跑 `npm test`（自带 build）与 `npm run typecheck`，或看 [CI](.github/workflows/ci.yml)。**数字不在本文档里抄。**
+- **主实例仍是旧宿主模块**：本机运行的宿主进程启动于后端代码之前，toggle patch 行不会换代码，需要重启宿主才生效。
 
 ## 待办
 
 - [x] 首次 commit（工程骨架 / 文档网络 / UI 实现三个）
 - [x] `test/` 目录与双件
-- [ ] 后端 §14 第 7~11 步 → 见 [docs/PLAN.md](docs/PLAN.md)
-- [ ] 加 `LICENSE` 文件（`package.json` 已声明 MIT，`files` 里暂未列）
+- [x] 后端 §14 第 7~10 步 → 见 [docs/PLAN.md](docs/PLAN.md)
+- [x] `LICENSE` 文件（MIT）并加进 `package.json` 的 `files`
+- [x] §14 第 11 步收尾：文档同步、[报告](docs/final-report.md)、提交
+- [ ] **重启宿主一次**让后端半边生效（Agent 不能重启承载本会话的进程）
 - [ ] 脚本入口缺 `lint`；待定是否引入
 - [ ] 设置卡片的折叠状态不持久化（v1 有意不做，官方仅一处先例）
-- [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合（Agent 进不去浏览器会话）
+- [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
+- [ ] 发布前：加回 `dsh.bundle`、去掉 `private` —— [check-release.mjs](scripts/check-release.mjs) 会卡
 
 ## 活跃坑
 
@@ -52,7 +75,8 @@
 - **esbuild 的 CSS Modules 必须显式开 `loader: { '.css': 'local-css' }`**，否则 `import css from './x.module.css'` 拿到 `{}`、类名全是 `undefined`。
 - **esbuild 把 CSS 抽成独立文件**，而 DSH 只服务 `lib/client.js`：样式必须在构建后内联回 factory，否则卡片渲染出来但一条样式都不生效。
 - **`src/client.ts(x)` 会与浏览器信封的输出路径 `lib/client.js` 抢文件**：历史上导致宿主启动 SyntaxError。构建脚本开头有守卫。
-- 宿主半边无默认热更；浏览器半边由 `dsh-client-hmr` 轮询 `lib/client.js` 自动替换。
+- 宿主半边无热更；浏览器半边由 `dsh-client-hmr` 轮询 `lib/client.js` 自动替换。
+- **cordis 不许读没 `inject` 过的服务**：直接访问会抛 `cannot get property "..." without inject`。可选服务（`connection` / `storageDomain`）必须由 `ctx.inject` 把门并留降级路径；把它们塞进顶层 `inject` 会让缺服务的装配整个插件不装载。**降级路径会把这条配置错误伪装成运行时故障**，所以启动日志要当验收项看。
 - 符号链接安装下 `npm run build` 直接写线上，未验证的构建会立刻影响正在使用的界面。
 - `inject` 门禁按服务名逐字判，点号键不展开成父级。
 - dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 不在 `0.1.6-alpha.1` 线上。
@@ -71,7 +95,7 @@
 - 架构设计 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 原生集成勘察 → [docs/recon-native-integration.md](docs/recon-native-integration.md)
 - 连接与官方模型机制的融合判定 → [docs/model-integration-assessment.md](docs/model-integration-assessment.md)
-- 后端架构（修正版，待架构师复审）→ [docs/backend-architecture.md](docs/backend-architecture.md)
+- 后端架构（修正版，已复审）→ [docs/backend-architecture.md](docs/backend-architecture.md)
 - 阶段 0 验证报告（探针实测）→ [docs/phase0-verification.md](docs/phase0-verification.md)
 - 后端架构文档对照审查 → [docs/backend-architecture-review.md](docs/backend-architecture-review.md)
 - **UI 侧契约与移交（可原样转发给后端）** → [docs/ui-handoff.md](docs/ui-handoff.md)
@@ -82,3 +106,5 @@
 - 领域模型手册 → [src/domain/README.md](src/domain/README.md)
 - 测试手册 → [test/README.md](test/README.md)
 - 构建脚本 → [scripts/README.md](scripts/README.md)
+- 事故复盘 → [docs/postmortem/](docs/postmortem/)
+- **收尾报告（完成标准逐条证据 / 偏离 / 待确认）** → [docs/final-report.md](docs/final-report.md)

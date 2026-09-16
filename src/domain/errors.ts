@@ -121,6 +121,12 @@ export class ShapeError extends AppError {
   }
 }
 
+/** 入参或配置没通过校验。**不可重试** —— 同一份输入重放还是失败。 */
+export class ValidationError extends AppError {
+  constructor(message = 'validation failed', options: AppErrorOptions = {}) {
+    super('VALIDATION', message, options)
+  }
+}
 /** 存储层失败。可重试。 */
 export class StorageError extends AppError {
   constructor(message: string, options: AppErrorOptions = {}) {

@@ -142,3 +142,47 @@ describe('降级模式', () => {
     expect(logger.error.mock.calls[0]![1]).toEqual({ error: 'already-open' })
   })
 })
+
+describe('懒打开与重试', () => {
+  it('构造期不打开：只有用到时才碰 open', async () => {
+    const open = vi.fn(async () => fakeDomain(fakeTable()))
+    const store = new DomainCoreStore({ open })
+    expect(open).not.toHaveBeenCalled()
+    await store.loadLatestSnapshot('tag-a')
+    expect(open).toHaveBeenCalledTimes(1)
+  })
+
+  it('打开失败后重试：服务后到了就自动接上', async () => {
+    let attempts = 0
+    const table = fakeTable()
+    const store = new DomainCoreStore({
+      open: async () => {
+        attempts += 1
+        if (attempts === 1) throw new Error('not ready yet')
+        return fakeDomain(table)
+      },
+    })
+    await expect(store.health()).resolves.toEqual({ ok: false, detail: 'not ready yet' })
+    await store.saveSnapshot(snapshot())
+    await expect(store.health()).resolves.toEqual({ ok: true })
+    expect(attempts).toBe(2)
+    expect((await store.loadLatestSnapshot('tag-a'))?.snapshotId).toBe('id-1')
+  })
+
+  it('打开失败只记一次 error 日志，不随每次操作刷屏', async () => {
+    const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const store = new DomainCoreStore({ open: async () => { throw new Error('nope') }, logger })
+    await store.health()
+    await store.health()
+    await expect(store.saveSnapshot(snapshot())).rejects.toBeInstanceOf(StorageError)
+    expect(logger.error).toHaveBeenCalledTimes(1)
+  })
+
+  it('close 之后不再尝试打开，health 报 closed', async () => {
+    const open = vi.fn(async () => fakeDomain(fakeTable()))
+    const store = new DomainCoreStore({ open })
+    await store.close()
+    await expect(store.health()).resolves.toEqual({ ok: false, detail: 'closed' })
+    expect(open).not.toHaveBeenCalled()
+  })
+})

@@ -168,7 +168,7 @@ pending → 最后一次 request header → 进程默认
 - **未找到**任何「插件不得自带 provider / baseUrl」的明文禁令。
 - **未找到**跨包读别人设置命名空间的生产先例（`ctx.settings.get(ns)` 的唯一生产命中是 `ui-theme` 读自己的命名空间）。
 - **未找到**官方的账户 / 余额 / 配额概念与展示位。
-- **未找到**社区插件 `dsh-model-balance` 与 `dsh-model-catalog-sync`：六个位置、四组关键词全 0 命中（已装插件含全部 scope、npm 全局 244 个包、`D:\ProjectSomething` 深度 6、`%DSH_HOME%` 全域、pnpm store、本机插件市场历史 59 行）。**本机不存在这两个插件**，本文不对它们的行为作任何陈述。
+- **未找到**社区插件 `dsh-model-balance` 与 `dsh-model-catalog-sync`：六个位置、四组关键词全 0 命中（已装插件含全部 scope、npm 全局包、工作区根目录深度 6、`$DSH_HOME` 全域、pnpm store、本机插件市场历史）。**本机不存在这两个插件**，本文不对它们的行为作任何陈述。
 
 ---
 

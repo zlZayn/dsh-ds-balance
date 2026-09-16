@@ -54,6 +54,27 @@ export interface Config {
 }
 
 /**
+ * 配置字段名闭集。
+ *
+ * 供 `POST /api/v1/config` 过滤请求体用：不在表里的键一律 `422`，避免脏键被
+ * 悄悄写进用户层。**顺序与数量由 `test/config-fields.test.ts` 对着 schema 兜底**，
+ * 不靠人记。
+ */
+export const CONFIG_FIELDS = [
+  'apiKey',
+  'apiKeyRef',
+  'baseUrl',
+  'serverRefreshSeconds',
+  'clientPollSeconds',
+  'manualRefreshCooldownSeconds',
+  'displayCurrency',
+  'cnyWarn',
+  'cnyCritical',
+  'usdWarn',
+  'usdCritical',
+] as const satisfies readonly (keyof Config)[]
+
+/**
  * 配置 schema。加载期校验，非法配置 fail loud。
  *
  * 阈值只在这里存储，前端不做金额比较：颜色由后端的 `severity` 决定。

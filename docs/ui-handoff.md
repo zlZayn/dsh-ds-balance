@@ -91,7 +91,7 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 | 字段 | 类型 | 默认 | 范围 |
 |---|---|---|---|
 | `apiKey` | string，`role('secret')` | `''` | — |
-| `apiKeyRef` | string，`role('credential-ref')` | `deepseek-api-key` | — |
+| `apiKeyRef` | string，`role('credential-ref')` | `DEEPSEEK_API_KEY` | 必须匹配 `^[A-Za-z_][A-Za-z0-9_]*$` |
 | `baseUrl` | string | `https://api.deepseek.com` | — |
 | `serverRefreshSeconds` | 自然数 | 60 | 10–3600 |
 | `clientPollSeconds` | 自然数 | 30 | 5–600 |

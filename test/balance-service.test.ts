@@ -228,3 +228,24 @@ describe('restore', () => {
     expect(h.store.loadLatestSnapshot).not.toHaveBeenCalled()
   })
 })
+
+describe('存储降级', () => {
+  it('落盘失败不算抓取失败：快照留在内存，状态仍是 ok', async () => {
+    const h = harness()
+    vi.mocked(h.store.saveSnapshot).mockRejectedValue(new Error('storage down'))
+    const view = await h.service.getView()
+    expect(h.store.saveSnapshot).toHaveBeenCalledTimes(1)
+    expect(view.state).toBe('ok')
+    expect(view.error).toBeNull()
+    expect(view.balances[0]?.currency).toBe('CNY')
+    expect(view.selected?.total).toBe(110n * 100_000_000n)
+  })
+
+  it('落盘失败后仍在窗口内命中缓存，不因为存储坏了就每轮重拉', async () => {
+    const h = harness()
+    vi.mocked(h.store.saveSnapshot).mockRejectedValue(new Error('storage down'))
+    await h.service.getView()
+    await h.service.getView()
+    expect(h.client.fetchBalance).toHaveBeenCalledTimes(1)
+  })
+})

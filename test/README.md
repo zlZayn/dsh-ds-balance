@@ -1,7 +1,7 @@
 # test/ — 测试手册
 
 - 职责：领域层与服务的单元测试。**只测纯逻辑与端口替身，不做端到端。**
-- 运行方式：`npx --no-install vitest run`（或 `npm test`）。
+- 运行方式：`npm test`（**自带 `npm run build`** —— 产物级测试要读 `lib/`）。只想跑用例时用 `npx --no-install vitest run`，但那要求 `lib/` 已是最新。
 - 变更影响路由：改 `src/domain/` 的判定规则 → 必须同步对应测试；改契约形状 → 同步 [docs/backend-architecture.md](../docs/backend-architecture.md) §13 的测试表。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 
@@ -15,8 +15,11 @@
 - 领域层：金额往返与边界、错误分类、严重度五档、币种选择、归一化与错误体解析。
 - 端口替身下的服务：密钥解析优先级与回落、配置现读、余额状态机、调度退避与抖动。
 - 适配器：HTTP 客户端各失败路径、存储记录往返与降级、盐文件生成与复用。
+- HTTP 层：`wire` 的序列化与契约对齐、六个端点的契约行为（含 `200 + state: error`、「每次现读配置」、掩码不回传密钥）、路由表与注册形状。
+- 浏览器半边：视图模型映射、mock 场景自洽性、数据层的 URL 构造与失败路径。
+- 产物级：`artifacts.test.ts` 只读 `lib/`，断言宿主入口可求值、信封 id、样式内联、`exports` 指向真实产物。
 - 约定守卫：`redlines.test.ts`。
-- 待覆盖：HTTP 路由的契约快照、真机端到端 —— 见 [docs/backend-architecture.md](../docs/backend-architecture.md) §13。
+- 待覆盖：真机端到端（要真实宿主与凭据）、契约测试（打真实上游）—— 都需要独立实例，见 [docs/PLAN.md](../docs/PLAN.md) 的隔离实例手册。
 
 ## 约定入口
 

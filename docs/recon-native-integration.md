@@ -1,6 +1,6 @@
 # ds-balance — 原生 UI 与插件机制勘察（阶段 0）
 
-勘察对象：`D:\ProjectSomething\deepseek-harness`（宿主源码）+ 本机运行实例 + 已装第三方插件。
+勘察对象：宿主源码检出（`deepseek-harness` 单体仓库）+ 本机运行实例 + 已装第三方插件。
 证据口径：所有结论附 `路径:行号`；未找到项已列关键词。像素值多来自源码常量，非屏幕实测。
 
 本文件是**阶段 0 的快照**，反映勘察当时的代码与判断，不回填后续变更。
@@ -19,7 +19,7 @@
 - 原语缺口：无数字输入、无通用卡片、无表格；无间距 / 圆角 / 层级 token。
 - 宿主仓库内**不存在任何余额 / 额度 / 计费 UI**；余额缺口只表现为一次失败的 LLM 请求。
 - 最贴近需求的现成先例是本机已装的 `dsh-usage-statistics-panel`（同时占了我们要的两个槽）。
-- 你已有的 `D:\ProjectSomething\dsh-zhihu-search` 是完整可照抄的仓外插件模板。
+- 你已有的仓外插件 `dsh-zhihu-search` 是完整可照抄的模板。
 
 ---
 
@@ -124,7 +124,7 @@
 ## 0.5 现有余额插件与注册范例
 
 - **无余额类插件。** 阶段 0 时本机 web profile 仅装 4 个仓外插件：`dsh-usage-statistics-panel` 0.2.2 / `dsh-opencode-session` 0.1.1 / `@xmanrui/dsh-im` 4.21.0 / `dsh-zhihu-search` 1.6.3；此后本仓库的 `dsh-ds-balance` 也装进同一 profile（`link:` 依赖），因此现为 5 个。
-- 其中只有 `@xmanrui/dsh-im` 是符号链接（→ `D:\ProjectSomething\dsh-im`），其余是拷贝快照。
+- 其中只有 `@xmanrui/dsh-im` 是符号链接（指向它自己的本地仓库），其余是拷贝快照。
 
 ### 范例一：原生 `ui-cordis`（注册 `sidebar.footer.action` 的完整写法）
 
@@ -143,7 +143,7 @@
 - 风险点：它从 footer 按钮「打开设置并跳到指定分区」靠 DOM 遍历（`:35-60`），原生无公开 API。
 - 另一风险：包内 `cordis.patch.yml` 注释警告同包双挂载会因路由前缀重复导致整棵插件树启动失败。
 
-### 范例三：`D:\ProjectSomething\dsh-zhihu-search`（你自己的仓外插件模板）
+### 范例三：`dsh-zhihu-search`（你自己的仓外插件模板）
 
 - 结构：`src/` 每目录双件 + `docs/ARCHITECTURE.md` + `docs/postmortem/` + `.agents/notes/` + `scripts/` + `test/` + `.node-version` + `cordis.patch.yml` + 中英双 README。
 - `package.json` 已具备我们要的全部形态：`type: module`、`exports["."]` + `exports["./client"]`、`dsh.bundle.patch`、`dsh.client.{platform, inject}`、scripts `build/typecheck/test`。
@@ -234,7 +234,7 @@
 - 浏览器半边**有**热更：`dsh-client-hmr` 轮询 `lib/client.js`，符号链接安装下 build 即换，无需刷新页面。
 - 开发环因此是：改客户端 → build → 浏览器自动换；改宿主 → 必重启。
 - 构建：`tsc && tsc -p tsconfig.client.json && node scripts/build-client.mjs`。
-- 挂载：`dsh plugin --profile web add <path>` 先把包装进 profile 并登记进 `dsh.profile.bundles`；随后必须把该条从 `bundles` 移出、改把 insert 行写进 profile 的 `cordis.patch.yml`（`patchReload: 'live'` 会热挂载）。宿主 reconcile 会把 `bundles` 那条回填，**重启前必须再确认一次**，两条同时存在会导致双挂载。
+- 挂载：`dsh plugin --profile <profile> add <path>` 先把包装进 profile 并登记进 `dsh.profile.bundles`；随后必须把该条从 `bundles` 移出、改把 insert 行写进 profile 的 `cordis.patch.yml`（`patchReload: 'live'` 会热挂载）。宿主 reconcile 会把 `bundles` 那条回填，**重启前必须再确认一次**，两条同时存在会导致双挂载。
 - 安装形态：`<DSH_HOME>/profiles/<profile>/node_modules/<pkg>` → 插件仓库。
 - 符号链接模式下 `npm run build` **直接写线上**，未验证的构建会立刻影响正在使用的界面。
 - 日志：无官方日志文件；宿主日志 = 启动终端控制台。
@@ -256,16 +256,25 @@
 
 ---
 
-## 附 A：本机现状（只读探测）
+## 附 A：勘察时的部署形态（只读探测）
 
-- `DSH_HOME=C:\Users\speak\.dsh`；活动 profile `web`；`DSH_WEB_URL=http://127.0.0.1:3080`。
-- 宿主 `0.1.6-alpha.1`；进程 PID 11464，启动于 2026/9/17 01:57:02。
-- profiles：`web`（活动）/ `add` / `node_modules`。
-- web profile bundles：dsh-base / dsh-web-app / dsh-usage-statistics-panel / dsh-opencode-session / `@xmanrui/dsh-im` / dsh-zhihu-search（6 条）。
-- 本插件不在 `bundles` 里，它由 profile 的 `cordis.patch.yml` 单独插入一行，并在 `dependencies` 里以 `link:` 指向本仓库。
-- `$DSH_HOME/cordis.patch.yml` 不存在；web profile 自己的 patch 含本插件的 insert 行。
-- 工具链：git 2.55.0 / node v24.18.0 / pnpm 11.17.0 / npm 12.0.1 / corepack 0.35.0。
-- 工作区 `D:\ProjectSomething\dsh-ds-balance` 当时不是 git 仓库；此后已建仓，现有 3 个提交（工程骨架 / 文档网络 / UI 实现）。
+**不记录本机专有值**（home 路径、pid、端口、profile 名一律略去）；要现查请按下面的命令自己取。
+
+- `DSH_HOME` 取默认位置；有一个活动 profile 承载 web 应用。
+- 宿主版本 `0.1.6-alpha.1`。
+- profile 目录下有 `profiles/` 与 `node_modules/`；本插件的安装形态是 `link:` 指向本仓库。
+- 活动 profile 的 bundles 含 dsh-base / dsh-web-app 与四个仓外插件；**本插件不在 bundles 里**，
+  它由该 profile 的 `cordis.patch.yml` 单独插入一行。
+- `$DSH_HOME/cordis.patch.yml` 不存在；patch 写在 profile 自己的那份里。
+- 工具链版本见 [.node-version](../.node-version) 与 `package.json` 的 `engines`。
+- 本仓库当时还不是 git 仓库；此后已建仓。
+
+现查命令（输出里可能出现本机路径，别抄进文档）：
+
+```powershell
+dsh --profile <profile> --dump-config | Select-String 'bundles|storage|connection'
+Get-ChildItem "$env:DSH_HOME\profiles" -Directory | Select-Object -ExpandProperty Name
+```
 
 ## 附 B：sidebar 空间约束
 

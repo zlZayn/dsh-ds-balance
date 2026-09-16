@@ -24,10 +24,11 @@ import { NS, en, zh, type LocaleKey } from './locales.ts'
 /** 设置命名空间：与宿主 `SETTINGS_NAMESPACE` 逐字一致。 */
 export const SETTINGS_NAMESPACE = 'ds-balance'
 
-/** 设置卡片的默认配置，用于快照缺字段时兜底。 */
+/** 两条半体共享的默认值，用于快照缺字段时兜底。与宿主 schema 的默认值一致。 */
 const DEFAULT_CONFIG = {
   displayCurrency: 'auto',
   manualRefreshCooldownSeconds: 30,
+  clientPollSeconds: 30,
 } as const
 
 /**
@@ -104,6 +105,12 @@ function readCooldown(value: Record<string, unknown>): number {
   return Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_CONFIG.manualRefreshCooldownSeconds
 }
 
+/** 从快照里取客户端轮询秒数。下限跟 schema 的 5 秒对齐。 */
+function readPollSeconds(value: Record<string, unknown>): number {
+  const raw = Number(value.clientPollSeconds)
+  return Number.isFinite(raw) && raw >= 5 ? raw : DEFAULT_CONFIG.clientPollSeconds
+}
+
 /** 左下角条目的座位 props。 */
 interface SidebarSeat {
   wide: boolean
@@ -125,6 +132,7 @@ function SidebarSeatComponent(props: { seat: SidebarSeat; scope: SettingsScope }
       config={{
         displayCurrency: readDisplayCurrency(value),
         manualRefreshCooldownSeconds: readCooldown(value),
+        clientPollSeconds: readPollSeconds(value),
       }}
     />
   )

@@ -19,12 +19,12 @@
 
 **方法**：临时探针插件，`ctx.storageDomain.open` 一个测试域，用 `ctx.effect` 注册关闭；在 profile 的 `cordis.patch.yml` 里对该行做 `disabled: true` → 移除 → 复原，制造两次 apply。
 
-**运行输出**（宿主进程 `pid 11464`，同一进程两代）：
+**运行输出**（宿主同一进程两代；原始输出每行都带 pid，这里已略去）：
 
 ```json
 {"generation":1,"event":"domain.close.begin"}
 {"generation":1,"event":"domain.close.done"}
-{"generation":2,"event":"apply.enter","pid":11464}
+{"generation":2,"event":"apply.enter"}
 {"generation":2,"event":"domain.open","ok":true}
 ```
 
@@ -77,7 +77,7 @@
 
 ## 四、意外发现：`dsh plugin` 会回填 bundles
 
-**事实**：跑 `dsh plugin --profile web add` 时，**任何声明了 `dsh.bundle` 的已装包都会被写回 `dsh.profile.bundles`**。
+**事实**：跑 `dsh plugin --profile <profile> add` 时，**任何声明了 `dsh.bundle` 的已装包都会被写回 `dsh.profile.bundles`**。
 
 - 我们的 `package.json` 声明了 `dsh.bundle.patch` → 每次跑 `dsh plugin` 都会把我们追加回 bundles。
 - 对照证据：探针**没有**声明 `dsh.bundle`，安装输出明说「installed as a plain dependency, not a profile layer」，且它**没有**被写进 bundles。

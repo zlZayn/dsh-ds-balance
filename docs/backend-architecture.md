@@ -22,7 +22,7 @@
 
 ## 〇、一句话任务
 
-在 `D:\ProjectSomething\dsh-ds-balance` 现有 UI 基础上实现后端：读取 DeepSeek 官方余额，通过 `ctx.connection.fetch` 暴露给前端，产出 [UI 侧契约与移交](ui-handoff.md) 定义的契约形状。
+在现有 UI 基础上实现后端：读取 DeepSeek 官方余额，通过 `ctx.connection.fetch` 暴露给前端，产出 [UI 侧契约与移交](ui-handoff.md) 定义的契约形状。
 
 **不做 Estimation**（账本 / 投影 / 估算）—— 那是第二版。
 
@@ -657,7 +657,8 @@ scope.watch((next, prev) => {
 ### 10.2 域定义
 
 > 下例的**字段形状以已装插件的真实用法为准** —— 本文没有逐字转录 `defineDomain` / `domainTable` 的类型定义。
-> 实现时打开 `C:\Users\speak\.dsh\profiles\web\node_modules\dsh-usage-statistics-panel\src\store.ts` 照抄，不要照抄本文的示意。
+> 实现时打开 profile 里已装插件 `dsh-usage-statistics-panel` 的 `src/store.ts` 照抄，不要照抄本文的示意。
+> （该包在 `<DSH_HOME>/profiles/<profile>/node_modules/` 下。）
 
 ```ts
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'

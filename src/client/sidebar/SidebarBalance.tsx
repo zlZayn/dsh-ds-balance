@@ -4,8 +4,11 @@
  * 两个形态共用同一个状态圆环：展开态是「圆环 + 金额」，折叠态是轨道里居中一个圆环。
  * 点击条目弹出余额浮层，Escape 或点击外部关闭（刻意不做悬停即开：浮层向上展开，
  * 会盖住左邻条目；悬停时指针只是路过我们这一行，邻居的图标就被顶开了）。
- * 数据来自 mock 场景，颜色只由 `dotStateOf(severity)` 决定，
- * 金额全程按字符串走 model.ts 的函数，组件内不做任何金额阈值判断、不读 ctx。
+ *
+ * 数据默认走真实端点（`GET /api/v1/balance`，按 `clientPollSeconds` 轮询）；
+ * 只有 URL 参数或 localStorage 明确选过场景时才切到 mock 旁路。
+ * 颜色只由 `dotStateOf(severity)` 决定，金额全程按字符串走 model.ts 的函数，
+ * 组件内不做任何金额阈值判断、不读 ctx。
  * @module dsh-ds-balance/client/sidebar/SidebarBalance
  */
 
@@ -18,8 +21,9 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BalanceResponse, Severity } from '../api-types.ts'
 import { interpolate, type LocaleKey } from '../locales.ts'
-import { dotStateOf, formatMoney, selectCurrency, type CurrencySelection } from '../model.ts'
-import { currentBalance, subscribeScenario } from '../mock/index.ts'
+import { dotStateOf, formatMoney, selectionOf, type CurrencySelection } from '../model.ts'
+import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
+import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
 import { BalancePopover } from './BalancePopover.tsx'
 import { PercentRing, type RingState } from './PercentRing.tsx'
 import css from './SidebarBalance.module.css'
@@ -52,7 +56,12 @@ export interface SidebarBalanceProps {
   /** 词典函数。 */
   t: (key: LocaleKey) => string
   /** 本组件消费的配置切片。 */
-  config: { displayCurrency: string; manualRefreshCooldownSeconds: number }
+  config: {
+    displayCurrency: string
+    manualRefreshCooldownSeconds: number
+    /** 浏览器来取缓存的节奏（秒）。 */
+    clientPollSeconds: number
+  }
 }
 
 /**
@@ -92,7 +101,11 @@ function ringStateOf(severity: Severity): RingState {
  * @returns 条目元素。
  */
 export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.Element | null {
-  const [response, setResponse] = useState<BalanceResponse>(() => currentBalance())
+  /** 是否走 mock 旁路。默认否 —— 真机上必须显示真实余额。 */
+  const [mock, setMock] = useState(() => resolveScenario() !== null)
+  const [response, setResponse] = useState<BalanceResponse>(() => (resolveScenario() === null ? pendingView() : currentBalance()))
+  /** 是否至少成功取过一次。失败的轮询不该把已显示的数据换成错误态。 */
+  const loadedRef = useRef(false)
   /** 「改用 X」只写本地偏好；父代理后续把它接到设置。 */
   const [localCurrency, setLocalCurrency] = useState<string | null>(null)
   /** 模拟刷新后的抓取时刻；null 表示仍用 mock 给的值。 */
@@ -111,7 +124,8 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
   const mountedAt = useRef(Date.now())
 
   const preference = localCurrency ?? config.displayCurrency
-  const selection = useMemo(() => selectCurrency(response, preference), [response, preference])
+  // 币种由后端选定，前端只做映射：见 model.ts 的 selectionOf。
+  const selection = useMemo(() => selectionOf(response, preference), [response, preference])
 
   // 生效的抓取时刻。本地模拟刷新后就是刷新那一刻；
   // 否则以 ageMs 反推 —— mock 的 fetchedAt 是固定的 T0，只有 ageMs 是真实年龄，
@@ -119,8 +133,12 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
   const fetchedAt = localFetchedAt ?? (mountedAt.current - response.ageMs)
 
   // 开发场景切换时换数据。subscribeScenario 会立刻回调一次，用 key 比对跳过它。
+  // 每次回调都重判来源：`?dsb=live` 打开后会把 localStorage 里的场景清掉，
+  // 于是这里从 mock 切回真实端点。
   useEffect(() => subscribeScenario((key) => {
-    if (lastScenario.current === key) return
+    const active = resolveScenario() !== null
+    setMock(active)
+    if (!active || lastScenario.current === key) return
     lastScenario.current = key
     setResponse(currentBalance())
     setLocalFetchedAt(null)
@@ -128,6 +146,33 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
     setCooldownUntil(0)
     setOpen(false)
   }), [])
+
+  // 真实数据：首拉一次，然后按 clientPollSeconds 轮询。
+  // 轮询读的是后端缓存，不穿透到上游 —— 上游节奏由 serverRefreshSeconds 决定。
+  useEffect(() => {
+    if (mock) return
+    let cancelled = false
+    const load = async (): Promise<void> => {
+      try {
+        const next = await requestBalance({ currency: preference })
+        if (cancelled) return
+        loadedRef.current = true
+        setResponse(next)
+        setLocalFetchedAt(null)
+      } catch (error) {
+        if (cancelled || loadedRef.current) return
+        setResponse(unreachableView(error instanceof Error ? error.message : String(error)))
+      }
+    }
+    void load()
+    const id = window.setInterval(() => { void load() }, Math.max(5, config.clientPollSeconds) * MS_PER_SECOND)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+    // preference 进依赖是有意的：浮层里的「改用 X」写的是本地偏好，
+    // 换币种必须立刻按新币种重新问一次后端，否则要等下一轮轮询。
+  }, [mock, preference, config.clientPollSeconds])
 
   useEffect(() => () => {
     if (refreshTimer.current !== undefined) window.clearTimeout(refreshTimer.current)
@@ -183,13 +228,33 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
     // 冷却中：不旋转，浮层里的就地文字已经在报剩余秒数。
     if (Date.now() < cooldownUntil) return
     setRefreshing(true)
-    refreshTimer.current = window.setTimeout(() => {
-      refreshTimer.current = undefined
+    const finish = (): void => {
       setLocalFetchedAt(Date.now())
       setRefreshing(false)
       setCooldownUntil(Date.now() + Math.max(0, config.manualRefreshCooldownSeconds) * MS_PER_SECOND)
-    }, REFRESH_SIMULATION_MS)
-  }, [cooldownUntil, config.manualRefreshCooldownSeconds, refreshing])
+    }
+    // mock 旁路没有上游可打，用一次短延迟模拟往返，让刷新态仍然可见。
+    if (mock) {
+      refreshTimer.current = window.setTimeout(() => {
+        refreshTimer.current = undefined
+        finish()
+      }, REFRESH_SIMULATION_MS)
+      return
+    }
+    void (async () => {
+      try {
+        // 先让后端穿透上游抓一次，再读回它刚写好的缓存。
+        await requestRefresh({ reason: 'manual' })
+        const next = await requestBalance({ currency: preference })
+        loadedRef.current = true
+        setResponse(next)
+      } catch (error) {
+        if (!loadedRef.current) setResponse(unreachableView(error instanceof Error ? error.message : String(error)))
+      } finally {
+        finish()
+      }
+    })()
+  }, [cooldownUntil, config.manualRefreshCooldownSeconds, mock, preference, refreshing])
 
   const handleUseShown = useCallback((): void => {
     const current = selection.shown

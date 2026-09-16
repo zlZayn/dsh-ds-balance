@@ -1,7 +1,9 @@
 /**
  * mock 场景解析与切换。
  *
- * 解析优先级：URL 参数 `dsb` → localStorage → 默认场景。
+ * **默认走真实端点**：只有 URL 参数或 localStorage 明确选过场景时才使用 mock，
+ * 否则插件在真机上会永远显示 demo 数据。带 `?dsb=live` 打开会清掉已存的选择。
+ *
  * 任何一步失败都静默回落到下一档：mock 层不允许把页面搞崩。
  * @module dsh-ds-balance/client/mock
  */
@@ -14,6 +16,9 @@ export const SCENARIO_PARAM = 'dsb'
 
 /** 开发模式参数名：出现即显示场景切换器。 */
 export const DEV_PARAM = 'dsb-dev'
+
+/** `?dsb=` 的这个取值表示「回到真实端点」，并顺手清掉已存的场景。 */
+export const LIVE_PARAM_VALUE = 'live'
 
 /** localStorage 键。 */
 const STORAGE_KEY = 'ds-balance:scenario'
@@ -37,6 +42,15 @@ function writeStored(key: ScenarioKey): void {
   }
 }
 
+/** 安全清 localStorage。 */
+function clearStored(): void {
+  try {
+    globalThis.localStorage?.removeItem(STORAGE_KEY)
+  } catch {
+    /* 同上 */
+  }
+}
+
 /** 读当前 URL 的查询参数。 */
 function readParam(name: string): string | null {
   try {
@@ -46,14 +60,28 @@ function readParam(name: string): string | null {
   }
 }
 
-/** 当前生效的场景键。 */
-export function currentScenario(): ScenarioKey {
+/**
+ * 当前生效的 mock 场景键；**该走真实端点时返回 `null`**。
+ *
+ * 这是唯一会写 localStorage 的读入口：`?dsb=live` 会顺手把已存的选择清掉。
+ * @returns 场景键，或 `null` 表示用真实端点。
+ */
+export function resolveScenario(): ScenarioKey | null {
   const fromUrl = readParam(SCENARIO_PARAM)
+  if (fromUrl === LIVE_PARAM_VALUE) {
+    clearStored()
+    return null
+  }
   if (fromUrl !== null && isScenarioKey(fromUrl)) {
     writeStored(fromUrl)
     return fromUrl
   }
-  return readStored() ?? defaultScenario
+  return readStored()
+}
+
+/** 当前生效的场景键；走真实端点时回落到默认场景，供切换器显示。 */
+export function currentScenario(): ScenarioKey {
+  return resolveScenario() ?? defaultScenario
 }
 
 /** 切换场景并持久化；刷新页面后仍生效。 */

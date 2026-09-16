@@ -16,7 +16,7 @@ import type { CoreStore } from '../ports/core-store.js'
 import type { DeepSeekClient } from '../ports/deepseek-client.js'
 import type { Logger } from '../ports/logger.js'
 import { noopMetrics, type Metrics } from '../ports/metrics.js'
-import { computeAccountTag } from './account-tag.js'
+import { accountTag8, computeAccountTag } from './account-tag.js'
 import type { ConfigService } from './config-service.js'
 import type { KeyResolver } from './key-resolver.js'
 
@@ -37,6 +37,8 @@ export interface BalanceStatus {
   serverRefreshSeconds: number
   /** 上游给的 `Retry-After`，优先于自算退避。 */
   retryAfterMs: number | null
+  /** 最近一次成功抓取的时刻；从未成功过是 `null`。健康检查要用。 */
+  lastSuccessAt: number | null
 }
 
 /** `getView` 的可选参数。 */
@@ -71,6 +73,8 @@ export class BalanceService {
   private failures = 0
   private retryAfterMs: number | null = null
   private inflight: Promise<BalanceView> | null = null
+  /** 落盘失败只报一次，避免每轮刷新都刷屏。 */
+  private persistWarned = false
 
   constructor(options: BalanceServiceOptions) {
     this.options = options
@@ -86,7 +90,18 @@ export class BalanceService {
       hasSnapshot: this.snapshot !== null,
       serverRefreshSeconds: this.options.config.current().serverRefreshSeconds,
       retryAfterMs: this.retryAfterMs,
+      lastSuccessAt: this.snapshot?.fetchedAt ?? null,
     }
+  }
+
+  /**
+   * 当前账本标识的前 8 位；还没有快照时是 `null`。
+   *
+   * **只回前 8 位**：完整 tag 是账本作用域标识，没有对外的理由。
+   */
+  accountTag8(): string | null {
+    const tag = this.snapshot?.accountTag
+    return tag === undefined ? null : accountTag8(tag)
   }
 
   /**
@@ -174,8 +189,9 @@ export class BalanceService {
         timeoutMs: this.options.config.timeoutMs(),
       })
       const snapshot = normalize(raw, computeAccountTag(this.options.salt, apiKey), this.options.clock.now())
-      await this.options.store.saveSnapshot(snapshot)
-
+      // 落盘失败不算这次抓取失败：快照留在内存里，界面照常显示，
+      // 代价只是重启后不恢复。存储是可降级的一层。
+      await this.persist(snapshot)
       this.snapshot = snapshot
       this.state = 'ok'
       this.error = null
@@ -189,6 +205,22 @@ export class BalanceService {
     } catch (error) {
       this.applyFailure(error, startedAt)
       return this.toView(currency)
+    }
+  }
+
+  /**
+   * 把快照落盘。
+   *
+   * **失败只记一次 warn，不往上抛**：存储层降级不该让整个余额功能不可用。
+   * @param snapshot - 刚归一化出来的快照。
+   */
+  private async persist(snapshot: BalanceSnapshot): Promise<void> {
+    try {
+      await this.options.store.saveSnapshot(snapshot)
+    } catch (error) {
+      if (this.persistWarned) return
+      this.persistWarned = true
+      this.options.logger?.warn('ds-balance: snapshot not persisted, continuing in memory', { error: describe(error) })
     }
   }
 

@@ -2,6 +2,11 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
+    // 显式关掉：noEmit 下本来不产出，但父配置开着 declaration 与 sourceMap，
+    // 读配置的人会以为测试会生成它们。
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
     "rootDir": ".",
     "allowImportingTsExtensions": true,
     "types": ["node"]

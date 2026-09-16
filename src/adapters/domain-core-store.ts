@@ -124,35 +124,60 @@ function describe(error: unknown): string {
 /**
  * 官方存储接缝上的快照存储。
  *
- * 构造期**永不抛错**：打开失败被吸收成降级状态，之后每次操作按调用返回
- * {@link StorageError}。这样 `ready` 永远 resolve，await 它本身不会变成
- * 那个把宿主拖下水的未观察 rejection。
+ * 构造期**永不抛错**，而且**打开是懒的、失败可重试**：
+ *
+ * - **懒打开**：`storageDomain` 可能在插件装载之后才就绪；构造期就打开会把一次
+ *   过早的失败永久钉死。第一次用到时才开。
+ * - **失败可重试**：一轮打开失败只记一次 error，之后每次操作重新试一次；
+ *   服务后到了就自动接上，不必重挂插件。
+ * - **永不产生未观察的 rejection**：`ensureOpen` 返回的 promise 永远 resolve，
+ *   错误记在 `openError` 上，由调用方按需翻成 {@link StorageError}。
+ *   已装插件的注释说，逃出去的 rejection 曾经能把整个宿主拖下水。
  */
 export class DomainCoreStore implements CoreStore {
   private readonly options: DomainCoreStoreOptions
-  private readonly ready: Promise<void>
+  /** 正在进行的这一轮打开；成功后常驻，失败后置回 `null` 以便重试。 */
+  private ready: Promise<void> | null = null
   private handle: DomainLike | null = null
   private table: KvTableLike | null = null
   private openError: unknown
+  /** 打开失败只记一次日志，免得每次操作都刷屏。 */
+  private openFailureLogged = false
   private closed = false
 
   constructor(options: DomainCoreStoreOptions) {
     this.options = options
-    this.ready = this.initialize().catch((error: unknown) => {
-      this.openError = error
-      options.logger?.error('ds-balance: storage domain unavailable, running degraded', { error: describe(error) })
-    })
+  }
+
+  /** 确保域已打开。**永不 reject。** */
+  private ensureOpen(): Promise<void> {
+    if (this.closed) return Promise.resolve()
+    if (this.ready === null) {
+      const attempt = this.initialize().catch((error: unknown) => {
+        this.openError = error
+        this.handle = null
+        this.table = null
+        this.ready = null
+        if (!this.openFailureLogged) {
+          this.openFailureLogged = true
+          this.options.logger?.error('ds-balance: storage domain unavailable, running degraded', { error: describe(error) })
+        }
+      })
+      this.ready = attempt
+    }
+    return this.ready
   }
 
   private async initialize(): Promise<void> {
     const handle = await this.options.open(DS_BALANCE_DOMAIN)
     this.handle = handle
     this.table = handle.table(SNAPSHOT_TABLE)
+    this.openError = undefined
   }
 
   /** 拿到可用表，或在降级状态下抛出可读错误。 */
   private async requireTable(): Promise<KvTableLike> {
-    await this.ready
+    await this.ensureOpen()
     if (this.openError !== undefined) {
       throw new StorageError(`storage domain unavailable: ${describe(this.openError)}`, { cause: this.openError })
     }
@@ -183,7 +208,8 @@ export class DomainCoreStore implements CoreStore {
   }
 
   async health(): Promise<StoreHealth> {
-    await this.ready
+    if (this.closed) return { ok: false, detail: 'closed' }
+    await this.ensureOpen()
     return this.openError === undefined ? { ok: true } : { ok: false, detail: describe(this.openError) }
   }
 
@@ -191,7 +217,8 @@ export class DomainCoreStore implements CoreStore {
   async close(): Promise<void> {
     if (this.closed) return
     this.closed = true
-    await this.ready
+    const pending = this.ready
+    if (pending !== null) await pending
     const handle = this.handle
     this.handle = null
     this.table = null

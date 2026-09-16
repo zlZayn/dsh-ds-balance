@@ -5,10 +5,15 @@
 
 ## 两个半体
 
-- `index.ts`：宿主半边。只做一件事 —— 用 `ctx.settings.installSection` 登记设置命名空间 `ds-balance`，让配置能落进 `$DSH_HOME/settings.yaml`。零业务逻辑。
-- `client/`：浏览器半边。注册两个 slot 与词典，见 [client/README.md](client/README.md)。
+- `index.ts`：宿主半边入口（Layer 5）。只做组装 —— 登记设置命名空间、把端口实现接上、交出生命周期。**零业务逻辑。**
+- `client/`：浏览器半边，见 [client/README.md](client/README.md)。
 - `domain/`：领域层（Layer 0），纯逻辑，见 [domain/README.md](domain/README.md)。
-- `ports/` / `adapters/` / `services/` / `http/`：后端分层，建设中 —— 见 [docs/PLAN.md](../docs/PLAN.md) 与 [docs/backend-architecture.md](../docs/backend-architecture.md)。
+- `ports/`：端口（Layer 1），见 [ports/README.md](ports/README.md)。
+- `adapters/`：端口实现（Layer 2），见 [adapters/README.md](adapters/README.md)。
+- `services/`：应用服务（Layer 3），见 [services/README.md](services/README.md)。
+- `http/`：HTTP 端点（Layer 4），见 [http/README.md](http/README.md)。
+- `config.ts`：插件配置 schema 与派生常量，是两半唯一的共享字符串来源。
+- `version.ts`：线上 schema 版本与插件版本（与 `package.json` 有测试兜底）。
 
 ## 关键导出
 

@@ -56,6 +56,14 @@ describe('插件清单', () => {
   it('发布产物含 bundle 清单要用的文件', () => {
     expect(pkg.files).toContain('lib')
     expect(pkg.files).toContain('cordis.patch.yml')
+    expect(pkg.files).toContain('LICENSE')
+  })
+
+  it('开发期不得声明 dsh.bundle（否则被 dsh plugin 回填成双挂载）', () => {
+    // 声明了它的已装包会被写回 profile 的 dsh.profile.bundles，与 patch 层的 insert 行
+    // 形成双挂载 —— bundles 只在启动时读，所以下次重启才炸。
+    // 发布前必须加回：scripts/check-release.mjs 会把「缺席」报成失败项。
+    expect(pkg.dsh?.bundle).toBeUndefined()
   })
 })
 
