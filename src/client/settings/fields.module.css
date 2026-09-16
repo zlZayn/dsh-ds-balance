@@ -1,0 +1,311 @@
+/* 配置字段的行、控件与提示。取值逐条对齐官方 ui-settings-plugins/fields.module.css。 */
+
+/* 分组：折叠头与展开体的容器。布局由 DisclosureRow 的 .root（flex column / width 100%）提供，
+   这里只补卡片自己的分组间距。 */
+.group {
+  padding: 12px 0 0;
+}
+
+/* 最后一组的尾部间距由分组自己出，值等于组间距，收尾与别处一样宽。
+   这样纵向节奏只有一个所有者：.group（顶部 12）与 .groupLast（尾部 12）。 */
+.groupLast {
+  padding-bottom: 12px;
+}
+
+/* 组级说明：紧跟在折叠头下方，排在字段之前。 */
+.groupNote {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 字段之间一条 0.5px 分隔线；首行不加。 */
+.fields > * + * {
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+/* 上下结构字段：标签行、控件、说明行。 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+}
+
+/* 整行选择型字段：左文字、右控件。结构照抄官方 General 行
+   （packages/client/locale/src/client/LanguageRow.module.css:4-26），
+   行距沿用卡片自己的 12px 节奏。 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 48px;
+}
+
+.rowTitleLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rowTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+}
+
+.badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reset {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.reset:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+}
+
+.reset:disabled {
+  cursor: default;
+}
+
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-3);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+.input:disabled {
+  color: var(--dsw-alias-label-tertiary);
+  cursor: default;
+}
+
+/* 非法草稿：换描边色，不换几何。显式重复 .input 的声明，不依赖 composes。 */
+.inputInvalid {
+  box-sizing: border-box;
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  /* 状态色边框按规范保留 1px。 */
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-3);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+}
+
+.inputInvalid:focus-visible {
+  outline: none;
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+.inputInvalid:disabled {
+  color: var(--dsw-alias-label-tertiary);
+  cursor: default;
+}
+
+/* 掩码输入：输入框与显隐按钮同一行，按钮浮在右端。 */
+.inputWithAction {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputWithAction .input,
+.inputWithAction .inputInvalid {
+  padding-right: 38px;
+}
+
+.reveal {
+  position: absolute;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+
+.reveal:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* 已显形：图标转为一级墨色，与输入框里的明文一起表达状态。 */
+.revealOn {
+  color: var(--dsw-alias-label-primary);
+}
+
+.reveal:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* Menu 的根 span 才是行内的 flex 项：它必须不收缩，pill 才不会被左槽挤扁。 */
+.selectorAnchor {
+  flex: none;
+}
+
+/* 选择器触发 pill（figma Selector：h36 r18，fill module-platform，pad 0/14，gap 12）。
+   没有公共组件，取值照抄 packages/client/locale/src/client/LanguageRow.module.css:28-51。 */
+.selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  max-width: 100%;
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 18px;
+  background: var(--dsw-alias-bg-module-platform);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.selector:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.selector:disabled {
+  color: var(--dsw-alias-label-tertiary);
+  cursor: default;
+}
+
+.selectorChevron {
+  flex: none;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* 非法提示：只换色，位置与字号与 hint 相同，避免布局跳动。 */
+.invalid {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+/* 动作行（测试连接）与结果行。 */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionButton {
+  appearance: none;
+  /* 中性实线边框统一 0.5px。 */
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+  background: none;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.actionButton:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-label-dimmed);
+}
+
+.actionButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.actionButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.resultOk {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.resultFail {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-state-error-primary);
+}

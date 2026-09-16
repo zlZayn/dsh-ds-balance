@@ -1,0 +1,114 @@
+/* 条目根：与官方 Settings 行共用同一套「整行条目」几何。
+   宿主容器已由 footer-stack.module.css 补成纵向堆叠，所以这里可以安全地声明整行宽度，
+   与 .panelList 和 Settings 行的做法一致。
+
+   实情（证据见 recon/10-footer-layout.md）：
+   - 容器 .footerActions { flex:none; width:100%; min-width:0; display:flex }；
+   - 官方 cordis 面板的 .layer 是 width:100%、flex:none；
+   - 已装第三方插件 dsh-usage-statistics-panel 的 .entry 是 width:calc(100% + 4px)、flex:none；
+   - .sidebarCol 是 overflow:hidden。
+   纵向堆叠下每个条目各占一行，不再互相挤压。 */
+
+.root {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+/* 间距约定：宿主 .footerActions 既没有 flex-direction 也没有 gap，
+   条目之间（以及条目到 Settings 之间）的呼吸全靠「每个条目自己的上外边距」提供
+   —— cordis .layer 是 8px、用量面板 .entry.rail 是 8px、Settings 行也是 8px。
+   所以这里照同一个取值写，不要指望容器给间距：两件之间的空隙只由下面那件的
+   上外边距决定。也不建议给宿主容器补 gap，那会改动另外两个插件的间距。 */
+
+/* 展开：整行条目，与 Settings 行同样的 ±2px 外扩做光学对齐。
+   整行只在不换行的 row flex 里才危险；容器改成纵向后这里没有争抢。 */
+.root[data-mode='wide'] {
+  flex: none;
+  width: calc(100% + 4px);
+  margin: 4px -2px 0;
+}
+
+/* 折叠：36×36 圆形命中区，与轨道上其它控件同尺寸。
+   纵向堆叠后不再与邻居抢 56px 的横向空间，因此不需要任何让步几何。
+   上外边距 8px 与轨道上其它控件同节奏；缺了它我们与上方条目就是 0 间距
+   （这正是维护者看到的「贴得特别近」）。 */
+.root[data-mode='rail'] {
+  flex: none;
+  margin: 8px 0 0;
+}
+
+
+.trigger {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.trigger:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+}
+
+/* 展开：撑满整行，行高与官方的 42px 条目一致。 */
+.root[data-mode='wide'] .trigger {
+  flex: none;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  padding: 0 10px 0 8px;
+  border-radius: 12px;
+}
+
+/* 折叠：36×36 圆形命中区，圆环居中。 */
+.root[data-mode='rail'] .trigger {
+  flex: none;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  corner-shape: round;
+}
+
+/* 展开态圆环的固定窝：16×16，保证金额起点不随环径（16 vs 折叠态 18）变化。 */
+.icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+/* 标签：紧跟圆环、靠左，不参与分配剩余宽度（金额已经不在这一行里了）。
+   允许收缩并省略，行窄时先牺牲文字、保住后面的小标记。 */
+.label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 币种不匹配 / 没有余额时的小标记。
+   颜色走中性 label token：严重度配色只由状态圆环承担，这里不再引入第二套映射。 */
+.marker {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--dsw-alias-label-tertiary);
+}

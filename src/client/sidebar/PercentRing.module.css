@@ -1,0 +1,37 @@
+/* 状态圆环：几何照抄官方 ContextMeter，颜色按 state 机械映射。 */
+
+.ring {
+  display: block;
+  flex: none;
+}
+
+.track {
+  fill: none;
+  stroke: var(--dsw-alias-border-l3);
+  stroke-width: 2;
+}
+
+.fill {
+  fill: none;
+  stroke-width: 2;
+  /* 圆角线帽只加在环上，轨道保持平头（与官方一致）。 */
+  stroke-linecap: round;
+}
+
+/* state → 颜色，逐条对齐原生 StateDot 的 data-state 映射。
+   本插件用不到 ongoing，因此不提供；四档覆盖 RingState 的全部取值。 */
+.ring[data-state='done'] .fill {
+  stroke: var(--dsw-alias-state-success-primary);
+}
+
+.ring[data-state='warning'] .fill {
+  stroke: var(--dsw-alias-state-warn-primary);
+}
+
+.ring[data-state='error'] .fill {
+  stroke: var(--dsw-alias-state-error-primary);
+}
+
+.ring[data-state='idle'] .fill {
+  stroke: var(--dsw-alias-label-tertiary);
+}

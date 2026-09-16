@@ -1,0 +1,174 @@
+/* 浮层皮肤与定位照抄官方「用量 / 用时」浮层：
+   packages/client/ui-chat/src/client/chat/stat-dialog.module.css
+   （StatsPills 与 TurnUsagePanel 共用同一套）。
+   定位改用 ui-primitives 的 useAnchoredPosition，面板经 createPortal 挂到 document.body，
+   见 BalancePopover.tsx 与 SidebarBalance.tsx。 */
+
+.panel {
+  position: fixed;
+  z-index: 1100;
+  box-sizing: border-box;
+  /* 按最宽的一行定尺寸，再夹在上下界之间；两个界都随视口收缩（左右各留 12px），
+     所以固定的下限不会把面板顶出定位钳制的范围。 */
+  width: max-content;
+  min-width: min(300px, calc(100vw - 24px));
+  max-width: min(440px, calc(100vw - 24px));
+  padding: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--dsw-specific-menu);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: default;
+}
+
+/* 标题行：左边是图标 + 标题。官方在右侧还放一个 tabular-nums 的汇总值，
+   我们用不到（余额本身就在明细里，放这里会重复显示），所以这一行只有一个子元素 ——
+   space-between 仍按官方保留，将来要加右侧值时不用改结构。 */
+.title {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+
+.titleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 官方这里把图标写死 14×14。鲸鱼标志的比例是 23.16:17.04，
+   压成正方形会变形，所以只定宽、高度按比例走。 */
+.titleLabel svg {
+  flex: none;
+  width: 14px;
+  height: auto;
+}
+
+/* 标题与明细之间唯一的一条分隔线；用法见 BalancePopover.tsx 里的空 div。 */
+.titleRule {
+  margin-bottom: 10px;
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+/* 明细：两列网格，裸 dt/dd 成对，行间只有 6px 行距、没有分隔线。 */
+.details {
+  display: grid;
+  grid-template-columns: minmax(76px, auto) minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.details dt,
+.details dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.details dd {
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* 币种不匹配时的说明与两个动作。官方皮肤没有分隔线，这里只用间距分层。 */
+.notice {
+  margin-top: 12px;
+}
+
+.noticeText {
+  margin: 0 0 8px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.noticeActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 底部一行：刷新时间 + 就地状态文字 + 刷新按钮。 */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.updated {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.refresh {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+
+.refresh:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.refresh:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.refresh:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 冷却中：还能点，但不转；就地文字已经在报剩余秒数。 */
+.refresh[data-cooling] {
+  color: var(--dsw-alias-label-caption);
+}
+
+/* 刷新中：图标原地旋转。官方皮肤通篇没有 keyframes，
+   这一条是刷新按钮自己的进行中反馈（早前规格要求），不属于浮层皮肤。 */
+.refresh[data-refreshing] svg {
+  animation: balance-refresh-spin 900ms linear infinite;
+}
+
+@keyframes balance-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refresh[data-refreshing] svg {
+    animation-duration: 2400ms;
+  }
+}
