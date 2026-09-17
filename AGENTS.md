@@ -2,8 +2,9 @@
 
 ## 状态
 
-- **发布态就绪、尚未发版**：`dsh.bundle.patch` 已加回、`private` 已去掉，`npm run check:release` 0 失败；npm 上还没有这个包。**代价是双挂载那把雷装上了**，见下面的活跃坑。
-- 运行形态：装进某个 dsh profile 的 `node_modules`（符号链接），由 `cordis.patch.yml` 的 insert 行装载。
+- **已发布 1.0.0**：npm `latest`、GitHub Release `v1.0.0`、tag `v1.0.0` 指向 `555d242`；`npm run check:release` 0 失败。
+- 装法只有一条：`dsh plugin --profile <profile> add dsh-ds-balance`（或源码路径）—— 包内声明了 bundle 层，安装器自己会写进 `dsh.profile.bundles`。**不要再手写 patch 行**，见下面的活跃坑。
+- 运行形态：装进某个 dsh profile 的 `node_modules`，由该 profile 的 `dsh.profile.bundles` 装载（bundle 层来自包内的 `cordis.patch.yml`）。
 
 ## 全局规则
 
@@ -21,10 +22,10 @@
 - `npm run test:contract`：打真实上游的契约测试，要环境里有 `DSH_CI_API_KEY`（专用），缺了回落 `DEEPSEEK_API_KEY`；不进 ci.yml
 - `npm run check:release`：发布态不变量；当前 **0 失败**（`dsh.bundle.patch` 与 `private` 都已就位）
 - `node scripts/acceptance.mjs`（端到端验收）、`node scripts/compat-swap.mjs check`（现查三条 dist-tag 线）
-- 挂载（不重启宿主）：先 `dsh plugin --profile <profile> add <仓库路径>`，再确认 profile 的 `dsh.profile.bundles` 里没有本插件，然后把 insert 行写进 profile 的 `cordis.patch.yml`
-- **重启前必须再确认一次**：`dsh.profile.bundles` 与 patch 同时存在会导致双挂载（宿主 reconcile 会把 bundles 那条回填）
-- 回滚：给 patch 里那行加 `disabled: true`，热生效
-- **宿主半边改了代码必须重启宿主**：patch 行的 toggle 只会重新 `apply` **启动时已加载的那个模块**（已实测：改完重建再 toggle，跑的还是旧代码）。toggle 只能用来「拆掉再装上同一个模块」。
+- 挂载：`dsh plugin --profile <profile> add <包名或仓库路径>`，然后**重启宿主**。包内声明了 `dsh.bundle.patch`，安装器会把它写进该 profile 的 `dsh.profile.bundles` —— bundle 层只在启动时读。
+- **不要再往 profile 的 `cordis.patch.yml` 手写 insert 行**：那是本插件还没声明 `dsh.bundle` 时的开发期做法，现在两者并存就是双挂载（见活跃坑）。
+- 排查装载：先看 `dsh.profile.bundles` 里有没有本插件，再决定走哪条路 —— **有 bundles 就不要补 patch 行**。
+- **宿主半边改了代码必须重启宿主**：bundle 与 patch 都只在启动时生效，能热换的只有浏览器半边。
 
 ## 事实来源（只查不抄）
 
@@ -63,6 +64,10 @@
   链接校验与换行校验在这一轮全部重跑过。
 - 阈值加了跨字段约束（同一币种内告急必须低于预警）：宿主 `validate` + 前端失焦提示 + 成对写入排序。
   宿主那道要重启宿主才生效（浏览器半边靠 HMR 立刻生效）；判据与排序各有专门用例，见 [test/threshold-pairs.test.ts](test/threshold-pairs.test.ts)。
+- **真实上游实测（发布前）**：活宿主上 `GET /api/v1/balance` 回真实余额，圆环弧长 = 余额 / warn 阈值（15.06/20 → 0.753，与 dasharray 相符）；
+  浮层三段金额与相对时间正确；设置卡片凭据徽标「已由启动环境提供」；错 key 走插件自己的适配器得到 `UPSTREAM_401`、不可重试。
+- **已发布 1.0.0**：npm 上那个 tarball 的 shasum 与本仓库 `npm pack --dry-run` 的**完全一致**（`a82e68ef…`），
+  即 npm 上的 1.0.0 就是 `555d242` 这棵树。
 - 维护者第二轮反馈四项全部落地并实测：刷新按钮冷却期内置灰（`disabled` 为真、状态行「N 秒后可再次刷新」）；
   改阈值圆环当场变色且**上游请求数保持 0**；五档形状 ok 绿实弧 / warn 琥珀实弧 / critical 红实弧 / unavailable 红弧+中心叉号 / unknown 灰实弧；
   连接组的只读凭据显示「已由启动环境提供」徽标且框内留空、Base URL 带官方提示、「自定义设置」折叠里有 apiKey 与 apiKeyRef。
@@ -81,12 +86,13 @@
 - [x] 发布前：加回 `dsh.bundle`、去掉 `private` → `npm run check:release` 0 失败
 - [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
-- [ ] 首次发布前的手动配置：npm Trusted Publishing、仓库 secret `DSH_CI_API_KEY`、environment `release` → [发布手册](docs/PUBLISHING.md)
+- [x] 首次发布的手动配置：npm Trusted Publisher 已配、仓库 secret `DSH_CI_API_KEY` 已在、`v1.0.0` tag 与 Release 已建
+- [ ] `release` environment 还没建 —— `release.yml` 引用了它，GitHub 会在首次运行时自动创建；想挂人工审批就得手动建 → [发布手册](docs/PUBLISHING.md)
 
 ## 活跃坑
 
 - **`sidebar.footer.action` 的宿主容器是 row flex（宿主遗漏）**：官方 cordis 面板与 `dsh-usage-statistics-panel` 都把根节点写成满宽且不收缩，横排下条目会被挤到 0 宽。我们已用 `:has()` 反选父元素把它改回纵向堆叠 → [决策](.agents/notes/2026-09-17-footer-stack-override.md)。依赖 `:has()` 与该锚点属性稳定。
-- **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包回填进 profile 的 `dsh.profile.bundles`**，与 patch 层的 insert 行形成**双挂载**（bundles 只在启动时读，所以下次重启才炸）。**发布态已加回 `dsh.bundle.patch`，这把雷现在是装上的**：本机 web profile 眼下 bundles 里还没有本插件、patch 行在。**重启前必须再确认一次**；一旦哪条 `dsh plugin` 命令把它回填进去，就先删掉 patch 层那一行再重启。
+- **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包写进 profile 的 `dsh.profile.bundles`**，而 bundle 层与 patch 层的 insert 行**只在启动时读** —— 两条同时存在就是**双挂载**。开发期靠「不声明 `dsh.bundle`」躲开它，发布态不能这么干（包里必须有 bundle 层）。所以装法只能选一种：**`dsh plugin add` 或手写 patch 行，不要都做**。改本机 profile 前先看 `dsh.profile.bundles`。
 - **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。
 - **不要在侧栏底部写 `aria-haspopup="dialog"`**：已装的 `dsh-usage-statistics-panel` 用它从自己按钮往上逐层 `querySelector` 来找设置触发按钮，假设整条底部只有一个这样的按钮；我们的按钮会被它先命中并被 `click()`，表现为「点邻居却弹出我们的浮层」。改用 `aria-expanded`。同一插件的另一条隐式契约：它的 MutationObserver 会扫 `[role="dialog"] nav button`，所以浮层里不要放 `<nav>` 包着的按钮。
 - **向上展开的浮层在「打开时」会盖住上方邻居那一格**：footer 条目纵向堆叠，`side: 'top'` 的浮层底边正落在邻居底边。这是既定取舍（官方 cordis 面板同构）—— 关闭时点邻居落到邻居身上才是关键，那由「不写 `aria-haspopup`」保证。曾试图用右侧哨兵让两者不相交，实机上看位置与触发元素脱节、不优雅，已回退。
