@@ -15,7 +15,14 @@
     "sourceMap": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    // 四个「通用 lint 里最有用的那一档」，用编译器开关代替引入 linter。
+    // 三个 project 都 extends 本文件，所以宿主、客户端、测试一起生效。
+    // 详见 .agents/notes/2026-09-17-no-linter-decision.md。
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*"],
   "exclude": ["src/client"]

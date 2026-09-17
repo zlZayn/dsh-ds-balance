@@ -101,6 +101,21 @@ describe('宿主半边写法', () => {
   })
 })
 
+describe('类型检查开关', () => {
+  const tsconfig = JSON.parse(stripComments(readFileSync('tsconfig.json', 'utf8'))) as {
+    compilerOptions?: Record<string, unknown>
+  }
+
+  it('四个「通用 lint 那一档」的开关都在', () => {
+    // 它们是不引入 linter 这个决定的全部依据：缺任何一个，覆盖面就不再成立。
+    // 见 .agents/notes/2026-09-17-no-linter-decision.md。
+    const flags = ['noUnusedLocals', 'noUnusedParameters', 'noImplicitReturns', 'noFallthroughCasesInSwitch']
+    for (const flag of flags) {
+      expect(tsconfig.compilerOptions?.[flag], flag).toBe(true)
+    }
+  })
+})
+
 describe('UI 约定', () => {
   it('侧栏底部按钮不写 aria-haspopup（邻居的 DOM 遍历会先命中我们）', () => {
     const files = ['src/client/sidebar/SidebarBalance.tsx', 'src/client/sidebar/BalancePopover.tsx']

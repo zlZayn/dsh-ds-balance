@@ -70,7 +70,6 @@
 - [ ] 六条待产品决策的默认值 → [决策记录](.agents/notes/2026-09-17-implementation-deviations.md) 末节
 - [x] 重启宿主一次让后端半边生效（维护者已做，13:15）
 - [x] 本轮 UI 改动的收尾：文档同步、报告回填、提交
-- [ ] 脚本入口缺 `lint`；待定是否引入
 - [ ] 设置卡片的折叠状态不持久化（v1 有意不做，官方仅一处先例）
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
 - [ ] 发布前：加回 `dsh.bundle`、去掉 `private` —— [check-release.mjs](scripts/check-release.mjs) 会卡

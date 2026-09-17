@@ -31,11 +31,17 @@
 **仍未拍板的产品决策**（默认值已实现，等维护者定）：
 
 1. `apiKeyMasked` 的形态：现在不回任何片段。若要用户能核对「是不是这把 key」，需放宽成末 4 位。
-2. `LICENSE` 的版权人：现在写 `dsh-ds-balance contributors`。要署名本人需给名字。
-3. mock 旁路的开关方式：现在是 URL 参数 / localStorage。若要改成构建期开关或环境变量，需要改法。
-4. `.salt` 的文件名：`.salt` 名字很泛。可改成 `.ds-balance-salt`。
-5. 左下角默认币种：沿用「自动（跟随账户）」。若要默认固定 CNY，需要改 schema 默认值。
-6. 是否引入 `lint`：两边项目都没有，暂不引入。
+2. mock 旁路的开关方式：现在是 URL 参数 / localStorage。若要改成构建期开关或环境变量，需要改法。
+3. `.salt` 的文件名：`.salt` 名字很泛。可改成 `.ds-balance-salt`。
+4. 左下角默认币种：沿用「自动（跟随账户）」。若要默认固定 CNY，需要改 schema 默认值。
+5. `BalanceStatus` 要不要暴露 `lastErrorAt`：原实现里这个字段只写不读，开 `noUnusedLocals` 时被点名，
+   已按死状态删除。若原意是要与 `lastSuccessAt` 对称地对外暴露，那是一次对外契约变更，需要单独拍板。
+
+**已拍板**（从上面移下来，结论留档）：
+
+- `LICENSE` 的版权人：`zlZayn`。
+- 是否引入 `lint`：不引入，改用 [tsconfig 的四个编译器开关](../../tsconfig.json)
+  → [决策记录](2026-09-17-no-linter-decision.md)。
 
 ## 替代方案
 

@@ -69,7 +69,6 @@ export class BalanceService {
   private snapshot: BalanceSnapshot | null = null
   private state: CacheState = 'empty'
   private error: ErrorInfo | null = null
-  private lastErrorAt: number | null = null
   private failures = 0
   private retryAfterMs: number | null = null
   private inflight: Promise<BalanceView> | null = null
@@ -195,7 +194,6 @@ export class BalanceService {
       this.snapshot = snapshot
       this.state = 'ok'
       this.error = null
-      this.lastErrorAt = null
       this.failures = 0
       this.retryAfterMs = null
       this.metrics.counter('balance_fetch_total', { result: 'ok' })
@@ -228,7 +226,6 @@ export class BalanceService {
   private applyFailure(error: unknown, startedAt: number): void {
     const info = classify(error)
     this.failures += 1
-    this.lastErrorAt = this.options.clock.now()
     this.error = info
     this.state = this.snapshot === null ? 'error' : 'stale'
     this.retryAfterMs = retryAfterOf(error, this.options.clock.now())
