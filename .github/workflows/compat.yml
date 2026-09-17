@@ -3,10 +3,10 @@
 # 为什么是每周而不是每次推送：它要重装整棵依赖树，跑一次几分钟，而宿主版本线一周也动不了几次。
 #
 # 两条线**暂时都只记录**（continue-on-error: true），红了不发通知、不阻断。
-# 原因是实测出来的错位：next(0.1.5-rc.2) 比 alpha(0.1.6-alpha.1) 还旧，
-# 而我们声明的是 alpha —— 「声明面罩住的线」与「语义上的承诺线」对不上。
-# 先观察一轮拿到基线，再决定哪条必绿。判据与恢复条件见
-# .agents/notes/2026-09-17-compat-lines-advisory.md。
+# 原因是实测出来的错位：next 比 alpha 还旧，而我们声明的是 alpha ——
+# 「声明面罩住的线」与「语义上的承诺线」对不上。
+# **版本号不写在这里**（会漂），要现查跑：node scripts/compat-swap.mjs check
+# 判据与恢复条件见 .agents/notes/2026-09-17-compat-lines-advisory.md。
 #
 # 与 contract.yml 错开一小时，避免两个定时任务在同一分钟抢 runner。
 name: compat

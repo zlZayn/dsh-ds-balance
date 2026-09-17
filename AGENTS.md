@@ -40,37 +40,19 @@
 
 ## 验证快照
 
-- 结论一律来自本机实跑或 [CI](.github/workflows/ci.yml)。
-- 阶段 0：勘察报告完成，结论均带源文件行号。
-- 阶段 1：16 项集成决策已拍板 → [决策记录](.agents/notes/2026-09-17-integration-decisions.md)
-- 构建产物：`npm run build` 三步全绿。体积不抄进文档 —— 用 `Get-ChildItem lib` 现查。
-- 阶段 6：已用 patch 层热挂载进本机 web profile（符号链接形态），宿主未重启。
-- 维护者已实机确认：条目可见、设置卡片渲染、圆环与标签正常。
-- 修复过并复测的实机缺陷：footer 三条目互挤、展开态条目不可见、折叠态与邻居贴住、点邻居却弹我们的浮层。
-- 维护者已实机验收全部界面：圆环与标签、点击浮层、折叠分组、与邻居插件共存。
-- 窄视口浮层钳制已补验：360 / 480 / 600 / 700 / 721 五个宽度全部落在视口内。
-- **后端与界面完成**：实施路线的 11 步全部落地，路线表已从规格文档移出 → [归档记录](.agents/notes/2026-09-17-implementation-roadmap-archive.md)。
-- 实现与文档不一致的 15 条 → [决策记录](.agents/notes/2026-09-17-implementation-deviations.md)。
-- 端点实测（隔离实例，真实 dsh 宿主）：六个端点全部可用；`severity` 四档、`NO_KEY` / `UPSTREAM_401` / `UPSTREAM_5XX` 三条错误路径、`422` 校验、冷却、配置掩码逐条核过。
-- 持久化实测：重启宿主后快照按 `accountTag` 读回，`.salt` 复用；上游不可达时降级成 `stale` 而不是丢数据。
-- 界面实测（隔离实例 + 无头浏览器）：左下角圆环显示真实金额，浮层三段金额与相对时间正确，Escape 关闭，控制台零报错。
-- 测试与类型检查：跑 `npm test`（自带 build）与 `npm run typecheck`，或看 [CI](.github/workflows/ci.yml)。**数字不在本文档里抄。**
-- **主实例已重启**（13:15），跑的是最新产物；维护者已实机确认界面与功能。
-- 工程面对齐（同日第二轮）：三个发版脚本、三条 workflow、契约测试层、assets 双件、PUBLISHING、
-  CONTRIBUTING 中英、双语门面全部落地；判定与实测见 [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)。
-- 两张设置卡片截图已实拍替换占位图（中英各一张，取自运行中的 GUI），拍英文时临时切过语言并已切回；
-  实拍踩到的两条约束写进 [assets/AGENTS.md](assets/AGENTS.md) 的「已知约束」。
-- 圆环弧长改为「余额占 warn 阈值的比例」（颜色映射不变），同步改了 9 处文档；
-  链接校验与换行校验在这一轮全部重跑过。
-- 阈值加了跨字段约束（同一币种内告急必须低于预警）：宿主 `validate` + 前端失焦提示 + 成对写入排序。
-  宿主那道要重启宿主才生效（浏览器半边靠 HMR 立刻生效）；判据与排序各有专门用例，见 [test/threshold-pairs.test.ts](test/threshold-pairs.test.ts)。
-- **真实上游实测（发布前）**：活宿主上 `GET /api/v1/balance` 回真实余额，圆环弧长 = 余额 / warn 阈值（15.06/20 → 0.753，与 dasharray 相符）；
-  浮层三段金额与相对时间正确；设置卡片凭据徽标「已由启动环境提供」；错 key 走插件自己的适配器得到 `UPSTREAM_401`、不可重试。
-- **已发布 1.0.0**：npm 上那个 tarball 的 shasum 与本仓库 `npm pack --dry-run` 的**完全一致**（`a82e68ef…`），
-  即 npm 上的 1.0.0 就是 `555d242` 这棵树。
-- 维护者第二轮反馈四项全部落地并实测：刷新按钮冷却期内置灰（`disabled` 为真、状态行「N 秒后可再次刷新」）；
-  改阈值圆环当场变色且**上游请求数保持 0**；五档形状 ok 绿实弧 / warn 琥珀实弧 / critical 红实弧 / unavailable 红弧+中心叉号 / unknown 灰实弧；
-  连接组的只读凭据显示「已由启动环境提供」徽标且框内留空、Base URL 带官方提示、「自定义设置」折叠里有 apiKey 与 apiKeyRef。
+- 结论一律来自本机实跑或 [CI](.github/workflows/ci.yml)；**数字不在本文档里抄**。
+- 领域 / 服务 / 适配器 / HTTP / 浏览器半边：`npm test` 覆盖 —— 跑它，或看 CI。
+- 产物级：`test/artifacts.test.ts` 在 `lib/` 上断言（`npm test` 自带 build）。
+- 契约级：`npm run test:contract` 打真实上游，要 `DSH_CI_API_KEY`。
+- **真机端到端已验**（隔离实例 + 真实 dsh 宿主）：六个端点、`severity` 四档、
+  `NO_KEY` / `UPSTREAM_401` / `UPSTREAM_5XX` 三条错误路径、`422` 校验、冷却、配置掩码；
+  重启后快照按 `accountTag` 读回、`.salt` 复用、上游不可达降级成 `stale`。
+- **界面已由维护者实机验收**：圆环 / 浮层 / 折叠分组 / 与邻居插件共存；
+  窄视口 360 / 480 / 600 / 700 / 721 五个宽度浮层都落在视口内。
+- **发布前在活宿主上打过真实上游**：余额、浮层三段、凭据徽标，以及错 key 的 `UPSTREAM_401`。
+- **已发布 1.0.0**，npm 上的 tarball 与本仓库 `npm pack --dry-run` 的 shasum 一致。
+
+轮次流水记在 git log 与 [.agents/notes/](.agents/notes/) 里，不在这里堆。
 
 ## 待办
 
@@ -104,7 +86,7 @@
 - **cordis 不许读没 `inject` 过的服务**：直接访问会抛 `cannot get property "..." without inject`。可选服务（`connection` / `storageDomain`）必须由 `ctx.inject` 把门并留降级路径；把它们塞进顶层 `inject` 会让缺服务的装配整个插件不装载。**降级路径会把这条配置错误伪装成运行时故障**，所以启动日志要当验收项看。
 - 符号链接安装下 `npm run build` 直接写线上，未验证的构建会立刻影响正在使用的界面。
 - `inject` 门禁按服务名逐字判，点号键不展开成父级。
-- dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 不在 `0.1.6-alpha.1` 线上。
+- dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 不在宿主那条线上。实际版本现查：`node scripts/compat-swap.mjs check`。
 - `dsh.client.inject` 只列真实客户端图行；`ui-slots` 与 `ui-primitives` 是 staticLinked 平台模块，列进去会被静默跳过。
 - **`npm ci` 会执行 `prepare`**：所以本仓库**不声明** `prepare`。声明了的话 CI 的 `npm ci` 会先产出 `lib/`，typecheck 就再也看不到「干净检出」这个状态 —— 那正是刚修掉的一类缺陷（`test/artifacts.test.ts` 在 CI 上 TS2307，本机因产物早就在而常绿）。见 [决策记录](.agents/notes/2026-09-17-prepare-script-decision.md)。
 - **写临时探针别用 `os.tmpdir()`**：进程环境为空时它在 Windows 上返回相对路径 `undefined\temp`，会把文件写进工作区，还会让 `robocopy` 自我递归出一棵超 MAX_PATH 的目录树。用 `$env:TEMP` 或显式绝对路径，用完即删。
@@ -120,6 +102,20 @@
 
 - **一条事实只有一个 home**：根 [README.md](README.md) 讲门面，本文件讲规则与仪表盘，子目录 `README.md` 讲「有什么 / 改哪」，子目录 `AGENTS.md` 讲「在这里怎么干」，[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 讲不变的设计，[.agents/notes/](.agents/notes/) 讲为什么。别处一律链接。
 - **能自证的不抄**：测试数字、产物体积、版本号一律指向 [CI](.github/workflows/ci.yml)、`package.json` 或现查命令；抄一次就要手动跟一次。
+- **新增会漂的事实之前，先在下表登记去处**；别处只写指针，不重抄值。
+
+  | 事实 | home | 别处怎么写 |
+  |---|---|---|
+  | 版本号、依赖范围、`engines` | [package.json](package.json) | 引用，不重抄 |
+  | 测试数量、类型检查结果 | [CI](.github/workflows/ci.yml) 或现跑 | 一律不抄 |
+  | 产物清单与体积 | `Get-ChildItem lib` 现查 | 一律不抄 |
+  | 发布态该有什么 | [scripts/check-release.mjs](scripts/check-release.mjs) 的断言 | 引用断言集合 |
+  | dist-tag 三条线的实际版本 | `node scripts/compat-swap.mjs check` 现查 | 只写语义（哪条旧、哪条是我们声明的） |
+  | 端点路径与请求形状 | [src/http/routes.ts](src/http/routes.ts) | 引用 |
+  | 配置字段与契约 | [src/config.ts](src/config.ts) · [docs/backend-architecture.md](docs/backend-architecture.md) | 引用 |
+  | 颜色 / 阈值口径 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 引用 |
+  | dsh 运行时行为 | 宿主源码 `packages/` | 带行号引用，行号以当前检出为准 |
+  | 发布状态（版本 / tag） | npm 与 GitHub 现查 | 只留一行指针 |
 - **能落成校验的不写散文**：红线 → [test/redlines.test.ts](test/redlines.test.ts)；发布态不变量 → [scripts/check-release.mjs](scripts/check-release.mjs)；文档链接与换行 → `check-links.py` / `check-line-endings.py`。
 - **改一处要查得到同步点**：每个子目录 `README.md` 的「变更影响路由」是同步清单入口；新增或改名文件后必须回填。
 - **改根 [README.md](README.md) 必同改 [README_en.md](README_en.md)**：能力清单、上手步骤、指针逐条对齐，冲突以中文为准。
@@ -127,19 +123,9 @@
 
 ## 文档地图
 
-- 架构设计 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- 原生集成勘察（设计依据）→ [docs/recon-native-integration.md](docs/recon-native-integration.md)
-- 连接与官方模型机制的融合判定（设计依据）→ [docs/model-integration-assessment.md](docs/model-integration-assessment.md)
-- 后端架构（修正版，已复审；只含设计与契约）→ [docs/backend-architecture.md](docs/backend-architecture.md)
-- 后端架构文档对照审查（设计依据）→ [docs/backend-architecture-review.md](docs/backend-architecture-review.md)
-- **UI 侧契约与移交（可原样转发给后端）** → [docs/ui-handoff.md](docs/ui-handoff.md)
-- 发布手册（流程与版本号判定链）→ [docs/PUBLISHING.md](docs/PUBLISHING.md)
-- 门面截图与其判据 → [assets/README.md](assets/README.md) · [assets/AGENTS.md](assets/AGENTS.md)
-- 决策记录 → [.agents/notes/](.agents/notes/)
-- 源码手册 → [src/README.md](src/README.md)
-- 浏览器半边 → [src/client/README.md](src/client/README.md)
-- 领域模型手册 → [src/domain/README.md](src/domain/README.md)
-- 测试手册 → [test/README.md](test/README.md)
-- 构建脚本 → [scripts/README.md](scripts/README.md)
-- 事故复盘 → [docs/postmortem/](docs/postmortem/)
-- 验证配方（隔离实例 / stub 上游 / 探针）→ [.agents/notes/2026-09-17-verification-recipes.md](.agents/notes/2026-09-17-verification-recipes.md)
+- 本表只列**层**；每层有什么在它自己的 README 里，不在这里重抄一份。
+- 设计、契约、发布手册与事故复盘 → [docs/README.md](docs/README.md)
+- 决策记录与验证配方（当时为什么这么定）→ [.agents/notes/README.md](.agents/notes/README.md)
+- 源码手册 → [src/README.md](src/README.md)；浏览器半边 → [src/client/README.md](src/client/README.md)；领域模型 → [src/domain/README.md](src/domain/README.md)
+- 测试手册 → [test/README.md](test/README.md)；构建脚本 → [scripts/README.md](scripts/README.md)
+- 门面截图与判据 → [assets/README.md](assets/README.md) · [assets/AGENTS.md](assets/AGENTS.md)

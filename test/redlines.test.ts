@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -118,6 +118,72 @@ describe('类型检查开关', () => {
     for (const flag of flags) {
       expect(tsconfig.compilerOptions?.[flag], flag).toBe(true)
     }
+  })
+})
+
+describe('文档不抄实测值', () => {
+  /**
+   * 记录类：写的就是当时的事实，**故意**带着会漂的值，所以不在约束范围内。
+   * 判据是「它写的是此刻还是当时」—— 被当现状读的才算活文档；层的登记表在 docs/README.md。
+   */
+  const RECORDS = [
+    /^\.agents\/notes\//,
+    /^docs\/postmortem\//,
+    /^docs\/recon-/,
+    /^docs\/(ui-handoff|model-integration-assessment|backend-architecture-review)\.md$/,
+  ]
+
+  /** 门面双件：装之前必须看得见兼容范围，所以允许留值 —— 但必须与真源同行。 */
+  const FACADE = ['README.md', 'README_en.md']
+
+  /** 真源。留值的那一行必须自己写出处。 */
+  const HOME = 'package.json'
+
+  /**
+   * 会漂的宿主版本字面量。
+   * 形状跟着宿主主版本走：宿主换主版本号时下面那条「守卫跟着宿主线走」会红，来改这里。
+   */
+  const HOST_VERSION = /\b0\.\d+\.\d+(?:-[a-z]+\.\d+)?\b/g
+
+  /** 仓库里会被当文档读的 markdown；跳过依赖、产物与版本库目录。 */
+  function liveDocs(dir = '.'): string[] {
+    const found: string[] = []
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = dir === '.' ? entry.name : `${dir}/${entry.name}`
+      if (entry.isDirectory()) {
+        // recon/ 是勘察期的临时长文，被 .gitignore 忽略、不随仓库走，所以不在守卫范围内。
+        if (['node_modules', 'lib', '.git', 'recon'].includes(entry.name)) continue
+        found.push(...liveDocs(path))
+        continue
+      }
+      if (!entry.name.endsWith('.md')) continue
+      if (RECORDS.some((pattern) => pattern.test(path))) continue
+      found.push(path)
+    }
+    return found
+  }
+
+  it('活文档里不写会漂的宿主版本；门面要留就得与真源同行', () => {
+    const files = [...liveDocs(), ...readdirSync('.github/workflows').map((name) => `.github/workflows/${name}`)]
+    // 扫不到文件说明walk的路径规则坏了，先红这个，别让它静默变成一条永不触发的守卫。
+    expect(files.length).toBeGreaterThan(10)
+
+    for (const file of files) {
+      const lines = readFileSync(file, 'utf8').split('\n')
+      lines.forEach((line, index) => {
+        for (const value of line.match(HOST_VERSION) ?? []) {
+          if (FACADE.includes(file) && line.includes(HOME)) continue
+          throw new Error(
+            `${file}:${index + 1} 抄了会漂的宿主版本 ${value}` +
+            ` —— 改成指向 ${HOME} 的指针，或现查 node scripts/compat-swap.mjs check`,
+          )
+        }
+      })
+    }
+  })
+
+  it('守卫跟着宿主线走：宿主换主版本号时这条会红，来改 HOST_VERSION', () => {
+    expect(pkg.engines?.dsh, '宿主已不在 0.x 线上，HOST_VERSION 的形状要跟着改').toMatch(/^[~^]?0\./)
   })
 })
 

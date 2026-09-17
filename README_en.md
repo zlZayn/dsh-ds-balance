@@ -34,7 +34,7 @@ sidebar; click it for the three amounts and the freshness of the data. Anything 
 configure, lives on the settings card.
 
 <p align="center">
-  <img src="assets/sidebar-popover_en.png" alt="The DeepSeek balance entry at the bottom of the sidebar, with its popover open" width="460">
+  <img src="assets/sidebar-popover_en.png" alt="The DeepSeek balance entry at the bottom of the sidebar, with its popover open" width="360">
   <br>
   <em>A permanent fixture at the <strong>bottom of the sidebar</strong>, alongside Usage statistics and Settings; click it for the balance, the granted / topped-up split, and how fresh the data is.</em>
 </p>
@@ -51,7 +51,7 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
 and the card answers "how is that computed".**
 
 <p align="center">
-  <img src="assets/settings-card_en.png" alt="The DeepSeek balance card in the plugin settings" width="460">
+  <img src="assets/settings-card_en.png" alt="The DeepSeek balance card in the plugin settings" width="360">
   <br>
   <em>Sits alongside other plugins in <strong>Settings → Plugins → Plugin configuration</strong>; all four groups are collapsed by default, so the card opens as four header rows.</em>
 </p>
@@ -71,9 +71,10 @@ and the card answers "how is that computed".**
 ### Requirements
 
 - **DSH `^0.1.6-alpha.1`** — the range declared in [package.json](package.json) under `engines.dsh` and `peerDependencies`.
-- Node `>= 20`
+- Node `>= 20` — same source of truth: `engines.node` in `package.json`.
 
-Install the host by **naming the version line explicitly**: the `latest` tag of `@deepseek-ai/dsh` points at `0.1.5-rc.1`, one notch *below* what this plugin requires — a default install lands outside the declared range.
+Install the host by **naming the version line explicitly**: the `latest` tag of `@deepseek-ai/dsh` is older than the line this plugin requires — a default install lands outside the declared range.
+For the actual versions, run `node scripts/compat-swap.mjs check`; the semantics are in [docs/PUBLISHING.md](docs/PUBLISHING.md) under "Compatibility".
 
 ```bash
 npm install -g @deepseek-ai/dsh@alpha     # the line this plugin promises to support

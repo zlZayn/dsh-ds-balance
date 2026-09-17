@@ -153,14 +153,21 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 
 ## 兼容性
 
-`@deepseek-ai/dsh-*` 的 dist-tag 语义与常规认知相反。以下是现查得到的实测值，不是抄来的：
+`@deepseek-ai/dsh-*` 的 dist-tag 语义与常规认知相反：
 
-- `alpha` —— 本插件声明的那条线，`engines.dsh` 与全部 peer 都在 `^0.1.6-alpha.1` 上。
-- `next` —— 比 `alpha` **旧**（实测 `0.1.5-rc.2`）。
-- `latest` —— 指向很旧的版本（多数包是 `0.0.1-rc.*`）。
+- `alpha` —— 本插件声明的那条线（`engines.dsh` 与全部 peer 都在它上面）。
+- `next` —— 实测比 `alpha` **旧**。
+- `latest` —— 指向很旧的版本。
 
-所以**装依赖必须点名版本线**，跟着 `latest` 走会装到很久以前的版本。
-`node scripts/compat-swap.mjs check` 会现查三条线的实际版本，不靠记忆。
+**具体版本号不写在这里**：它会漂，抄一次就得手动跟一次。要现查就跑下面这条，
+它读 npm registry 的三条线并逐包打印：
+
+```bash
+node scripts/compat-swap.mjs check
+```
+
+推论有两条：**装依赖必须点名版本线**（跟着 `latest` 走会装到很久以前的版本）；
+哪条线该跟、主次怎么定，见[决策记录](../.agents/notes/2026-09-17-compat-lines-advisory.md)。
 
 compat 巡检红了怎么办：
 

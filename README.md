@@ -32,7 +32,7 @@
 要看细的、要改配置的，都在设置页那一张卡片里。
 
 <p align="center">
-  <img src="assets/sidebar-popover.png" alt="左边栏底部的「DeepSeek 余额」条目与展开的余额浮层" width="460">
+  <img src="assets/sidebar-popover.png" alt="左边栏底部的「DeepSeek 余额」条目与展开的余额浮层" width="360">
   <br>
   <em>常驻<strong>左边栏底部</strong>，与「使用统计」「设置」并排；点开是余额、赠送 / 充值拆分与数据新鲜度。</em>
 </p>
@@ -48,7 +48,7 @@
 三种界面的分工是死的：**圆环回答「大概还剩多少」，浮层回答「具体是多少」，卡片回答「怎么算」。**
 
 <p align="center">
-  <img src="assets/settings-card.png" alt="插件配置页中的「DeepSeek 余额」卡片" width="460">
+  <img src="assets/settings-card.png" alt="插件配置页中的「DeepSeek 余额」卡片" width="360">
   <br>
   <em>在 <strong>设置 → 插件 → 插件配置</strong> 中与其他插件并排；四组默认全收起，卡片一打开只占四行折叠头。</em>
 </p>
@@ -70,9 +70,10 @@
 ### 前置
 
 - **DSH `^0.1.6-alpha.1`** —— 即 [package.json](package.json) 的 `engines.dsh` 与 `peerDependencies` 声明的范围。
-- Node `>= 20`
+- Node `>= 20` —— 同上，真源是 `package.json` 的 `engines.node`。
 
-装宿主时**要显式指定版本线**：`@deepseek-ai/dsh` 的 `latest` 标签指向 `0.1.5-rc.1`，比本插件要求的还低一格 —— 按默认方式装会落在声明范围之外。
+装宿主时**要显式指定版本线**：`@deepseek-ai/dsh` 的 `latest` 标签比本插件要求的那条线还旧 —— 按默认方式装会落在声明范围之外。
+各条线的实际版本现查 `node scripts/compat-swap.mjs check`，语义见 [docs/PUBLISHING.md](docs/PUBLISHING.md) 的「兼容性」。
 
 ```bash
 npm install -g @deepseek-ai/dsh@alpha     # 本插件承诺支持的线
