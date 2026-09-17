@@ -51,15 +51,20 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 
 ## 四、severity → 颜色映射（前端只做机械映射）
 
-| `severity` | 语义 | 颜色 token |
-|---|---|---|
-| `ok` | 正常 | `--dsw-alias-state-success-primary`（绿） |
-| `warn` | 预警 | `--dsw-alias-state-warn-primary`（黄） |
-| `critical` | 告急 | `--dsw-alias-state-error-primary`（红） |
-| `unavailable` | 账户不可用 | `--dsw-alias-state-error-primary`（红） |
-| `unknown` | 未知 | `--dsw-alias-label-tertiary`（灰） |
+| `severity` | 语义 | 弧的颜色 token | 形状 |
+|---|---|---|---|
+| `ok` | 正常 | `--dsw-alias-state-success-primary`（绿） | 实弧 |
+| `warn` | 预警 | `--dsw-alias-state-warn-primary`（琥珀） | 实弧 |
+| `critical` | 告急 | `--dsw-alias-state-error-primary`（红） | 实弧 |
+| `unavailable` | 账户不可用 | `--dsw-alias-state-error-primary`（红） | 实弧 **+ 中心叉号** |
+| `unknown` | 未知 | `--dsw-alias-label-tertiary`（灰） | 实弧 |
 
 **这条映射是 UI 与后端之间唯一的「策略」接口**：阈值定在哪、何时算告急，全在后端，前端不参与。
+
+**为什么两档都用红**：官方 token 里 `error-primary` 与 `error-secondary` 在深色主题下是同一个值，
+可用色相只有绿 / 琥珀 / 红 / 品牌蓝 / 灰五个，没有第五种「红系」可分。
+于是颜色编码**数值严重度**，形状编码**账户可用性**：`critical` 是余额维度，`unavailable` 是账户维度，
+后者多一个中心叉号。色盲与 12px 小尺寸下依然分得开。
 
 ---
 

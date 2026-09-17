@@ -14,6 +14,7 @@
 - 职责：卡片本体。持有卡片展开、密钥显隐、分组展开三份局部状态，外加一个保存起始标记（ref）；把 `useConfigForm` 的状态翻译成 JSX。
 - 关键导出：`BalanceSettingsCard`、`BalanceSettingsCardProps`，并转发 `SettingsScope`。
 - 分组：连接 → 展示 → 阈值 → 刷新。这是 UI 的排列顺序（按使用频率）；宿主 `Config` 的字段顺序是 连接 → 刷新 → 展示 → 阈值，**两者有意不同**，见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md) 的关键决策。
+- 连接组是**两段式，照搬官方「模型」卡片**：外面是只读的凭据状态（`ReadOnlyControl`）与可编辑的 Base URL，`apiKey` / `apiKeyRef` 收在二级「自定义设置」折叠里（默认收起）。普通用户继承官方凭据就够，高级用户展开才覆盖。
 - 默认展开：四组全收起（`DEFAULT_GROUP_OPEN` 全 `false`），卡片一打开只占四行折叠头。
 - 组内有非法草稿时该组强制展开（`groupOpenNow`），否则 footer 的「请检查标红的字段」会指向一个收起来的组。
 - 被谁依赖：`src/client/index.tsx` 的 `SettingsSeatComponent`。
@@ -31,8 +32,10 @@
 ### fields.tsx
 
 - 职责：字段行的容器与全部控件，以及分组的折叠头。
-- 关键导出：`FieldGroup`、`FieldFrame`、`FieldBadges`、`TextControl`、`SecretControl`、`SelectorControl`、`ActionRow`，以及类型 `FieldStatus` 与 `SelectorOption`。
+- 关键导出：`FieldGroup`、`FieldFrame`、`FieldBadges`、`TextControl`、`ReadOnlyControl`、`SecretControl`、`SelectorControl`、`ActionRow`、`DetailsGroup`，以及类型 `FieldStatus` 与 `SelectorOption`。
 - `FieldGroup` 的折叠头用原语 `DisclosureRow`，不自己画；展开体由原语在 open 时条件渲染，无动画。
+- `ReadOnlyControl` 是只读输入：字段照常渲染、`disabled` + 只读占位说明，逐字照搬官方 `ProviderEditor` 处理「凭据由启动环境提供」的做法。
+- `DetailsGroup` 是**二级折叠**，用原生 `<details>`/`<summary>` 而不是 `DisclosureRow` —— 官方那一处也是原生 details 配一个 `::before` 折角。它是受控但跟手的：`open` 由 state 持有，用户拨动时从 DOM 读回真实状态，卡片重渲染不会把它弹回去。
 - 类名拼接统一用官方 `clsx`（平台样式规则要求），不自备工具函数。
 - 被谁依赖：`BalanceSettingsCard.tsx`。
 - 改后必测：数字字段仍是 `type="text"` + `inputMode="numeric"`；选择器仍是 pill + `Menu`；`FieldFrame` 在没有 hint 时不渲染说明行。
@@ -43,6 +46,15 @@
 - 关键规则：`.group`（顶部 12px）、`.groupLast`（尾部 12px）、`.groupNote`（margin-top 4px）、`.fields > * + *`（字段间 0.5px 分隔线）、`.field`（padding 12px 0）、`.row`（整行选择型，padding 12px 0）、`.input`（h34 r8）、`.selector`（h36 r18）。
 - 被谁依赖：`fields.tsx`；`BalanceSettingsCard.tsx` 另用它的 `.field` 包住测试连接那一行。
 - 改后必测：新增元素的纵向间距必须落在 12px 这一档；中性实线边框 0.5px、状态色边框 1px；全圆角与 `corner-shape: round` 成对。
+
+### use-credential-state.ts
+
+- 职责：问 `GET /api/v1/config` 要凭据的三个事实（`configured` / `source` / `writable`），决定凭据字段显示「由启动环境提供（只读）」还是「已配置 / 未配置」。
+- 关键导出：`useCredentialState(ref)`，返回 `CredentialInfo | null`。
+- **读不到一律当 `null`**：宿主旧版本、请求失败、字段缺失都走这一条，绝不把 `undefined` 漏进组件（否则卡片会崩、整个 slot 条目消失）。
+- 引用名一变就重读一次；用的是**生效**引用名，草稿未保存时后端认的仍是存下来的那个。
+- 被谁依赖：`BalanceSettingsCard.tsx`。
+- 改后必测：宿主回旧结构时卡片仍渲染；`writable: false` 时占位符是官方那句只读说明。
 
 ### use-config-form.ts
 

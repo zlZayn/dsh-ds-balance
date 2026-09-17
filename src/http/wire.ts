@@ -37,6 +37,19 @@ export interface WireError {
   retryable: boolean
 }
 
+/**
+ * 凭据的只读描述。
+ *
+ * 形状逐字对齐官方 `credentialProvider.describe()`：**只有三个事实，没有装值的槽**。
+ * 界面靠它决定凭据字段是「可编辑」还是「由启动环境提供」。
+ */
+export interface WireCredentialInfo {
+  ref: string
+  configured: boolean
+  source: string | null
+  writable: boolean
+}
+
 /** `GET /api/v1/balance` 的响应体。 */
 export interface WireBalanceResponse {
   requestId: string

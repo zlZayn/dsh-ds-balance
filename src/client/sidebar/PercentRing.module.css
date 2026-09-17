@@ -1,8 +1,24 @@
 /* 状态圆环：几何照抄官方 ContextMeter，颜色按 state 机械映射。 */
 
+/* 颜色只在这里定一次：弧与中心符号都取 currentColor，避免两处各写一份 token。 */
 .ring {
   display: block;
   flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* state → 颜色，逐条对齐原生 StateDot 的 data-state 映射。
+   本插件用不到 ongoing，因此不提供；四档覆盖 RingState 的全部取值。 */
+.ring[data-state='done'] {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.ring[data-state='warning'] {
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.ring[data-state='error'] {
+  color: var(--dsw-alias-state-error-primary);
 }
 
 .track {
@@ -13,25 +29,18 @@
 
 .fill {
   fill: none;
+  stroke: currentColor;
   stroke-width: 2;
   /* 圆角线帽只加在环上，轨道保持平头（与官方一致）。 */
   stroke-linecap: round;
 }
 
-/* state → 颜色，逐条对齐原生 StateDot 的 data-state 映射。
-   本插件用不到 ongoing，因此不提供；四档覆盖 RingState 的全部取值。 */
-.ring[data-state='done'] .fill {
-  stroke: var(--dsw-alias-state-success-primary);
-}
-
-.ring[data-state='warning'] .fill {
-  stroke: var(--dsw-alias-state-warn-primary);
-}
-
-.ring[data-state='error'] .fill {
-  stroke: var(--dsw-alias-state-error-primary);
-}
-
-.ring[data-state='idle'] .fill {
-  stroke: var(--dsw-alias-label-tertiary);
+/* 中心叉号：账户维度「不可用」的形状编码。
+   两条对角短线，长度约环内径的 50%，笔画比环细一档；随 viewBox 一起缩放，
+   所以 12px 下依然清晰。没有动画。 */
+.cross {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
 }

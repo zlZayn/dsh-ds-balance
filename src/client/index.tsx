@@ -111,6 +111,23 @@ function readPollSeconds(value: Record<string, unknown>): number {
   return Number.isFinite(raw) && raw >= 5 ? raw : DEFAULT_CONFIG.clientPollSeconds
 }
 
+/**
+ * 配置指纹：任何一项设置改动都会换一个值，用来触发一次立刻重取。
+ *
+ * **不含 `apiKey` 本身**（密钥不进 React 的依赖字符串），只带一个「配没配」的布尔；
+ * 其余字段按名字排序拼成稳定串，顺序不受对象键序影响。
+ * @param value - 设置快照里的生效值。
+ * @returns 稳定指纹。
+ */
+function readSignature(value: Record<string, unknown>): string {
+  const parts = Object.keys(value)
+    .filter((key) => key !== 'apiKey')
+    .sort()
+    .map((key) => key + '=' + String(value[key]))
+  parts.push('apiKeySet=' + String(value.apiKey !== undefined && value.apiKey !== ''))
+  return parts.join('\u0001')
+}
+
 /** 左下角条目的座位 props。 */
 interface SidebarSeat {
   wide: boolean
@@ -133,6 +150,7 @@ function SidebarSeatComponent(props: { seat: SidebarSeat; scope: SettingsScope }
         displayCurrency: readDisplayCurrency(value),
         manualRefreshCooldownSeconds: readCooldown(value),
         clientPollSeconds: readPollSeconds(value),
+        configSignature: readSignature(value),
       }}
     />
   )

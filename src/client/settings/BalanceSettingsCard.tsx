@@ -13,11 +13,13 @@ import {
 import { interpolate } from '../locales.ts'
 import type { LocaleKey } from '../locales.ts'
 import {
-  ActionRow, FieldBadges, FieldFrame, FieldGroup, SecretControl, SelectorControl, TextControl,
+  ActionRow, DetailsGroup, FieldBadges, FieldFrame, FieldGroup, ReadOnlyControl, SecretControl,
+  SelectorControl, TextControl,
 } from './fields.tsx'
 import type { FieldStatus, SelectorOption } from './fields.tsx'
 import { AUTO_CURRENCY, currencyCodes, useConfigForm } from './use-config-form.ts'
 import type { SettingsScope } from './use-config-form.ts'
+import { useCredentialState } from './use-credential-state.ts'
 import css from './BalanceSettingsCard.module.css'
 import fieldCss from './fields.module.css'
 
@@ -30,6 +32,9 @@ export interface BalanceSettingsCardProps {
   /** 设置作用域；真实 ctx.settingsScope.bind() 的返回值结构上满足它。 */
   scope: SettingsScope
 }
+
+/** 与宿主 schema 的默认值逐字一致的凭据引用名；快照缺字段时兜底。 */
+const DEFAULT_API_KEY_REF = 'DEEPSEEK_API_KEY'
 
 /** 四个配置分组的键。 */
 type GroupKey = 'connection' | 'display' | 'thresholds' | 'refresh'
@@ -54,6 +59,7 @@ const GROUP_FIELDS: Readonly<Record<GroupKey, readonly string[]>> = {
 const FIELD_IDS: Record<string, string> = {
   apiKey: 'ds-balance-api-key',
   apiKeyRef: 'ds-balance-api-key-ref',
+  apiKeyState: 'ds-balance-api-key-state',
   baseUrl: 'ds-balance-base-url',
   serverRefreshSeconds: 'ds-balance-server-refresh-seconds',
   clientPollSeconds: 'ds-balance-client-poll-seconds',
@@ -180,6 +186,20 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
   }
 
   const apiKey = form.field('apiKey')
+  const apiKeyRef = form.field('apiKeyRef')
+  // 读凭据状态用的是**生效**引用名：草稿还没保存时，后端认的仍是存下来的那个。
+  const effectiveRef = typeof apiKeyRef.effective === 'string' && apiKeyRef.effective !== ''
+    ? apiKeyRef.effective
+    : DEFAULT_API_KEY_REF
+  const credential = useCredentialState(effectiveRef)
+  // 读不到一律当「只读」：这个字段本来就是只读状态展示，编辑入口在下面的「自定义设置」，
+  // 所以「当只读」在任何一种未知情况下都不会说错话，也不会因为字段缺失把卡片打挂。
+  const credentialPlaceholder = credential?.writable === true
+    ? credential.configured
+      ? t('settings.configured')
+      : t('settings.notConfigured')
+    : t('settings.credential.envLocked')
+
   const currency = form.field('displayCurrency')
   const currencyId = typeof currency.value === 'string' && currency.value !== '' ? currency.value : AUTO_CURRENCY
   const currencyOptions: SelectorOption[] = [
@@ -257,32 +277,28 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
               open={groupOpenNow('connection')}
               onToggle={() => { toggleGroup('connection') }}
             >
+              {/* 凭据状态：只读。结构照搬官方「模型」卡片对「启动环境提供的密钥」的处理 ——
+                  字段照常渲染，disabled + 只读占位说明，整块降到 60%，而不是隐藏或另做只读块。
+                  要覆盖它，展开下方的「自定义设置」。 */}
               <FieldFrame
-                id={FIELD_IDS.apiKey ?? 'apiKey'}
+                id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
                 label={t('settings.field.apiKey')}
-                status={credentialStatus('apiKey')}
-                pending={apiKey.dirty}
-                resettable={apiKey.overridden || apiKey.dirty}
+                pending={false}
+                resettable={false}
                 pendingLabel={t('settings.unsaved')}
                 resetLabel={t('settings.reset')}
                 invalid={false}
-                hint={t('settings.hint.apiKey')}
-                disabled={disabled}
-                onReset={() => { form.resetField('apiKey') }}
+                disabled
+                onReset={() => {}}
               >
-                <SecretControl
-                  id={FIELD_IDS.apiKey ?? 'apiKey'}
-                  text={apiKey.text}
-                  invalid={false}
-                  disabled={disabled}
-                  revealed={revealed}
-                  revealLabel={t('settings.field.apiKey')}
-                  onToggleReveal={() => { setRevealed(!revealed) }}
-                  onEdit={(text) => { form.edit('apiKey', text) }}
+                <ReadOnlyControl
+                  id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
+                  placeholder={credentialPlaceholder}
                 />
               </FieldFrame>
-              {textRow('apiKeyRef', 'settings.field.apiKeyRef', 'settings.hint.apiKeyRef', true)}
+
               {textRow('baseUrl', 'settings.field.baseUrl', 'settings.hint.baseUrl', false)}
+
               <div className={fieldCss.field} key="test">
                 <ActionRow
                   label={form.test.running ? t('settings.testing') : t('settings.test')}
@@ -291,6 +307,35 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
                   onClick={form.runTest}
                 />
               </div>
+
+              {/* 二级折叠，默认收起：普通用户继承官方凭据就够了，高级用户想覆盖或换账户再展开。 */}
+              <DetailsGroup title={t('settings.group.customized')}>
+                <FieldFrame
+                  id={FIELD_IDS.apiKey ?? 'apiKey'}
+                  label={t('settings.field.apiKey')}
+                  status={credentialStatus('apiKey')}
+                  pending={apiKey.dirty}
+                  resettable={apiKey.overridden || apiKey.dirty}
+                  pendingLabel={t('settings.unsaved')}
+                  resetLabel={t('settings.reset')}
+                  invalid={false}
+                  hint={t('settings.hint.apiKey')}
+                  disabled={disabled}
+                  onReset={() => { form.resetField('apiKey') }}
+                >
+                  <SecretControl
+                    id={FIELD_IDS.apiKey ?? 'apiKey'}
+                    text={apiKey.text}
+                    invalid={false}
+                    disabled={disabled}
+                    revealed={revealed}
+                    revealLabel={t('settings.field.apiKey')}
+                    onToggleReveal={() => { setRevealed(!revealed) }}
+                    onEdit={(text) => { form.edit('apiKey', text) }}
+                  />
+                </FieldFrame>
+                {textRow('apiKeyRef', 'settings.field.apiKeyRef', 'settings.hint.apiKeyRef', true)}
+              </DetailsGroup>
             </FieldGroup>
 
             <FieldGroup

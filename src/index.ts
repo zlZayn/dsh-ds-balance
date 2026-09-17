@@ -49,6 +49,25 @@ export const inject = ['settings', 'credentials']
 /** 服务端盐的文件名。与契约 §6.1 / §10.5 一致，落在 DSH home 下。 */
 export const SALT_FILE_NAME = '.salt'
 
+/**
+ * 这些字段变了才需要重排调度。
+ *
+ * **阈值与展示币种不在里面**：它们不改变上游取数节奏，而 severity 是后端按缓存快照
+ * 现算的。把它们也算进去，用户改一次阈值就会顺带打一次官方接口 ——
+ * 界面只要重新读一次缓存就够了。
+ */
+const SCHEDULE_FIELDS = ['serverRefreshSeconds', 'baseUrl', 'apiKey', 'apiKeyRef'] as const
+
+/**
+ * 这次配置变更要不要重排调度。
+ * @param previous - 变更前的配置。
+ * @param next - 变更后的配置。
+ * @returns 需要重排时为真。
+ */
+function affectsSchedule(previous: ConfigShape, next: ConfigShape): boolean {
+  return SCHEDULE_FIELDS.some((field) => previous[field] !== next[field])
+}
+
 /** 系统时钟。 */
 const systemClock: Clock = {
   now: () => Date.now(),
@@ -151,12 +170,14 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
 
   const scope = ctx.settings.register(SETTINGS_NAMESPACE, Config, { base: config })
   const configService = new ConfigService({ source: adaptSettingsScope(scope) })
+  // 端口只建一次：KeyResolver 与 HTTP 端点读的是同一份「可不可写」的事实。
+  const credentials = credentialsPort(ctx)
   const keys = new KeyResolver({
     readConfig: () => {
       const current = configService.current()
       return { apiKey: current.apiKey, apiKeyRef: current.apiKeyRef }
     },
-    credentials: credentialsPort(ctx),
+    credentials,
     logger,
   })
   const client = new HttpDeepSeekClient()
@@ -170,7 +191,9 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
   const scheduler = new Scheduler({ target: service, logger })
 
   ctx.effect(() => {
-    const stopWatching = scope.watch(() => { scheduler.reset() })
+    const stopWatching = scope.watch((next, previous) => {
+      if (affectsSchedule(previous, next)) scheduler.reset()
+    })
     let stopped = false
     // 先恢复落盘快照再起调度，否则首拉之前的窗口里界面会闪一次空态。
     void service.restore().then(() => {
@@ -188,7 +211,7 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
   ctx.inject(['connection'], (connectionCtx) => {
     connectionCtx.effect(() => {
       const disposeRoutes = registerHttpRoutes(connectionCtx, {
-        service, config: configService, keys, client, store, scheduler, logger, metrics,
+        service, config: configService, keys, client, store, scheduler, logger, metrics, credentials,
       })
       return () => { void disposeRoutes() }
     }, 'ds-balance: http routes')

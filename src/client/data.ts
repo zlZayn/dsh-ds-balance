@@ -18,8 +18,33 @@ export const BALANCE_PATH = '/api/v1/balance'
 /** 手动刷新端点。 */
 export const REFRESH_PATH = '/api/v1/balance/refresh'
 
+/** 配置读端点。界面只从这里取「凭据可不可写」这一件事。 */
+export const CONFIG_PATH = '/api/v1/config'
+
 /** 可替换的 fetch，便于测试注入。 */
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
+
+/**
+ * 凭据的只读描述。
+ *
+ * 与宿主的线上形状同构，也逐字对齐官方 `describe()`：**没有装值的槽**。
+ */
+export interface CredentialInfo {
+  ref: string
+  configured: boolean
+  source: string | null
+  writable: boolean
+}
+
+/** `GET /api/v1/config` 里本插件消费的那部分。 */
+export interface ConfigResponse {
+  config: Record<string, unknown>
+  /** 已配置时是固定长度的星号串；**不含密钥的任何片段**。 */
+  apiKeyMasked: string
+  /** 凭据端口缺席或读失败时是 `null`。 */
+  credential: CredentialInfo | null
+  timeoutMs: number
+}
 
 /** `POST /api/v1/balance/refresh` 的响应。 */
 export interface RefreshResult {
@@ -104,6 +129,42 @@ export async function requestBalance(options: {
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   })
   return await readJson<BalanceResponse>(response, BALANCE_PATH)
+}
+
+/**
+ * 只认形状对得上的凭据描述。
+ *
+ * **宿主可能是旧版本**（客户端由 HMR 立刻换新，宿主模块要重启才换），那时响应里
+ * 根本没有这个字段。这里把它规整成 `null`，而不是让 `undefined` 漏到组件里去。
+ * @param value - 响应里的原始值。
+ * @returns 规整后的描述，或 `null`。
+ */
+function readCredential(value: unknown): CredentialInfo | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+  const record = value as Record<string, unknown>
+  if (typeof record.ref !== 'string' || record.ref === '') return null
+  return {
+    ref: record.ref,
+    configured: record.configured === true,
+    source: typeof record.source === 'string' ? record.source : null,
+    writable: record.writable === true,
+  }
+}
+
+/**
+ * 读一次插件配置。
+ *
+ * 只为拿 `credential`：界面靠 `writable` 决定凭据字段是「可编辑」还是
+ * 「由启动环境提供（只读）」。**响应里没有密钥**，掩码是固定长度的星号串。
+ * @param options - 可注入的 fetch。
+ * @returns 配置响应里本插件消费的那部分。
+ * @throws 端点不可达、非 2xx 或响应不是 JSON。
+ */
+export async function requestConfig(options: { fetchImpl?: FetchLike } = {}): Promise<ConfigResponse> {
+  const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init))
+  const response = await fetchImpl(CONFIG_PATH, { headers: { accept: 'application/json' } })
+  const body = await readJson<ConfigResponse>(response, CONFIG_PATH)
+  return { ...body, credential: readCredential(body?.credential) }
 }
 
 /**

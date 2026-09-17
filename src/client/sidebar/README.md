@@ -45,16 +45,18 @@
 ### PercentRing.tsx
 
 - 职责：折叠与展开**共用**的状态圆环；环恒为满环，只表达状态、不表达比例。
-- 关键导出：`PercentRing`、`PercentRingProps`（`state` / `size` / `title`）、`RingState`。
-- 被谁依赖：`SidebarBalance.tsx`，两个形态都用它。
-- 改后必测什么：四档 `state` 各自的颜色；svg 自身的 `aria-hidden` 仍在（语义由外层 `aria-label` 承担）；折叠态的 `title` 只在有状态文案时出现。
+- 关键导出：`PercentRing`、`PercentRingProps`（`state` / `marker` / `size` / `title`）、`RingState`。
+- `marker` 是中心符号，目前只有 `'cross'`：`unavailable` 用它把「账户维度不可用」与 `critical` 的「余额维度告急」分开 —— 两者都是红弧，因为官方 token 没有第五种色相（详见 [docs/ui-handoff.md](../../../docs/ui-handoff.md) 第四节）。
+- 被谁依赖：`SidebarBalance.tsx`，两个形态都用它；形态由 [../model.ts](../model.ts) 的 `ringSpecOf` 给出。
+- 改后必测什么：四档 `state` 各自的颜色；`unavailable` 时 svg 里恰好多两条 `<line>`；svg 自身的 `aria-hidden` 仍在（语义由外层 `aria-label` 承担）；折叠态的 `title` 只在有状态文案时出现。
 
 ### PercentRing.module.css
 
-- 职责：圆环几何（轨道 + 进度环）与按 `data-state` 的配色。
-- 关键导出：CSS Module 类 `ring` / `track` / `fill`。
+- 职责：圆环几何（轨道 + 进度环 + 中心叉号）与按 `data-state` 的配色。
+- 关键导出：CSS Module 类 `ring` / `track` / `fill` / `cross`。
+- **颜色只在 `.ring[data-state='...']` 上定一次**（赋给 `color`），弧与叉号都取 `currentColor`；别在两处各写一份 token。
 - 被谁依赖：`PercentRing.tsx`。
-- 改后必测什么：轨道与环线宽一致（都是 2）；四档 `data-state` 全部命中；圆角线帽只加在环上、轨道保持平头。
+- 改后必测什么：轨道与环线宽一致（都是 2）；四档 `data-state` 全部命中；叉号比环细一档且随 viewBox 缩放；圆角线帽只加在环与叉号上、轨道保持平头。
 
 ### footer-stack.module.css
 

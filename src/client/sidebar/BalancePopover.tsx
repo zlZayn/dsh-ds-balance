@@ -111,10 +111,12 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
       value: ageValueText(age.bucket, age.value, unitLocale(t)),
     })
 
+  const cooling = cooldownSeconds > 0
+
   // 刷新中优先于冷却：两者不会同时成立，但刷新中的文案更贴近当下。
   let statusText = ''
   if (refreshing) statusText = t('popover.refreshing')
-  else if (cooldownSeconds > 0) statusText = interpolate(t('popover.cooldown'), { value: String(cooldownSeconds) })
+  else if (cooling) statusText = interpolate(t('popover.cooldown'), { value: String(cooldownSeconds) })
 
   const refreshLabel = t('sidebar.aria.refresh')
 
@@ -164,14 +166,15 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
       <div className={css.footer}>
         <span className={css.updated}>{updatedText}</span>
         <span className={css.status} role="status">{statusText}</span>
-        <Tooltip label={refreshLabel} side="top" delayMs={500} disabled={refreshing}>
+        <Tooltip label={refreshLabel} side="top" delayMs={500} disabled={refreshing || cooling}>
           <button
             type="button"
             className={css.refresh}
             aria-label={refreshLabel}
-            disabled={refreshing}
+            // 冷却期内也算不可用：点了不会发请求，按钮就该灰着，而不是只换一行文字。
+            disabled={refreshing || cooling}
             data-refreshing={refreshing || undefined}
-            data-cooling={cooldownSeconds > 0 || undefined}
+            data-cooling={cooling || undefined}
             onClick={onRefresh}
           >
             <IconRefreshOutline16 size={16} />

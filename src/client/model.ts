@@ -20,6 +20,38 @@ export function dotStateOf(severity: Severity): DotState {
   }
 }
 
+/** 圆环中心可以画的符号。目前只有「账户不可用」用得到。 */
+export type RingMarker = 'cross'
+
+/** 一个 severity 对应的环形态。 */
+export interface RingSpec {
+  /** 弧的状态；决定弧色。 */
+  state: DotState
+  /** 中心符号；`null` 表示不画。 */
+  marker: RingMarker | null
+}
+
+/**
+ * severity → 环形态。
+ *
+ * **颜色只有四个色相可用**：官方 token 里 `error-primary` 与 `error-secondary`
+ * 在深色主题下同值，没有第五种颜色。所以两档「红」靠**形状**区分：
+ *
+ * - 颜色编码「数值严重度」：绿 → 琥珀 → 红。
+ * - 形状编码「账户可用性」：`unavailable` 是账户维度的事实，与余额高低无关，
+ *   它拿红弧再加一个中心叉号。色盲与低分辨率下依然能分开。
+ *
+ * `critical` 与 `unavailable` 都是红弧，这是有意的：**别再往回改成从红系里挑两个**。
+ * @param severity - 后端给的严重度。
+ * @returns 弧状态与中心符号。
+ */
+export function ringSpecOf(severity: Severity): RingSpec {
+  return {
+    state: dotStateOf(severity),
+    marker: severity === 'unavailable' ? 'cross' : null,
+  }
+}
+
 /** 币种符号。未知币种回落到代码本身。 */
 export function currencySymbol(currency: string): string {
   switch (currency.toUpperCase()) {

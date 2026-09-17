@@ -30,6 +30,51 @@
   border-top: 0.5px solid var(--dsw-alias-border-l2);
 }
 
+/* 二级折叠「自定义设置」：原生 details，与官方 ProviderEditor 同构
+   （官方那一处也不用原语，是 details + summary 加一个 ::before 折角）。 */
+.details {
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.detailsSummary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.detailsSummary::-webkit-details-marker {
+  display: none;
+}
+
+/* 5px 折角：收起时朝右，展开时转 45° 朝下。官方同款尺寸。
+   translate 的一半像素是为了让折角在行高里光学居中。 */
+.detailsSummary::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translate(-0.5px, -1px) rotate(-45deg);
+  transition: transform 120ms ease;
+}
+
+.details[open] > .detailsSummary::before {
+  transform: translate(-0.5px, -1px) rotate(45deg);
+}
+
+.detailsBody {
+  padding-top: 10px;
+}
+
 /* 上下结构字段：标签行、控件、说明行。 */
 .field {
   display: flex;
@@ -133,6 +178,8 @@
 
 .input:disabled {
   color: var(--dsw-alias-label-tertiary);
+  /* 与官方 ProviderEditor 的 .input:disabled 逐字一致：只读字段整块降到 60%。 */
+  opacity: 0.6;
   cursor: default;
 }
 

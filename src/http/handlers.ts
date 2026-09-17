@@ -14,6 +14,7 @@ import type { CacheState } from '../domain/balance.js'
 import { classify } from '../domain/errors.js'
 import type { CoreStore } from '../ports/core-store.js'
 import type { DeepSeekClient } from '../ports/deepseek-client.js'
+import type { Credentials } from '../ports/credentials.js'
 import type { Logger } from '../ports/logger.js'
 import type { ReadableMetrics } from '../ports/metrics.js'
 import type { BalanceService } from '../services/balance-service.js'
@@ -22,7 +23,13 @@ import type { KeyResolver } from '../services/key-resolver.js'
 import type { Scheduler } from '../services/scheduler.js'
 import { CONFIG_FIELDS, type Config } from '../config.js'
 import { PLUGIN_VERSION, SCHEMA_VERSION } from '../version.js'
-import { newRequestId, toWireBalanceView, toWireError, type WireBalanceResponse } from './wire.js'
+import {
+  newRequestId,
+  toWireBalanceView,
+  toWireError,
+  type WireBalanceResponse,
+  type WireCredentialInfo,
+} from './wire.js'
 
 /** 一套 handler 需要的全部依赖。 */
 export interface HttpDeps {
@@ -35,6 +42,8 @@ export interface HttpDeps {
   logger?: Logger | undefined
   /** 可读出聚合值的指标；没接线时返回 `null` 而不是编一份空的。 */
   metrics?: ReadableMetrics | undefined
+  /** 凭据端口。只用来读「配没配 / 可不可写」，**永远不读值**。 */
+  credentials?: Credentials | undefined
 }
 
 /** `testConnection` 超时的可接受区间；越界一律回落默认值。 */
@@ -160,19 +169,50 @@ export async function handleRefresh(request: Request, deps: HttpDeps): Promise<R
   }
 }
 
+/**
+ * 读凭据的只读描述。
+ *
+ * 失败一律回 `null`：界面据此退化成「不知道，就先当只读」，而不是把整张卡片打挂。
+ * @param deps - 注入的依赖。
+ * @param ref - 当前生效的凭据引用名。
+ * @returns 三个事实，或 `null`。
+ */
+async function credentialInfo(deps: HttpDeps, ref: string): Promise<WireCredentialInfo | null> {
+  const credentials = deps.credentials
+  if (credentials === undefined) return null
+  try {
+    const described = await credentials.describe(ref)
+    return {
+      ref,
+      configured: described.configured === true,
+      source: described.source ?? null,
+      writable: described.writable === true,
+    }
+  } catch (error) {
+    deps.logger?.debug('ds-balance: credential describe failed', { ref, error: describe(error) })
+    return null
+  }
+}
+
+/** 组装配置响应体。**`apiKey` 永不出现；掩码是手动的。** */
+async function configBody(requestId: string, deps: HttpDeps): Promise<Record<string, unknown>> {
+  const config = deps.config.current()
+  return {
+    requestId,
+    schemaVersion: SCHEMA_VERSION,
+    config: publicConfig(config),
+    apiKeyMasked: maskApiKey(config.apiKey),
+    credential: await credentialInfo(deps, config.apiKeyRef),
+    timeoutMs: deps.config.timeoutMs(),
+    error: null,
+  }
+}
+
 /** `GET /api/v1/config`。**掩码是手动的** —— 本响应自己构造，不走 settings 读取。 */
 export async function handleConfigGet(_request: Request, deps: HttpDeps): Promise<Response> {
   const requestId = newRequestId()
   try {
-    const config = deps.config.current()
-    return json({
-      requestId,
-      schemaVersion: SCHEMA_VERSION,
-      config: publicConfig(config),
-      apiKeyMasked: maskApiKey(config.apiKey),
-      timeoutMs: deps.config.timeoutMs(),
-      error: null,
-    })
+    return json(await configBody(requestId, deps))
   } catch (error) {
     deps.logger?.error('ds-balance: config read handler failed', { requestId, error: describe(error) })
     return json({ requestId, schemaVersion: SCHEMA_VERSION, error: toWireError(classify(error)) })
@@ -198,15 +238,7 @@ export async function handleConfigUpdate(request: Request, deps: HttpDeps): Prom
   }
   // 写完立刻回读，让调用方看到落盘后的真实值（掩码同上）。
   try {
-    const config = deps.config.current()
-    return json({
-      requestId,
-      schemaVersion: SCHEMA_VERSION,
-      config: publicConfig(config),
-      apiKeyMasked: maskApiKey(config.apiKey),
-      timeoutMs: deps.config.timeoutMs(),
-      error: null,
-    })
+    return json(await configBody(requestId, deps))
   } catch (error) {
     deps.logger?.error('ds-balance: config readback failed', { requestId, error: describe(error) })
     return json({ requestId, schemaVersion: SCHEMA_VERSION, error: toWireError(classify(error)) })

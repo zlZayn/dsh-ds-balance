@@ -6,6 +6,7 @@ import {
   dotStateOf,
   formatAmount,
   formatMoney,
+  ringSpecOf,
   selectionOf,
 } from '../src/client/model.ts'
 
@@ -111,5 +112,31 @@ describe('ageBucket', () => {
     expect(ageBucket(50 * 3_600_000).bucket).toBe('days')
     expect(ageBucket(Number.NaN).bucket).toBe('unknown')
     expect(ageBucket(-1).bucket).toBe('unknown')
+  })
+})
+
+describe('ringSpecOf', () => {
+  it('颜色编码数值严重度：绿 → 琥珀 → 红', () => {
+    expect(ringSpecOf('ok').state).toBe('done')
+    expect(ringSpecOf('warn').state).toBe('warning')
+    expect(ringSpecOf('critical').state).toBe('error')
+  })
+
+  it('critical 与 unavailable 都是红弧，靠中心叉号区分', () => {
+    // 官方 token 里 error-primary 与 error-secondary 在深色主题下同值，
+    // 没有第五种色相可用，所以「账户不可用」用形状编码。
+    expect(ringSpecOf('critical').marker).toBeNull()
+    expect(ringSpecOf('unavailable').marker).toBe('cross')
+  })
+
+  it('只有 unavailable 画中心符号，其余四档都不画', () => {
+    for (const severity of ['ok', 'warn', 'critical', 'unknown'] as const) {
+      expect(ringSpecOf(severity).marker, severity).toBeNull()
+    }
+    expect(ringSpecOf('unavailable').marker).toBe('cross')
+  })
+
+  it('unknown 保持灰弧且不画符号', () => {
+    expect(ringSpecOf('unknown')).toEqual({ state: 'idle', marker: null })
   })
 })

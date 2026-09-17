@@ -389,3 +389,44 @@ describe('指标', () => {
     expect(json.metrics.histograms['balance_fetch_duration_ms'].count).toBe(1)
   })
 })
+
+describe('配置响应里的凭据事实', () => {
+  it('带上 describe 的三个事实，且不含任何密钥片段', async () => {
+    const h = harness({ config: { apiKey: '' } })
+    const withCredentials: HttpDeps = {
+      ...h.deps,
+      credentials: {
+        resolve: async () => ({ value: '', source: 'unset' }),
+        describe: async () => ({ configured: true, source: 'env', writable: false }),
+      },
+    }
+    const response = await handleConfigGet(get('/api/v1/config'), withCredentials)
+    const text = await response.clone().text()
+    const json = JSON.parse(text) as Record<string, any>
+    expect(json.credential).toEqual({
+      ref: 'DEEPSEEK_API_KEY', configured: true, source: 'env', writable: false,
+    })
+    // 密钥的任何片段都不该出现在响应里。
+    expect(text).not.toContain('test-key')
+  })
+
+  it('凭据端口缺席时回 null，界面据此退化成只读', async () => {
+    const h = harness()
+    const json = await readJson(await handleConfigGet(get('/api/v1/config'), h.deps))
+    expect(json.credential).toBeNull()
+  })
+
+  it('describe 抛错时也回 null，不把整张卡片打挂', async () => {
+    const h = harness()
+    const broken: HttpDeps = {
+      ...h.deps,
+      credentials: {
+        resolve: async () => ({ value: '', source: 'unset' }),
+        describe: async () => { throw new Error('boom') },
+      },
+    }
+    const response = await handleConfigGet(get('/api/v1/config'), broken)
+    expect(response.status).toBe(200)
+    expect((await readJson(response)).credential).toBeNull()
+  })
+})

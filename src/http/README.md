@@ -19,13 +19,17 @@
 |---|---|---|
 | GET | `/api/v1/balance` | 余额视图；`currency` 查询参数覆盖 `displayCurrency` |
 | POST | `/api/v1/balance/refresh` | 手动刷新；请求体 `{ reason }` 可省略 |
-| GET | `/api/v1/config` | 读配置（`apiKey` 只回掩码） |
+| GET | `/api/v1/config` | 读配置（`apiKey` 只回掩码 + 一段 `credential` 只读事实） |
 | POST | `/api/v1/config` | 写配置；形状或取值不合法一律 `422` |
 | POST | `/api/v1/test-connection` | 测连接；**不动活动缓存** |
 | GET | `/api/v1/healthz` | 状态 / 调度 / 存储健康 / 版本 / 指标聚合值 |
 
 **写配置走 POST 而不是 PUT**：平台只支持 `GET` / `HEAD` / `POST` 三档方法。
 契约文档写的是 PUT，以平台实际能力为准。
+
+`config` 响应里的 `credential` 段是官方 `credentialProvider.describe()` 的逐字形状
+（`{ ref, configured, source, writable }`）—— **只有三个事实，没有装值的槽**。
+凭据端口缺席、引用名非法或 `describe` 抛错时回 `null`，界面据此把凭据字段当只读。
 
 ## 使用约束与工作偏好
 

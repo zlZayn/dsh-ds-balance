@@ -179,6 +179,68 @@ export function TextControl(props: TextControlProps) {
   )
 }
 
+/**
+ * 只读输入：字段照常渲染，但不可编辑，占位符说明为什么。
+ *
+ * 逐字照搬官方 ProviderEditor 处理「凭据由启动环境提供」的做法：
+ * 不是隐藏字段、也不是换一块只读文本，而是 `disabled` 的真输入框配只读占位说明。
+ * `readOnly` 与 `disabled` 同时给：前者挡住程序化写入，后者给出官方的视觉与可访问语义。
+ */
+export interface ReadOnlyControlProps {
+  id: string
+  /** 只读原因，逐字来自词典。 */
+  placeholder: string
+}
+
+/**
+ * 渲染只读输入。
+ * @param props - 控件 id 与只读占位说明。
+ * @returns 输入框元素。
+ */
+export function ReadOnlyControl(props: ReadOnlyControlProps) {
+  return (
+    <input
+      id={props.id}
+      className={css.input}
+      type="text"
+      value=""
+      readOnly
+      disabled
+      placeholder={props.placeholder}
+    />
+  )
+}
+
+/** 二级折叠：卡片里的「自定义设置」。 */
+export interface DetailsGroupProps {
+  title: string
+  /** 初始展开状态；省略即收起。 */
+  defaultOpen?: boolean
+  children: ReactNode
+}
+
+/**
+ * 渲染一个原生 details 折叠块。
+ *
+ * **受控但跟手**：`open` 由 state 持有，用户拨动时从 DOM 读回真实状态，
+ * 所以卡片每次重渲染（每敲一个字都会）不会把用户展开的块弹回去。
+ * @param props - 标题、初始状态与内容。
+ * @returns 折叠块元素。
+ */
+export function DetailsGroup(props: DetailsGroupProps) {
+  const [open, setOpen] = useState(props.defaultOpen === true)
+  return (
+    <details
+      className={css.details}
+      open={open}
+      onToggle={(event) => { setOpen(event.currentTarget.open) }}
+    >
+      <summary className={css.detailsSummary}>{props.title}</summary>
+      <div className={css.detailsBody}>{props.children}</div>
+    </details>
+  )
+}
+
 /** 掩码输入：口令类型加一个显隐切换。 */
 export interface SecretControlProps {
   id: string

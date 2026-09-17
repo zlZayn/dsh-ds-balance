@@ -21,7 +21,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BalanceResponse, Severity } from '../api-types.ts'
 import { interpolate, type LocaleKey } from '../locales.ts'
-import { dotStateOf, formatMoney, selectionOf, type CurrencySelection } from '../model.ts'
+import { formatMoney, ringSpecOf, selectionOf, type CurrencySelection, type RingMarker } from '../model.ts'
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
 import { BalancePopover } from './BalancePopover.tsx'
@@ -61,6 +61,11 @@ export interface SidebarBalanceProps {
     manualRefreshCooldownSeconds: number
     /** 浏览器来取缓存的节奏（秒）。 */
     clientPollSeconds: number
+    /**
+     * 配置指纹。任何一项设置改动都会换一个值，用来**立刻**重问一次后端缓存 ——
+     * 改了阈值圆环要当场变，不该等下一轮轮询。
+     */
+    configSignature: string
   }
 }
 
@@ -83,16 +88,16 @@ function stateLabelKey(response: BalanceResponse, selection: CurrencySelection):
 }
 
 /**
- * 把 severity 收敛成圆环的四档状态。
+ * 把 severity 收敛成圆环的形态。
  *
- * 映射仍然出自 `dotStateOf`；它的返回类型含 `'ongoing'`，
- * 但 severity 的映射取不到那个值（见 model.ts 的 dotStateOf），这里只做类型收窄。
+ * 映射出自 `model.ts` 的 `ringSpecOf`；它的 `state` 类型含 `'ongoing'`，
+ * 但 severity 的映射取不到那个值，这里只做类型收窄。
  * @param severity - 后端给的严重度。
- * @returns 圆环状态。
+ * @returns 弧状态与中心符号。
  */
-function ringStateOf(severity: Severity): RingState {
-  const state = dotStateOf(severity)
-  return state === 'ongoing' ? 'idle' : state
+function ringSpecFor(severity: Severity): { state: RingState; marker: RingMarker | null } {
+  const spec = ringSpecOf(severity)
+  return { state: spec.state === 'ongoing' ? 'idle' : spec.state, marker: spec.marker }
 }
 
 /**
@@ -170,9 +175,11 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
       cancelled = true
       window.clearInterval(id)
     }
-    // preference 进依赖是有意的：浮层里的「改用 X」写的是本地偏好，
-    // 换币种必须立刻按新币种重新问一次后端，否则要等下一轮轮询。
-  }, [mock, preference, config.clientPollSeconds])
+    // 两个额外依赖都是有意的：
+    // - preference：「改用 X」写的是本地偏好，换币种必须立刻按新币种重问一次后端。
+    // - configSignature：改阈值要当场看到圆环变色，不能等下一轮轮询。
+    // 两条都不穿透上游 —— 后端从缓存快照按新阈值重算，只有 state 不是 ok 时才会真去拉。
+  }, [mock, preference, config.clientPollSeconds, config.configSignature])
 
   useEffect(() => () => {
     if (refreshTimer.current !== undefined) window.clearTimeout(refreshTimer.current)
@@ -267,7 +274,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
   const handleOpenSettings = useCallback((): void => {}, [])
 
   const shown = selection.shown
-  const ringState = ringStateOf(response.severity)
+  const ring = ringSpecFor(response.severity)
 
   // 圆环的状态文案。正常时为 null —— 词典里没有对应键，也不该新增。
   const stateKey = stateLabelKey(response, selection)
@@ -323,7 +330,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
         {wide ? (
           <>
             <span className={css.icon}>
-              <PercentRing state={ringState} size={16} />
+              <PercentRing state={ring.state} marker={ring.marker} size={16} />
             </span>
             <span className={css.label}>{t('sidebar.label')}</span>
             {markerLabel === null ? null : (
@@ -335,7 +342,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
             )}
           </>
         ) : (
-          <PercentRing state={ringState} size={18} title={ringTitle} />
+          <PercentRing state={ring.state} marker={ring.marker} size={18} title={ringTitle} />
         )}
       </button>
 
