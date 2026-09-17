@@ -2,7 +2,8 @@
 
 ## 状态
 
-- **1.1.0 已定档、未发布**：`package.json` 与 `src/version.ts` 都是 1.1.0；npm 上的 `latest` 仍是 1.0.0（tag `v1.0.0` → `555d242`）。发布入口 → [发布手册](docs/PUBLISHING.md)。
+- **1.1.0 已定档、待发布**：`package.json` / `package-lock.json` / `src/version.ts` 都是 1.1.0；npm 上的 `latest` 仍是 1.0.0。
+- `release.yml` 的 dry-run 已跑通（锁文件版本 / typecheck / test / `check:release` / release-guard / 幂等探测全绿）；正式发布只需触发它，入口见 [发布手册](docs/PUBLISHING.md)。
 - `npm run check:release` 当前 0 失败。
 - 装法只有一条：`dsh plugin --profile <profile> add dsh-ds-balance`（或源码路径）—— 包内声明了 bundle 层，安装器自己会写进 `dsh.profile.bundles`。**不要再手写 patch 行**，见下面的活跃坑。
 - 运行形态：装进某个 dsh profile 的 `node_modules`，由该 profile 的 `dsh.profile.bundles` 装载（bundle 层来自包内的 `cordis.patch.yml`）。
@@ -70,7 +71,7 @@
 - [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
 - [x] 首次发布的手动配置：npm Trusted Publisher 已配、仓库 secret `DSH_CI_API_KEY` 已在、`v1.0.0` tag 与 Release 已建
-- [ ] `release` environment 还没建 —— `release.yml` 引用了它，GitHub 会在首次运行时自动创建；想挂人工审批就得手动建 → [发布手册](docs/PUBLISHING.md)
+- [x] `release` environment 已由 release.yml 首次运行自动创建；想挂人工审批再加规则 → [发布手册](docs/PUBLISHING.md)
 
 ## 活跃坑
 
