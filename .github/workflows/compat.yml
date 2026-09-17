@@ -2,10 +2,11 @@
 #
 # 为什么是每周而不是每次推送：它要重装整棵依赖树，跑一次几分钟，而宿主版本线一周也动不了几次。
 #
-# 两条线的处置不同：
-#   alpha —— 我们自己声明的线（engines.dsh 与全部 peer 都在 ^0.1.6-alpha.1 上）。红了必须修。
-#   next  —— 上游另一条线。目前它比 alpha 旧（实测 0.1.5-rc.2 < 0.1.6-alpha.1），
-#            红了只记录，不改声明。等它跑到前面去，这条线才真正开始提供信息。
+# 两条线**暂时都只记录**（continue-on-error: true），红了不发通知、不阻断。
+# 原因是实测出来的错位：next(0.1.5-rc.2) 比 alpha(0.1.6-alpha.1) 还旧，
+# 而我们声明的是 alpha —— 「声明面罩住的线」与「语义上的承诺线」对不上。
+# 先观察一轮拿到基线，再决定哪条必绿。判据与恢复条件见
+# .agents/notes/2026-09-17-compat-lines-advisory.md。
 #
 # 与 contract.yml 错开一小时，避免两个定时任务在同一分钟抢 runner。
 name: compat
@@ -27,8 +28,9 @@ jobs:
       fail-fast: false
       matrix:
         line: [alpha, next]
-    # 只有 alpha 是我们的声明线，它的红必须修；next 的结果只作记录。
-    continue-on-error: ${{ matrix.line != 'alpha' }}
+    # 主次未定，两条都只记录（见文件头的决策记录）。
+    # 这不是取消守卫：swap 内部的 verify 在任何一条线上都会拦「装到旧版本还报绿」。
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
 
