@@ -11,7 +11,7 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["*.config.ts", "src/**/*", "test/**/*"],
   // artifacts.test.ts 走产物级断言：它 import 的 ../lib/index.js 由 `npm run build` 生成。
   // 类型检查不构建，所以它不属于本项目 —— 留在里面会让「干净检出上跑 typecheck」必失败。
   // 它仍由 `npm test`（自带 build）的 vitest 执行；产物缺失时是失败而不是跳过。
