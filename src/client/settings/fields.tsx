@@ -8,7 +8,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  DisclosureRow, IconChevronDownOutline14, IconInspectOutline12, Menu, Tag,
+  DisclosureRow, IconChevronDownOutline14, Menu, Tag,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TagTone } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from './fields.module.css'
@@ -240,54 +240,6 @@ export function DetailsGroup(props: DetailsGroupProps) {
       <summary className={css.detailsSummary}>{props.title}</summary>
       <div className={css.detailsBody}>{props.children}</div>
     </details>
-  )
-}
-
-/** 掩码输入：口令类型加一个显隐切换。 */
-export interface SecretControlProps {
-  id: string
-  text: string
-  invalid: boolean
-  disabled: boolean
-  /** 当前是否明文显示。 */
-  revealed: boolean
-  /** 切换显隐按钮的可访问名；语义状态走在 aria-pressed 上。 */
-  revealLabel: string
-  onToggleReveal: () => void
-  onEdit: (text: string) => void
-}
-
-/**
- * 渲染掩码输入与它的显隐切换。
- * @param props - 草稿文本、显隐状态与回调。
- * @returns 输入行元素。
- */
-export function SecretControl(props: SecretControlProps) {
-  return (
-    <span className={css.inputWithAction}>
-      <input
-        id={props.id}
-        className={props.invalid ? css.inputInvalid : css.input}
-        type={props.revealed ? 'text' : 'password'}
-        autoComplete="off"
-        spellCheck={false}
-        {...props.invalid ? { 'aria-invalid': true } : {}}
-        value={props.text}
-        disabled={props.disabled}
-        onChange={(event) => { props.onEdit(event.target.value) }}
-      />
-      <button
-        type="button"
-        className={clsx(css.reveal, props.revealed && css.revealOn)}
-        aria-label={props.revealLabel}
-        aria-pressed={props.revealed}
-        title={props.revealLabel}
-        disabled={props.disabled}
-        onClick={props.onToggleReveal}
-      >
-        <IconInspectOutline12 size={14} />
-      </button>
-    </span>
   )
 }
 

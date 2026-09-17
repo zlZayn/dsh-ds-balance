@@ -14,7 +14,8 @@
 - 职责：卡片本体。持有卡片展开、密钥显隐、分组展开三份局部状态，外加一个保存起始标记（ref）；把 `useConfigForm` 的状态翻译成 JSX。
 - 关键导出：`BalanceSettingsCard`、`BalanceSettingsCardProps`，并转发 `SettingsScope`。
 - 分组：连接 → 展示 → 阈值 → 刷新。这是 UI 的排列顺序（按使用频率）；宿主 `Config` 的字段顺序是 连接 → 刷新 → 展示 → 阈值，**两者有意不同**，见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md) 的关键决策。
-- 连接组是**两段式，照搬官方「模型」卡片**：外面是只读的凭据状态（`ReadOnlyControl`）与可编辑的 Base URL，`apiKey` / `apiKeyRef` 收在二级「自定义设置」折叠里（默认收起）。普通用户继承官方凭据就够，高级用户展开才覆盖。
+- 连接组是**两段式**：外面是只读的凭据状态（`ReadOnlyControl`，继承官方、不可改）与可编辑的 Base URL；二级「自定义设置」折叠里只有**凭据引用名**（`apiKeyRef`，默认收起）。
+  **界面上唯一的 API Key 就是那个只读框** —— 卡片不再提供填 Key 的入口；Key 仍可由配置文件给出，所以 schema 与写入面没动。
 - 默认展开：四组全收起（`DEFAULT_GROUP_OPEN` 全 `false`），卡片一打开只占四行折叠头。
 - 组内有非法草稿时该组强制展开（`groupOpenNow`），否则 footer 的「请检查标红的字段」会指向一个收起来的组。
 - 被谁依赖：`src/client/index.tsx` 的 `SettingsSeatComponent`。
@@ -32,7 +33,7 @@
 ### fields.tsx
 
 - 职责：字段行的容器与全部控件，以及分组的折叠头。
-- 关键导出：`FieldGroup`、`FieldFrame`、`FieldBadges`、`TextControl`、`ReadOnlyControl`、`SecretControl`、`SelectorControl`、`ActionRow`、`DetailsGroup`，以及类型 `FieldStatus` 与 `SelectorOption`。
+- 关键导出：`FieldGroup`、`FieldFrame`、`FieldBadges`、`TextControl`、`ReadOnlyControl`、`SelectorControl`、`ActionRow`、`DetailsGroup`，以及类型 `FieldStatus` 与 `SelectorOption`。
 - `FieldGroup` 的折叠头用原语 `DisclosureRow`，不自己画；展开体由原语在 open 时条件渲染，无动画。
 - `ReadOnlyControl` 是只读输入：字段照常渲染、**只 `readOnly` 不 `disabled`**（常态空框，不降透明度），**框内不写任何文字**，形态照官方「网页搜索」卡片的凭据字段。只读的因由由标签行右侧的状态徽章与它下方的说明行承担，两处文案都来自词典。
 - 凭据徽章只有两态（已配置密钥。/ 未配置密钥。），与官方「网页搜索」卡片一致；四档判据（覆盖 > 环境 > 配没配）只决定二级折叠里那两个字段的状态。

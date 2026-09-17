@@ -108,8 +108,8 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 Open **Settings → Plugins → Plugin configuration → DeepSeek balance**. Four groups, each collapsible:
 
-- **Connection**: the API base URL and the credential, both blank by default — a blank URL means the official DeepSeek endpoint, and the credential is inherited from the official model page.
-  Open the nested "Customised settings" to override either.
+- **Connection**: the API base URL and the credential, both blank by default — a blank URL means the official DeepSeek endpoint, and the credential is inherited from the official model page and is read-only.
+  The nested "Customised settings" holds only the credential reference name.
 - **Display**: which currency to use for amounts, or let it follow the account.
 - **Thresholds**: two alert lines per currency (warning / critical). **Within one currency the critical line must be strictly lower than the warning line** — equality is rejected too.
 - **Refresh**: the server refresh interval and the UI poll interval.

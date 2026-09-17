@@ -13,7 +13,7 @@ import {
 import { interpolate } from '../locales.ts'
 import type { LocaleKey } from '../locales.ts'
 import {
-  ActionRow, DetailsGroup, FieldBadges, FieldFrame, FieldGroup, ReadOnlyControl, SecretControl,
+  ActionRow, DetailsGroup, FieldBadges, FieldFrame, FieldGroup, ReadOnlyControl,
   SelectorControl, TextControl,
 } from './fields.tsx'
 import type { FieldStatus, SelectorOption } from './fields.tsx'
@@ -103,7 +103,6 @@ function isFilled(value: unknown): boolean {
 export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
   const form = useConfigForm(scope)
   const [open, setOpen] = useState(false)
-  const [revealed, setRevealed] = useState(false)
   const [groupOpen, setGroupOpen] = useState<Readonly<Record<GroupKey, boolean>>>(DEFAULT_GROUP_OPEN)
   const saveStarted = useRef(false)
 
@@ -342,32 +341,10 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
                 />
               </div>
 
-              {/* 二级折叠，默认收起：普通用户继承官方凭据就够了，高级用户想覆盖或换账户再展开。 */}
+              {/* 二级折叠，默认收起：**只能改凭据引用名，不能再填一个 Key** ——
+                  界面上唯一的 API Key 就是上面那个继承官方、不可改的框（官方「网页搜索」卡片同款）。
+                  Key 本身仍可由配置文件提供，所以 schema 与写入面都不动。 */}
               <DetailsGroup title={t('settings.group.customized')}>
-                <FieldFrame
-                  id={FIELD_IDS.apiKey ?? 'apiKey'}
-                  label={t('settings.field.apiKey')}
-                  status={credentialStatus('apiKey')}
-                  pending={apiKey.dirty}
-                  resettable={apiKey.overridden || apiKey.dirty}
-                  pendingLabel={t('settings.unsaved')}
-                  resetLabel={t('settings.reset')}
-                  invalid={false}
-                  hint={t('settings.hint.apiKey')}
-                  disabled={disabled}
-                  onReset={() => { form.resetField('apiKey') }}
-                >
-                  <SecretControl
-                    id={FIELD_IDS.apiKey ?? 'apiKey'}
-                    text={apiKey.text}
-                    invalid={false}
-                    disabled={disabled}
-                    revealed={revealed}
-                    revealLabel={t('settings.field.apiKey')}
-                    onToggleReveal={() => { setRevealed(!revealed) }}
-                    onEdit={(text) => { form.edit('apiKey', text) }}
-                  />
-                </FieldFrame>
                 {textRow('apiKeyRef', 'settings.field.apiKeyRef', 'settings.hint.apiKeyRef', true)}
               </DetailsGroup>
             </FieldGroup>
