@@ -43,7 +43,7 @@ describe('阈值成对：默认值', () => {
     }
   })
 
-  it('默认值本身合法：warn 严格大于 critical', () => {
+  it('默认值本身合法：告急严格低于预警', () => {
     for (const pair of THRESHOLD_PAIRS) {
       expect(pair.defaultWarn > pair.defaultCritical, pair.currency).toBe(true)
     }
@@ -52,7 +52,7 @@ describe('阈值成对：默认值', () => {
 })
 
 describe('宿主跨字段校验', () => {
-  it('严格大于才通过', () => {
+  it('告急严格低于预警才通过', () => {
     expect(() => { validateThresholds({ ...base(), cnyWarn: 10, cnyCritical: 5 }) }).not.toThrow()
     // 相等也拒绝：压线时余额会被同时判成 warn 与 critical，「预警」这一档就不存在了。
     expect(() => { validateThresholds({ ...base(), cnyWarn: 5, cnyCritical: 5 }) }).toThrow()
@@ -64,9 +64,11 @@ describe('宿主跨字段校验', () => {
     expect(() => { validateThresholds({ ...base(), cnyWarn: 0, cnyCritical: 0 }) }).toThrow()
   })
 
-  it('错误信息指向具体币种', () => {
+  it('错误信息指向具体币种，措辞锚在告急上', () => {
     expect(() => { validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 1 }) }).toThrow(/CNY/)
     expect(() => { validateThresholds({ ...base(), usdWarn: 1, usdCritical: 1 }) }).toThrow(/USD/)
+    expect(() => { validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 1 }) })
+      .toThrow(/告急必须低于预警/)
   })
 
   it('两个币种互不连坐', () => {
@@ -80,7 +82,7 @@ describe('宿主跨字段校验', () => {
 describe('前端成对校验', () => {
   const cny = THRESHOLD_PAIRS[0]
 
-  it('严格大于才通过', () => {
+  it('告急严格低于预警才通过', () => {
     expect(thresholdsOk(cny, state({ text: '20' }), state({ text: '15' }))).toBe(true)
     expect(thresholdsOk(cny, state({ text: '20' }), state({ text: '20' }))).toBe(false)
     expect(thresholdsOk(cny, state({ text: '15' }), state({ text: '20' }))).toBe(false)

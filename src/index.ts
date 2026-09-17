@@ -168,7 +168,7 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
   const logger = createConsoleLogger()
   const salt = await resolveSalt(logger)
 
-  // validate 是跨字段约束的落点：schemastery 表达不了「warn > critical」，
+  // validate 是跨字段约束的落点：schemastery 表达不了「critical < warn」，
   // 而它拿到的是合并后的完整候选值，抛错即拒绝写入。见 config.ts 的 validateThresholds。
   const scope = ctx.settings.register(SETTINGS_NAMESPACE, Config, {
     base: config,

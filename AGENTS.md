@@ -61,7 +61,7 @@
   实拍踩到的两条约束写进 [assets/AGENTS.md](assets/AGENTS.md) 的「已知约束」。
 - 圆环弧长改为「余额占 warn 阈值的比例」（颜色映射不变），同步改了 9 处文档；
   链接校验与换行校验在这一轮全部重跑过。
-- 阈值加了跨字段约束（同一币种内 warn 严格大于 critical）：宿主 `validate` + 前端失焦提示 + 成对写入排序。
+- 阈值加了跨字段约束（同一币种内告急必须低于预警）：宿主 `validate` + 前端失焦提示 + 成对写入排序。
   宿主那道要重启宿主才生效（浏览器半边靠 HMR 立刻生效）；判据与排序各有专门用例，见 [test/threshold-pairs.test.ts](test/threshold-pairs.test.ts)。
 - 维护者第二轮反馈四项全部落地并实测：刷新按钮冷却期内置灰（`disabled` 为真、状态行「N 秒后可再次刷新」）；
   改阈值圆环当场变色且**上游请求数保持 0**；五档形状 ok 绿实弧 / warn 琥珀实弧 / critical 红实弧 / unavailable 红弧+中心叉号 / unknown 灰实弧；

@@ -55,7 +55,7 @@ The card has four groups, all collapsed by default:
 
 - Connection: the read-only credential state, an editable API base URL, and the apiKey / apiKeyRef kept inside the nested "Customised settings".
 - Display: which currency to use for amounts, or let it follow the account.
-- Thresholds: the alert lines. They are **evaluated on the server** — the frontend only scales the ring arc by `warn`, and never colours anything from them. Within one currency the warning must be greater than the critical line, or Save stays disabled.
+- Thresholds: the alert lines. They are **evaluated on the server** — the frontend only scales the ring arc by `warn`, and never colours anything from them. Within one currency the critical line must be lower than the warning, or Save stays disabled.
 - Refresh: the server refresh interval and the browser poll interval.
 
 ## Where the data comes from and goes

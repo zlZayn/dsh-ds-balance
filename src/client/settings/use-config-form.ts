@@ -138,7 +138,7 @@ function pairNumber(state: FieldState, fallback: number): number | null {
 }
 
 /**
- * 一对阈值是否满足「预警 **严格大于** 告急」。
+ * 一对阈值是否满足「告急 **严格低于** 预警」。
  *
  * 相等也拒绝：那时余额恰好压线会被同时判成 warn 与 critical，「预警」这一档等于不存在。
  * 任一侧的草稿不是数字时返回 `true` —— 那种情况由各自的 `parse` 报错，不在这里重复报。
@@ -151,7 +151,7 @@ export function thresholdsOk(pair: ThresholdPair, warn: FieldState, critical: Fi
   const w = pairNumber(warn, pair.defaultWarn)
   const c = pairNumber(critical, pair.defaultCritical)
   if (w === null || c === null) return true
-  return w > c
+  return c < w
 }
 
 /**
@@ -248,7 +248,7 @@ export interface ConfigFormApi {
   discard(): void
   /** 写入全部草稿，并从快照读回落定结果。 */
   save(): Promise<void>
-  /** 一个币种的阈值草稿是否满足「预警 > 告急」；空草稿按默认值算。 */
+  /** 一个币种的阈值草稿是否满足「告急 < 预警」；空草稿按默认值算。 */
   thresholdPairOk(currency: string): boolean
   /** 该字段是否已经失焦过；用来决定要不要显示成对校验提示。 */
   touched(field: string): boolean

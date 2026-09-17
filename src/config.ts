@@ -113,7 +113,7 @@ export const THRESHOLD_PAIRS: readonly ThresholdPair[] = [
 ]
 
 /**
- * 跨字段校验：每个币种内 `warn` 必须**严格大于** `critical`。
+ * 跨字段校验：每个币种内 `critical` 必须**严格低于** `warn`。
  *
  * 挂在 `ctx.settings.register` 的 `validate` 上，不挂在 schema 上：
  * schemastery 没有 refine / superRefine 这类跨字段钩子，而
@@ -123,8 +123,8 @@ export const THRESHOLD_PAIRS: readonly ThresholdPair[] = [
  * **它在合并后的完整值上跑**，所以单字段写入会让中间态短暂非法；
  * 客户端把成对的写入排过序（`orderPairWrites`），保证每一步中间态都合法。
  *
- * 为什么必须严格大于：两者相等时，余额恰好压线会被同时判成 warn 与 critical，
- * 「预警」这一档就不存在了。
+ * 为什么必须严格低于、不能相等：两者相等时余额恰好压线会被同时判成 warn 与 critical，
+ * 「预警」这一档就不存在了。措辞锚在**告急**上 —— 用户要调的是那个偏低的数。
  * @param value - 合并后的完整配置。
  * @throws {Error} 违反约束时抛出；消息指向具体币种，便于用户定位。
  */
@@ -132,8 +132,8 @@ export function validateThresholds(value: Config): void {
   for (const pair of THRESHOLD_PAIRS) {
     const warn = value[pair.warn]
     const critical = value[pair.critical]
-    if (warn > critical) continue
-    throw new Error(`${pair.currency} 预警必须大于告急（当前 ${String(warn)} / ${String(critical)}）`)
+    if (critical < warn) continue
+    throw new Error(`${pair.currency} 告急必须低于预警（当前 预警 ${String(warn)} / 告急 ${String(critical)}）`)
   }
 }
 

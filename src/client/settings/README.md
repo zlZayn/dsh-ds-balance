@@ -61,7 +61,7 @@
 
 - 职责：字段规格表、草稿状态机、保存与读回判定，以及「测试连接」的本地模拟。
 - 关键导出：`useConfigForm`、`SettingsScope`、`SettingsScopeSnapshotLike`、`CONFIG_FIELDS`、`SPEC_BY_FIELD`、`FieldState`、`ConfigFormState`、`TestState`、`ConfigFormApi`、`textField` / `numberField` / `selectField`、`currencyCodes`、`AUTO_CURRENCY`、`KNOWN_CURRENCIES`、`probeFailure`、`TEST_LATENCY_MS`、`THRESHOLD_PAIRS`、`thresholdsOk`、`orderPairWrites`。
-- **成对校验**：`thresholdsOk` 判「同一币种内预警 > 告急」，草稿为空时按**默认值**算（不是旧值），
+- **成对校验**：`thresholdsOk` 判「同一币种内告急 < 预警」，草稿为空时按**默认值**算（不是旧值），
   所以 `THRESHOLD_PAIRS` 里存了一份默认值 —— 两个半体不许值导入，这份抄写由 [test/threshold-pairs.test.ts](../../../test/threshold-pairs.test.ts) 对着宿主 schema 对账。
 - **成对写入要排序**：宿主那道校验看的是合并后的完整值，`orderPairWrites` 保证每一步中间态都合法。理由见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)。
 - **失焦才提示**：`touch` / `touched` 记「哪些字段失焦过」，卡片据此决定要不要显示成对提示，避免打字中途闪一下。
