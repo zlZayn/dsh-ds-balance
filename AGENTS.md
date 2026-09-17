@@ -2,8 +2,8 @@
 
 ## 状态
 
-- **1.1.0 已定档、待发布**：`package.json` / `package-lock.json` / `src/version.ts` 都是 1.1.0；npm 上的 `latest` 仍是 1.0.0。
-- `release.yml` 的 dry-run 已跑通（锁文件版本 / typecheck / test / `check:release` / release-guard / 幂等探测全绿）；正式发布只需触发它，入口见 [发布手册](docs/PUBLISHING.md)。
+- **已发布 1.1.0**：npm `latest` = 1.1.0，tag `v1.1.0` → `c9a75c5`，[GitHub Release](https://github.com/zlZayn/dsh-ds-balance/releases/tag/v1.1.0) 已建；发布走 [release.yml](.github/workflows/release.yml)（Trusted Publishing，带 provenance）。
+- **1.1.0 的产物 = 本仓库 HEAD**：npm 上的 shasum 与本地 `npm pack` 一致。
 - `npm run check:release` 当前 0 失败。
 - 装法只有一条：`dsh plugin --profile <profile> add dsh-ds-balance`（或源码路径）—— 包内声明了 bundle 层，安装器自己会写进 `dsh.profile.bundles`。**不要再手写 patch 行**，见下面的活跃坑。
 - 运行形态：装进某个 dsh profile 的 `node_modules`，由该 profile 的 `dsh.profile.bundles` 装载（bundle 层来自包内的 `cordis.patch.yml`）。
@@ -52,7 +52,7 @@
 - **界面已由维护者实机验收**：圆环 / 浮层 / 折叠分组 / 与邻居插件共存；
   窄视口 360 / 480 / 600 / 700 / 721 五个宽度浮层都落在视口内。
 - **发布前在活宿主上打过真实上游**：余额、浮层三段、凭据徽标，以及错 key 的 `UPSTREAM_401`。
-- npm 上的 1.0.0 tarball 与当时本地 `npm pack --dry-run` 的 shasum 一致；**1.1.0 尚未发布**。
+- **1.1.0 已发布**：npm 上的 shasum 与本地 `npm pack` 一致（1.0.0 当时同样对过）。
 
 轮次流水记在 git log 与 [.agents/notes/](.agents/notes/) 里，不在这里堆。
 
