@@ -1,0 +1,53 @@
+# 上游契约巡检：每周打一次真实的 DeepSeek /user/balance，看响应指纹有没有变。
+#
+# 它盯的三个字段语义（断了就是上游改了契约，前端与后端都要跟着改）：
+#   is_available   布尔。不是字符串，也不是 0/1。
+#   balance_infos  数组，元素个数不固定 —— 一个账户可以同时有多个币种。
+#                  每条含 currency / total_balance / granted_balance / topped_up_balance，
+#                  四个都是**十进制字符串**而不是数字。金额一旦被改成数字类型，
+#                  本项目「按字符串裁两位、不经过浮点数」的前提就崩了。
+#   total_balance  是总额；granted（赠送）与 topped_up（充值）是它的两个来源，两者相加等于总额。
+#
+# 为什么不进 ci.yml：要真实凭据。每次推送都拿真 key 打真上游，既没必要也脏。
+# 这个接口是查询，不消耗余额。
+#
+# 与 compat.yml 错开一小时。
+name: contract
+
+on:
+  schedule:
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      # 缺 secret 时说清楚是哪一步缺的，别让失败信息退化成测试里的那句「缺 DEEPSEEK_API_KEY」。
+      - name: Verify the repository secret is configured
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "::error::仓库 secret DEEPSEEK_API_KEY 未配置，契约测试没有凭据可跑。"
+            exit 1
+          fi
+
+      - name: Contract test against the real upstream
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: npm run test:contract

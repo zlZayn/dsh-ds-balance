@@ -1,0 +1,107 @@
+# 发布：手动触发，本仓库唯一的发布入口。
+#
+# 认证用 npm Trusted Publishing（OIDC），没有 NPM_TOKEN 这种东西。
+# 代价是必须在 npmjs.com 上为本包配一次 trusted publisher（见 docs/PUBLISHING.md），
+# 收益是仓库里不存任何长期凭据，代币由 GitHub 现签、用完即废。
+#
+# 顺序是全有或全无：先证明产物是对的，再发。任何一步红了，后面都不会跑。
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 只做检查与打包，不真的发布，也不打 tag
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # 在仓库设置里建一个同名 environment，可以给它加人工审批与环境保护规则。
+    environment: release
+    permissions:
+      contents: write # 发布成功后打 tag 用
+      id-token: write # Trusted Publishing 的 OIDC 换发
+    steps:
+      # release-guard 要 diff「上个 tag..HEAD」，浅克隆里没有 tag。
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          # Trusted Publishing 要求 npm 走官方 registry 换 OIDC，别指向镜像。
+          registry-url: https://registry.npmjs.org
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      # 版本号写在两处：package.json 决定发布号，package-lock.json 决定 npm ci 装的树。
+      - name: Verify the lockfile version matches package.json
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          lock=$(node -p "require('./package-lock.json').version")
+          if [ "$pkg" != "$lock" ]; then
+            echo "::error::package-lock.json 是 $lock，package.json 是 $pkg"
+            echo "bump with: npm version <patch|minor|major> --no-git-tag-version"
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # 发布态不变量：dsh.bundle 加回来了吗、private 去掉了没有。
+      - name: Release preconditions
+        run: npm run check:release
+
+      # 产物没变就不该发版 —— 发了等于制造一个内容相同的新版本号。
+      # 首次发版还没有任何 tag，这一步自动跳过。
+      - name: Release guard
+        run: |
+          previous=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -z "$previous" ]; then
+            echo "没有历史 tag（首次发版），跳过守卫。"
+            exit 0
+          fi
+          echo "对比 $previous..HEAD"
+          git diff --name-only "$previous"..HEAD | node scripts/release-guard.mjs
+
+      # 幂等：补跑一条已经发成功的流水线时，不该在 npm 那里撞一个 403 就停住。
+      - name: Probe whether this version is already on npm
+        id: probe
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$name@$version 已经在 npm 上，发布步骤会跳过。"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish
+        if: steps.probe.outputs.exists == 'false'
+        run: npm publish --provenance${{ inputs.dry-run && ' --dry-run' || '' }}
+
+      - name: Tag the release
+        if: steps.probe.outputs.exists == 'false' && !inputs.dry-run
+        run: |
+          tag="v${{ steps.probe.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "$tag 已存在，跳过。"
+          else
+            git tag "$tag"
+            git push origin "$tag"
+          fi

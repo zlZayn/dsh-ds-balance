@@ -1,0 +1,53 @@
+# 兼容性巡检：每周把 @deepseek-ai/dsh-* 换到另一条 dist-tag 线上，看还构不构得出来。
+#
+# 为什么是每周而不是每次推送：它要重装整棵依赖树，跑一次几分钟，而宿主版本线一周也动不了几次。
+#
+# 两条线的处置不同：
+#   alpha —— 我们自己声明的线（engines.dsh 与全部 peer 都在 ^0.1.6-alpha.1 上）。红了必须修。
+#   next  —— 上游另一条线。目前它比 alpha 旧（实测 0.1.5-rc.2 < 0.1.6-alpha.1），
+#            红了只记录，不改声明。等它跑到前面去，这条线才真正开始提供信息。
+#
+# 与 contract.yml 错开一小时，避免两个定时任务在同一分钟抢 runner。
+name: compat
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  swap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      # 一条线红了不遮住另一条线的结果。
+      fail-fast: false
+      matrix:
+        line: [alpha, next]
+    # 只有 alpha 是我们的声明线，它的红必须修；next 的结果只作记录。
+    continue-on-error: ${{ matrix.line != 'alpha' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      # swap 内部先改写 package.json 的声明区间、跑裸 npm install，再跑 verify。
+      # verify 不是陪衬：npm install 会假绿（失败但 node_modules 停在旧版本上），
+      # 不回头确认实际装到了什么，后面的测试就跑在旧依赖上、给出与事实相反的信号。
+      - name: 换到 ${{ matrix.line }} 线并确认真的装到了
+        run: node scripts/compat-swap.mjs swap --line ${{ matrix.line }}
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
