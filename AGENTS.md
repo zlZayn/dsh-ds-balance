@@ -45,7 +45,8 @@
 - 修复过并复测的实机缺陷：footer 三条目互挤、展开态条目不可见、折叠态与邻居贴住、点邻居却弹我们的浮层。
 - 维护者已实机验收全部界面：圆环与标签、点击浮层、折叠分组、与邻居插件共存。
 - 窄视口浮层钳制已补验：360 / 480 / 600 / 700 / 721 五个宽度全部落在视口内。
-- **后端与界面完成**：§14 第 1~11 步落地。实现与文档不一致的 15 条 → [决策记录](.agents/notes/2026-09-17-implementation-deviations.md)。
+- **后端与界面完成**：实施路线的 11 步全部落地，路线表已从规格文档移出 → [归档记录](.agents/notes/2026-09-17-implementation-roadmap-archive.md)。
+- 实现与文档不一致的 15 条 → [决策记录](.agents/notes/2026-09-17-implementation-deviations.md)。
 - 端点实测（隔离实例，真实 dsh 宿主）：六个端点全部可用；`severity` 四档、`NO_KEY` / `UPSTREAM_401` / `UPSTREAM_5XX` 三条错误路径、`422` 校验、冷却、配置掩码逐条核过。
 - 持久化实测：重启宿主后快照按 `accountTag` 读回，`.salt` 复用；上游不可达时降级成 `stale` 而不是丢数据。
 - 界面实测（隔离实例 + 无头浏览器）：左下角圆环显示真实金额，浮层三段金额与相对时间正确，Escape 关闭，控制台零报错。
@@ -59,7 +60,6 @@
 
 - [x] 首次 commit（工程骨架 / 文档网络 / UI 实现三个）
 - [x] `test/` 目录与双件
-- [x] 后端 §14 第 7~11 步
 - [x] `LICENSE` 文件（MIT）并加进 `package.json` 的 `files`
 - [x] 文档同步与提交
 - [ ] 六条待产品决策的默认值 → [决策记录](.agents/notes/2026-09-17-implementation-deviations.md) 末节
@@ -69,6 +69,7 @@
 - [ ] 设置卡片的折叠状态不持久化（v1 有意不做，官方仅一处先例）
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
 - [ ] 发布前：加回 `dsh.bundle`、去掉 `private` —— [check-release.mjs](scripts/check-release.mjs) 会卡
+- [ ] 六项发布面挂起（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [触发条件](.agents/notes/2026-09-17-deferred-release-surface.md)
 
 ## 活跃坑
 
@@ -94,15 +95,16 @@
 - **能自证的不抄**：测试数字、产物体积、版本号一律指向 [CI](.github/workflows/ci.yml)、`package.json` 或现查命令；抄一次就要手动跟一次。
 - **能落成校验的不写散文**：红线 → [test/redlines.test.ts](test/redlines.test.ts)；发布态不变量 → [scripts/check-release.mjs](scripts/check-release.mjs)；文档链接与换行 → `check-links.py` / `check-line-endings.py`。
 - **改一处要查得到同步点**：每个子目录 `README.md` 的「变更影响路由」是同步清单入口；新增或改名文件后必须回填。
+- **改根 [README.md](README.md) 必同改 [README_en.md](README_en.md)**：能力清单、上手步骤、指针逐条对齐，冲突以中文为准。
 - **坑按作用域分流**：只在某个子目录才会踩的坑写进该目录的 `AGENTS.md`（进入即自动注入），本文件只留跨模块、致命的那几条。
 
 ## 文档地图
 
 - 架构设计 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- 原生集成勘察 → [docs/recon-native-integration.md](docs/recon-native-integration.md)
-- 连接与官方模型机制的融合判定 → [docs/model-integration-assessment.md](docs/model-integration-assessment.md)
-- 后端架构（修正版，已复审）→ [docs/backend-architecture.md](docs/backend-architecture.md)
-- 后端架构文档对照审查 → [docs/backend-architecture-review.md](docs/backend-architecture-review.md)
+- 原生集成勘察（设计依据）→ [docs/recon-native-integration.md](docs/recon-native-integration.md)
+- 连接与官方模型机制的融合判定（设计依据）→ [docs/model-integration-assessment.md](docs/model-integration-assessment.md)
+- 后端架构（修正版，已复审；只含设计与契约）→ [docs/backend-architecture.md](docs/backend-architecture.md)
+- 后端架构文档对照审查（设计依据）→ [docs/backend-architecture-review.md](docs/backend-architecture-review.md)
 - **UI 侧契约与移交（可原样转发给后端）** → [docs/ui-handoff.md](docs/ui-handoff.md)
 - 决策记录 → [.agents/notes/](.agents/notes/)
 - 源码手册 → [src/README.md](src/README.md)

@@ -754,27 +754,6 @@ import { resolveDshHome, dshHomePath, dshCachePath, dshHomeDisplay } from '@deep
 
 ---
 
-## 十四、实施路线
-
-| 阶段 | 内容 |
-|---|---|
-| 0 | **实测 `credentials.resolve('DEEPSEEK_API_KEY')` 是否命中**（见 §16） |
-| 1 | Money / Errors / Time |
-| 2 | Balance / Severity |
-| 3 | DeepSeekClient + HttpDeepSeekClient |
-| 4 | DomainCoreStore（官方存储接缝） |
-| 5 | KeyResolver / ConfigService |
-| 6 | BalanceService + Scheduler |
-| 7 | HTTP routes（connection.fetch） |
-| 8 | UI 侧五条改动（见 §15） |
-| 9 | dsh 集成 + 挂载验证 |
-| 10 | 可观测性 |
-| 11 | 文档同步 + 提交 |
-
-**UI 改动与后端实现放同一个提交，避免中间状态。**
-
----
-
 ## 十五、需要一并修的 UI 侧（五条）
 
 | # | 文件 | 修正 |
@@ -840,20 +819,3 @@ import { resolveDshHome, dshHomePath, dshCachePath, dshHomeDisplay } from '@deep
 - 存储域 × 热重挂**通过**：`close()` 释放 `reserved`，热重挂先拆后建。用 `ctx.effect` 关闭即正确。
 - `connection.fetch` 的 `/api` 可达性**成立**（组合里挂了 webserver）。
 
----
-
-## 附：给实现 Agent 的开场白
-
-```
-按这份文档实现后端。只做 Core，不做 Estimation。
-
-第 0 步先实测 credentials.resolve('DEEPSEEK_API_KEY') 是否命中 —— 这是
-「凭据继承官方」成立与否的硬证据，结果决定 §3.1 的解析链走哪一档。
-
-然后阶段 1–4（领域 + 端口 + 适配器），跑通单测。
-再阶段 5–7（服务 + HTTP），跑通集成测试。
-UI 侧五条改动（§15）与后端放同一个提交。
-最后阶段 9 挂载到真实 dsh 验证。
-
-遇到不确定，停下来问维护者。
-```
