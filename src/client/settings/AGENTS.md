@@ -17,9 +17,9 @@ settings/ 特有约束：
 - 纵向间距只有两个所有者：`.group` 的顶部 12px 与 `.groupLast` 的尾部 12px（[fields.module.css](fields.module.css)）；新加元素不许在旁边叠 margin。
 - 分组折叠头一律用原语 `DisclosureRow`，不自己画（[fields.tsx](fields.tsx) 的 `FieldGroup`）。
   - **例外**：连接组里的二级「自定义设置」用原生 `<details>`（[fields.tsx](fields.tsx) 的 `DetailsGroup`），因为官方 `ProviderEditor` 那一处就是这么做的；本插件照搬官方形态优先于自定规则。
-- 凭据字段的只读形态照搬官方：`disabled` + 60% 透明度，**不隐藏字段、不另做只读块、框内不写占位符**。
-  状态走标签行右侧的徽章，因由走它下方那行说明；两处的键分别是 `settings.credential.*` 与 `settings.hint.credential.*`（[../locales.ts](../locales.ts)）。
-  官方那两条同义措辞属于 `settings.models` 命名空间、别的插件拿不到，所以文案自备。
+- 凭据字段的只读形态照官方「网页搜索」卡片：**常态空框（只 `readOnly`，不 `disabled`、不降透明度）**，**不隐藏字段、不另做只读块、框内不写占位符**。
+  状态走标签行右侧的徽章（`settings.credential.*`），说明走它下方那行（`settings.hint.credential`，一句与状态无关的常量）。
+  **措辞逐字抄官方**：徽章三条取自 `ui-settings-plugins` 的 `webSearchApiKeySet` / `webSearchApiKeyUnset` / `ui-settings-models` 的 `keyEnvLocked`，说明取自 `webSearchApiKeyHint` —— 官方那套词在 `settings.models` / `settings.plugins` 命名空间、别的插件拿不到，所以抄进 [../locales.ts](../locales.ts)。
 - 只读凭据行的四档只有一个判据：[use-credential-state.ts](use-credential-state.ts) 的 `credentialViewOf`（覆盖 > 环境 > 配没配）。**不许在组件里另写一份分支。**
 - **读宿主新增字段必须先过形状守卫**：客户端半边由 HMR 立刻换新，宿主半边要重启才换。见 [../data.ts](../data.ts) 的 `readCredential` 与 [use-credential-state.ts](use-credential-state.ts)。
 - 错误文本用 `var(--dsw-alias-state-error-primary)`；官方 `--dsw-alias-label-error` 从未定义，照抄会静默失效。

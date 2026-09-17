@@ -43,17 +43,9 @@ const DEFAULT_API_KEY_REF = 'DEEPSEEK_API_KEY'
  */
 const CREDENTIAL_BADGE: Readonly<Record<CredentialView, LocaleKey>> = {
   env: 'settings.credential.envLocked',
-  configured: 'settings.configured',
-  notConfigured: 'settings.notConfigured',
+  configured: 'settings.credential.configured',
+  notConfigured: 'settings.credential.notConfigured',
   overridden: 'settings.overridden',
-}
-
-/** 徽章下方那一行说明，逐档对应。 */
-const CREDENTIAL_HINT: Readonly<Record<CredentialView, LocaleKey>> = {
-  env: 'settings.hint.credential.env',
-  configured: 'settings.hint.credential.configured',
-  notConfigured: 'settings.hint.credential.notConfigured',
-  overridden: 'settings.hint.credential.overridden',
 }
 
 /** 四个配置分组的键。 */
@@ -328,7 +320,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
                 pendingLabel={t('settings.unsaved')}
                 resetLabel={t('settings.reset')}
                 invalid={false}
-                hint={t(CREDENTIAL_HINT[credentialView])}
+                hint={t('settings.hint.credential')}
                 disabled
                 onReset={() => {}}
               >

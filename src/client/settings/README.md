@@ -34,7 +34,7 @@
 - 职责：字段行的容器与全部控件，以及分组的折叠头。
 - 关键导出：`FieldGroup`、`FieldFrame`、`FieldBadges`、`TextControl`、`ReadOnlyControl`、`SecretControl`、`SelectorControl`、`ActionRow`、`DetailsGroup`，以及类型 `FieldStatus` 与 `SelectorOption`。
 - `FieldGroup` 的折叠头用原语 `DisclosureRow`，不自己画；展开体由原语在 open 时条件渲染，无动画。
-- `ReadOnlyControl` 是只读输入：字段照常渲染、`disabled`、**框内不写任何文字**，形态照搬官方 `ProviderEditor` 的凭据字段。只读的因由改由标签行右侧的状态徽章与它下方的说明行承担，两处文案都来自词典。
+- `ReadOnlyControl` 是只读输入：字段照常渲染、**只 `readOnly` 不 `disabled`**（常态空框，不降透明度），**框内不写任何文字**，形态照官方「网页搜索」卡片的凭据字段。只读的因由由标签行右侧的状态徽章与它下方的说明行承担，两处文案都来自词典。
 - `DetailsGroup` 是**二级折叠**，用原生 `<details>`/`<summary>` 而不是 `DisclosureRow` —— 官方那一处也是原生 details 配一个 `::before` 折角。它是受控但跟手的：`open` 由 state 持有，用户拨动时从 DOM 读回真实状态，卡片重渲染不会把它弹回去。
 - 类名拼接统一用官方 `clsx`（平台样式规则要求），不自备工具函数。
 - 被谁依赖：`BalanceSettingsCard.tsx`。
