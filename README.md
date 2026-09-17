@@ -75,7 +75,7 @@
 npm install -g @deepseek-ai/dsh@alpha     # 本插件承诺支持的线
 ```
 
-兼容性不是推断出来的：每周由 [compat.yml](.github/workflows/compat.yml) 在 `alpha` 与 `next` 两条线上换包实跑一遍现有测试。当前结论与红了怎么办见 [兼容性](docs/PUBLISHING.md#兼容性)。
+兼容性不是推断出来的：每周由 [compat.yml](.github/workflows/compat.yml) 在 `alpha` 与 `next` 两条线上换包实跑一遍现有测试。当前结论与红了怎么办见 [兼容性](docs/PUBLISHING.md#兼容性)。配置界面注册在宿主的 `plugins.bundle.config` 槽，**该槽由 DSH 0.1.6 引入**：更早的宿主上圆环与浮层照常工作，但**插件页里不会出现配置区**（静默，不报错）—— 这就是分水岭；需要就地配置请把宿主升到 **`0.1.6-alpha.2` 或更高**。
 
 ### 从 npm 安装
 

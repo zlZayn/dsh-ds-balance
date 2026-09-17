@@ -75,7 +75,7 @@ Install the host by **naming the version line explicitly**: the `latest` tag of 
 npm install -g @deepseek-ai/dsh@alpha     # the line this plugin promises to support
 ```
 
-Compatibility is measured, not inferred: every week [compat.yml](.github/workflows/compat.yml) swaps packages onto the `alpha` and `next` lines and reruns the existing tests. The current verdict, and what to do when it goes red, are in [Compatibility](docs/PUBLISHING.md#兼容性).
+Compatibility is measured, not inferred: every week [compat.yml](.github/workflows/compat.yml) swaps packages onto the `alpha` and `next` lines and reruns the existing tests. The current verdict, and what to do when it goes red, are in [Compatibility](docs/PUBLISHING.md#兼容性). The configuration UI registers into the Host's `plugins.bundle.config` slot, which **arrives with DSH 0.1.6**: on an earlier Host the ring and the popover keep working, but the configuration area never appears on the Plugins page (silently, with no error) — that is the watershed; for in-place configuration, run the Host at **`0.1.6-alpha.2` or newer**.
 
 ### From npm
 
