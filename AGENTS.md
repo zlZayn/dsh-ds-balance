@@ -11,7 +11,7 @@
 - 原生集成勘察结论（阶段 0）→ [docs/recon-native-integration.md](docs/recon-native-integration.md)
 - 决策理由与替代方案 → [.agents/notes/](.agents/notes/)
 - 对外可见行为变化，同一次改动内同步 [README.md](README.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- 颜色只由后端 `severity` 决定；前端不做金额阈值判断
+- 颜色只由后端 `severity` 决定；前端读阈值的唯一去处是圆环弧长，且只读 `warn`、只当刻度
 - 样式只用 CSS Modules + `--dsw-alias-*`；禁 Tailwind、禁组件库、禁字面色值
 
 ## 常用命令

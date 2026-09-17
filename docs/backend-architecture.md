@@ -52,7 +52,7 @@
 | 字段 | 状态 |
 |---|---|
 | `todayUsage` 整组 | 第一版不产出 |
-| `thresholds` | 产出（前端只存不判） |
+| `thresholds` | 产出；UI 只用 `warn` 当圆环弧长的刻度，不用它配色（`critical` 不消费） |
 | `requestId` / `schemaVersion` / `accountTag8` | 产出（保留） |
 
 ### 1.3 后端必须遵守的不变量

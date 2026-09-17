@@ -6,7 +6,7 @@ src/client/ 特有约束：
 
 - 组件拿不到 `ctx`；数据只能走 props 或注册项的 `inject` 工厂。
 - 金额一律按字符串处理，禁止 `parseFloat` 后比较或累加。
-- 颜色只由 `severity` 决定；这里不许出现任何金额阈值判断。
+- 颜色只由 `severity` 决定。唯一允许读阈值的地方是 [model.ts](model.ts) 的 `ringRatioOf`（只定弧长、只读 `warn`，金额比较走整数不走浮点）；其余任何地方不许拿阈值做判断或配色。
 - 主题直接读 `--dsw-*` CSS 变量，禁止写 `[data-ds-dark-theme]` 或 `prefers-color-scheme` 选择器。
 - 不许 import `ui-settings-plugins` 等官方包的内部构件；只能照抄模式。
 - 相对导入保留 `.ts` / `.tsx` 后缀。

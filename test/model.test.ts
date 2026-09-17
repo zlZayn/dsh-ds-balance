@@ -6,6 +6,7 @@ import {
   dotStateOf,
   formatAmount,
   formatMoney,
+  ringRatioOf,
   ringSpecOf,
   selectionOf,
 } from '../src/client/model.ts'
@@ -138,5 +139,63 @@ describe('ringSpecOf', () => {
 
   it('unknown 保持灰弧且不画符号', () => {
     expect(ringSpecOf('unknown')).toEqual({ state: 'idle', marker: null })
+  })
+})
+
+describe('ringRatioOf', () => {
+  it('warn 阈值就是坐标轴：余额为零画空环，到 warn 线正好满环', () => {
+    expect(ringRatioOf('0.00000000', 5, 'critical')).toBe(0)
+    expect(ringRatioOf('5.00000000', 5, 'ok')).toBe(1)
+  })
+
+  it('critical 线落在 c/w 上，不重复参与弧长', () => {
+    // c = 1、w = 5：critical 线在弧上是 20%，但它只决定颜色，不额外截断弧长。
+    expect(ringRatioOf('1.00000000', 5, 'critical')).toBeCloseTo(0.2, 6)
+    expect(ringRatioOf('2.50000000', 5, 'warn')).toBeCloseTo(0.5, 6)
+  })
+
+  it('超过 warn 线一律封顶满环', () => {
+    expect(ringRatioOf('5.00000001', 5, 'ok')).toBe(1)
+    expect(ringRatioOf('999999.00000000', 5, 'ok')).toBe(1)
+  })
+
+  it('阈值缺失或非正数时退回按 severity 定性', () => {
+    const cases = [
+      ['ok', 1], ['unavailable', 1], ['warn', 0.75], ['critical', 0.25], ['unknown', 0],
+    ] as const
+    for (const [severity, expected] of cases) {
+      expect(ringRatioOf('110.00000000', undefined, severity), severity).toBe(expected)
+      expect(ringRatioOf('110.00000000', 0, severity), severity + ' w=0').toBe(expected)
+      expect(ringRatioOf('110.00000000', -5, severity), severity + ' w<0').toBe(expected)
+    }
+  })
+
+  it('没有可展示的币种时也退回定性，而不是当成余额为零', () => {
+    expect(ringRatioOf(null, 5, 'unknown')).toBe(0)
+    expect(ringRatioOf(null, undefined, 'warn')).toBe(0.75)
+  })
+
+  it('负余额画空环，不画成满环', () => {
+    expect(ringRatioOf('-1.00000000', 5, 'critical')).toBe(0)
+  })
+
+  it('余额为零时环为空，但颜色照样跟着 severity 走', () => {
+    // 弧长与配色是两条独立的链：这一条只保证前者不干扰后者。
+    expect(ringRatioOf('0.00000000', 5, 'critical')).toBe(0)
+    expect(ringSpecOf('critical').state).toBe('error')
+    expect(ringSpecOf('unknown').state).toBe('idle')
+  })
+
+  it('金额比较走整数：恰好等于阈值的边界不会因浮点误差漏判', () => {
+    // 0.1 + 0.2 那类误差在浮点下会让 v < w，这里必须恰好等于 1。
+    expect(ringRatioOf('0.30000000', 0.3, 'ok')).toBe(1)
+    expect(ringRatioOf('1.10000000', 1.1, 'ok')).toBe(1)
+    expect(ringRatioOf('10.00000000', 3, 'ok')).toBe(1)
+  })
+
+  it('形状违约的金额退回定性，不抛错', () => {
+    for (const bad of ['', 'abc', '1.2.3', '--1']) {
+      expect(ringRatioOf(bad, 5, 'warn'), bad).toBe(0.75)
+    }
   })
 })

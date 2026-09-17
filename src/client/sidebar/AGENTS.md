@@ -24,7 +24,8 @@ sidebar/ 特有约束：
 - 金额一律按字符串处理，只用 `../model.ts` 的 `formatMoney` / `formatAmount`。
   - 禁止 `parseFloat` 后比较或累加；相等与累加都在后端。
 - 颜色只由 `severity` 决定，链路是 `severity → dotStateOf → RingState → data-state → token`。
-  - 这里不许出现任何金额阈值判断，也不许为标记另起一套配色。
+  - 唯一例外是弧长：由 `../model.ts` 的 `ringRatioOf` 用 `total` 与 `warn` 阈值算出，它是几何不是配色。
+  - 不许为标记另起一套配色，也不许拿阈值决定任何颜色。
 - 样式只写 CSS Modules 类与 `--dsw-alias-*` 语义 token。
   - 禁止字面色值；禁止 `[data-ds-dark-theme]` 与 `prefers-color-scheme` 选择器。
 - 全圆角必须成对写 `corner-shape: round`；中性实线边框统一 `0.5px`。

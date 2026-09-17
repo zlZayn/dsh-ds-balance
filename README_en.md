@@ -19,13 +19,13 @@ The balance is read from the real `GET /user/balance`; colour comes only from th
 
 ## Capabilities
 
-- A permanent status ring plus label at the bottom of the sidebar; click it to open a popover with the balance breakdown. The collapsed and expanded states share the same ring.
+- A permanent status ring plus label at the bottom of the sidebar; click it to open a popover with the balance breakdown. Its arc is the balance as a fraction of the `warn` threshold, and the collapsed and expanded states share the same ring.
 - Reads the real DeepSeek balance (`GET /user/balance`); the server refreshes on `serverRefreshSeconds` and the browser reads the cache on `clientPollSeconds` without hitting the upstream.
 - Popover: total balance, granted / topped-up split, data freshness, and a manual refresh with cooldown.
 - Multiple currencies: the **server** picks which currency to show; when the currency chosen in settings is absent from the account, the popover says so and offers a one-click switch.
 - The settings card has four collapsible groups — Connection / Display / Thresholds / Refresh — all collapsed by default; a group with an invalid draft is forced open.
 - Credential fields carry a "configured / not configured / overridden" badge; the credential is inherited from the official model settings by default, so there is nothing to re-enter.
-- Colour comes only from the `severity` the server returns; threshold policy is not in the frontend.
+- Colour comes only from the `severity` the server returns; thresholds only scale the ring arc and never affect colour.
 
 ## Installation
 
@@ -55,7 +55,7 @@ The card has four groups, all collapsed by default:
 
 - Connection: the read-only credential state, an editable API base URL, and the apiKey / apiKeyRef kept inside the nested "Customised settings".
 - Display: which currency to use for amounts, or let it follow the account.
-- Thresholds: the alert lines. They are **stored, never evaluated** — the frontend does not colour anything from them.
+- Thresholds: the alert lines. They are **evaluated on the server** — the frontend only scales the ring arc by `warn`, and never colours anything from them.
 - Refresh: the server refresh interval and the browser poll interval.
 
 ## Where the data comes from and goes
@@ -68,7 +68,7 @@ The card has four groups, all collapsed by default:
 
 ## Boundary between UI and backend
 
-- Colour is decided only by the server's `severity`; the frontend does no amount comparison at all.
+- Colour is decided only by the server's `severity`. The frontend reads the `warn` threshold only to scale the ring arc, never to colour anything.
 - Amounts are always eight-decimal strings; the frontend trims them to two characters-wise and never goes through floating point.
 - Full response shape and configuration contract → [docs/ui-handoff.md](docs/ui-handoff.md).
 

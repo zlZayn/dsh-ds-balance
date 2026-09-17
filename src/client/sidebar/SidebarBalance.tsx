@@ -7,8 +7,8 @@
  *
  * 数据默认走真实端点（`GET /api/v1/balance`，按 `clientPollSeconds` 轮询）；
  * 只有 URL 参数或 localStorage 明确选过场景时才切到 mock 旁路。
- * 颜色只由 `dotStateOf(severity)` 决定，金额全程按字符串走 model.ts 的函数，
- * 组件内不做任何金额阈值判断、不读 ctx。
+ * 颜色仍只由 `dotStateOf(severity)` 决定。弧长是唯一读阈值的去处，且只当刻度：
+ * 由 `ringRatioOf` 算好交给圆环。组件内不做配色判断、不读 ctx。
  * @module dsh-ds-balance/client/sidebar/SidebarBalance
  */
 
@@ -21,7 +21,9 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BalanceResponse, Severity } from '../api-types.ts'
 import { interpolate, type LocaleKey } from '../locales.ts'
-import { formatMoney, ringSpecOf, selectionOf, type CurrencySelection, type RingMarker } from '../model.ts'
+import {
+  formatMoney, ringRatioOf, ringSpecOf, selectionOf, type CurrencySelection, type RingMarker,
+} from '../model.ts'
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
 import { BalancePopover } from './BalancePopover.tsx'
@@ -66,6 +68,11 @@ export interface SidebarBalanceProps {
      * 改了阈值圆环要当场变，不该等下一轮轮询。
      */
     configSignature: string
+    /**
+     * 读某个币种的 warn 阈值。**只用来定弧长**，颜色不走这里。
+     * 没配的币种给 `undefined`，由 `ringRatioOf` 退回按 severity 定性。
+     */
+    warnThresholdOf: (currency: string) => number | undefined
   }
 }
 
@@ -275,6 +282,12 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
 
   const shown = selection.shown
   const ring = ringSpecFor(response.severity)
+  // 弧长：余额占该币种 warn 阈值的几分之几。阈值只当刻度，颜色仍只由 severity 决定。
+  const ringRatio = ringRatioOf(
+    shown === null ? null : shown.total,
+    shown === null ? undefined : config.warnThresholdOf(shown.currency),
+    response.severity,
+  )
 
   // 圆环的状态文案。正常时为 null —— 词典里没有对应键，也不该新增。
   const stateKey = stateLabelKey(response, selection)
@@ -330,7 +343,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
         {wide ? (
           <>
             <span className={css.icon}>
-              <PercentRing state={ring.state} marker={ring.marker} size={16} />
+              <PercentRing state={ring.state} marker={ring.marker} ratio={ringRatio} size={16} />
             </span>
             <span className={css.label}>{t('sidebar.label')}</span>
             {markerLabel === null ? null : (
@@ -342,7 +355,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
             )}
           </>
         ) : (
-          <PercentRing state={ring.state} marker={ring.marker} size={18} title={ringTitle} />
+          <PercentRing state={ring.state} marker={ring.marker} ratio={ringRatio} size={18} title={ringTitle} />
         )}
       </button>
 

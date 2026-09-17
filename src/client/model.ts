@@ -52,6 +52,68 @@ export function ringSpecOf(severity: Severity): RingSpec {
   }
 }
 
+/** 金额定点小数的小数位数，与宿主领域层同源（1e8）。 */
+const DECIMAL_SCALE = 100_000_000n
+
+/** 弧长比例算到万分之一就够 —— 再细的差别也画不出来。 */
+const ARC_STEPS = 10_000n
+
+/** 定点小数字符串的形状，与 `formatAmount` 认的是同一条。 */
+const DECIMAL_PATTERN = /^(-?)(\d+)(?:\.(\d*))?$/
+
+/**
+ * warn 阈值不可用时的定性弧长。
+ *
+ * `ok` 与 `unavailable` 都给满环：前者无需提醒，后者是账户维度的问题、与余额高低无关。
+ * `critical` 给 1/4 而不是 0，好让「余额很低」与「读不到数据」在形状上仍分得开。
+ */
+const QUALITATIVE_ARC: Readonly<Record<Severity, number>> = {
+  ok: 1,
+  warn: 0.75,
+  critical: 0.25,
+  unavailable: 1,
+  unknown: 0,
+}
+
+/** 定点小数字符串 → 放大 1e8 的整数；形状不符给 `null`，小数超过 8 位截断。 */
+function scaledOf(value: string): bigint | null {
+  const match = DECIMAL_PATTERN.exec(value.trim())
+  if (match === null) return null
+  const [, sign, whole, fraction = ''] = match
+  const magnitude = BigInt(whole) * DECIMAL_SCALE + BigInt((fraction + '00000000').slice(0, 8))
+  return sign === '-' ? -magnitude : magnitude
+}
+
+/**
+ * 圆环的弧长比例：选中币种的余额占它 warn 阈值的几分之几，封顶 1。
+ *
+ * **阈值在这里只当刻度，不当判据**：颜色仍然完全来自 `severity`，
+ * 这个函数只回答「弧画多长」。阈值是用户自己设的，它天然就是「多少算少」的坐标轴，
+ * 不必再引入一个「满」的基准。`critical` 不参与这里 —— 它已经在后端决定了 `severity`，
+ * 再进一次弧长等于把同一件事算两遍。
+ *
+ * 金额比较走放大 1e8 的整数，不经过浮点数：`v = w` 必须**恰好**是满环。
+ * @param total - 选中币种的余额（定点小数字符串）；`null` 表示没有可展示的币种。
+ * @param warnThreshold - 该币种的 warn 阈值；`undefined` 或非正数表示没配。
+ * @param severity - 后端给的严重度，仅在阈值不可用时用来定性。
+ * @returns 0~1 的弧长比例。
+ */
+export function ringRatioOf(
+  total: string | null,
+  warnThreshold: number | undefined,
+  severity: Severity,
+): number {
+  const balance = total === null ? null : scaledOf(total)
+  const limit = warnThreshold === undefined || !Number.isFinite(warnThreshold)
+    ? null
+    : scaledOf(String(warnThreshold))
+  if (balance === null || limit === null || limit <= 0n) return QUALITATIVE_ARC[severity]
+  // 负余额是形状违约，画空环 —— 画成满环会被读成「余额充足」，方向正好反过来。
+  if (balance <= 0n) return 0
+  if (balance >= limit) return 1
+  return Number((balance * ARC_STEPS) / limit) / Number(ARC_STEPS)
+}
+
 /** 币种符号。未知币种回落到代码本身。 */
 export function currencySymbol(currency: string): string {
   switch (currency.toUpperCase()) {

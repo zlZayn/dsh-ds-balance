@@ -8,7 +8,7 @@
 
 - `index.tsx`：入口。注册词典、把宿主返回的 settings 作用域包成卡片依赖的最小面、向两个 slot 注册组件。`inject` 是运行时门禁，三项为 `slots` / `locale` / `settingsScope`，删任何一项都会让 `apply` 静默不跑。
 - `locales.ts`：中英词典。`zh` 是键集真源，`en` 用 `Record<LocaleKey, string>` 做编译期完整性检查。同时把命名空间并进 `LocaleNamespaceMap`。
-- `model.ts`：纯函数视图模型。`severity` → 状态点、金额字符串格式化、**从后端 `selected` 读出展示币种**、相对时间分档。**没有 React，没有阈值判断，也不自己挑币种。**（圆环恒为满环，不表达比例。）
+- `model.ts`：纯函数视图模型。`severity` → 状态点与环色、**余额占 `warn` 阈值的弧长比例**（`ringRatioOf`，整数比较不走浮点）、金额字符串格式化、**从后端 `selected` 读出展示币种**、相对时间分档。**没有 React，不自己挑币种，也不用阈值配色。**
 - `data.ts`：数据层。向后端要余额（`GET /api/v1/balance` 带 `currency` 查询参数）、触发手动刷新、读一次配置里的 `credential` 只读事实，并把「端点不可达」翻成可展示的错误态。**不缓存、不排程** —— 节奏归 `sidebar/`。可注入 `fetchImpl`，因此能脱离浏览器测。
   - 读宿主的**新增字段一律先过形状守卫**（如 `readCredential`）：客户端半边由 HMR 立刻换新、宿主半边要重启才换，新客户端会读到旧宿主的响应。
 - `api-types.ts`：后端契约类型。既约束 mock，也约束 `data.ts` 拿回来的响应；宿主半边的序列化由 `test/http-wire.test.ts` 做编译期对齐断言。

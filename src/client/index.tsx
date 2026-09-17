@@ -112,6 +112,22 @@ function readPollSeconds(value: Record<string, unknown>): number {
 }
 
 /**
+ * 读某个币种的 warn 阈值。
+ *
+ * 字段名由宿主 schema 的约定拼出来：币种代码小写 + `Warn`（`cnyWarn` / `usdWarn`）。
+ * 拼名而不是列表，是为了不在这里再抄一份币种清单 —— 加了新币种，设置卡片与宿主 schema
+ * 各自登记，这里自动跟上。
+ * **只服务圆环弧长**；颜色不走这里。
+ * @param value - 设置快照里的生效值。
+ * @param currency - 后端选定的展示币种。
+ * @returns 阈值；没配或不是有限数时给 `undefined`。
+ */
+function readWarnThreshold(value: Record<string, unknown>, currency: string): number | undefined {
+  const raw = Number(value[currency.toLowerCase() + 'Warn'])
+  return Number.isFinite(raw) ? raw : undefined
+}
+
+/**
  * 配置指纹：任何一项设置改动都会换一个值，用来触发一次立刻重取。
  *
  * **不含 `apiKey` 本身**（密钥不进 React 的依赖字符串），只带一个「配没配」的布尔；
@@ -151,6 +167,7 @@ function SidebarSeatComponent(props: { seat: SidebarSeat; scope: SettingsScope }
         manualRefreshCooldownSeconds: readCooldown(value),
         clientPollSeconds: readPollSeconds(value),
         configSignature: readSignature(value),
+        warnThresholdOf: (currency) => readWarnThreshold(value, currency),
       }}
     />
   )

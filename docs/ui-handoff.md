@@ -28,7 +28,7 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 | 字段 | 说明 |
 |---|---|
 | `todayUsage` 整组 | 第一版不做「今日已用」，`value` / `source` / `confidence` / `needsReview` / `range` 全部不读 |
-| `thresholds` | **只存不判**：UI 不做任何金额比较，颜色完全来自 `severity` |
+| `thresholds` | UI 不用它配色；只用 `warn` 当圆环弧长的刻度，颜色完全来自 `severity` |
 | `requestId` / `schemaVersion` / `accountTag8` | 保留在契约里，当前无消费方 |
 | `GET /api/v1/estimate` | UI 侧没有消费方 |
 
@@ -173,7 +173,7 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 - 前端**没有**接任何真实接口，所有数据来自仓库内的 mock 模块。
 - 前端**没有**实现「测试连接」的真实往返，当前是本地模拟。
 - 「今日已用」「本轮消耗」「账本 / 投影 / 手工校正」「诊断层」「独立页面」「图表」均**未做**。
-- 界面颜色完全由 `severity` 决定，前端不含任何阈值策略。
+- 界面颜色完全由 `severity` 决定。前端只用 `warn` 当圆环弧长的刻度：不配色、不读 `critical`。
 
 ---
 
