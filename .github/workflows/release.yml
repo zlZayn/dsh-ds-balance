@@ -5,6 +5,9 @@
 # 收益是仓库里不存任何长期凭据，代币由 GitHub 现签、用完即废。
 #
 # 顺序是全有或全无：先证明产物是对的，再发。任何一步红了，后面都不会跑。
+#
+# 预发布：版本号里带预发布段（npm version premajor --preid=alpha）时，会发到**同名 dist-tag**，
+# latest 保持不动；不带预发布段时照旧发 latest。
 name: release
 
 on:
@@ -91,9 +94,15 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # 预发布版本（如 2.0.0-alpha.0）发到它自己的 dist-tag（alpha），**不动 latest**：
+      # 这一版要求宿主 0.1.6+ 的 plugins.bundle.config，在旧宿主上配置界面不会出现，
+      # 直接推 latest 会让还在旧宿主线上的使用者静默失去配置入口。
       - name: Publish
         if: steps.probe.outputs.exists == 'false'
-        run: npm publish --provenance${{ inputs.dry-run && ' --dry-run' || '' }}
+        run: |
+          tag=$(node -e "const v=require('./package.json').version; const p=v.split('-'); process.stdout.write(p.length>1 && /^[A-Za-z]/.test(p[1]) ? p[1].split('.')[0] : 'latest')")
+          echo "dist-tag: $tag"
+          npm publish --provenance --tag "$tag"${{ inputs.dry-run && ' --dry-run' || '' }}
 
       - name: Tag the release
         if: steps.probe.outputs.exists == 'false' && !inputs.dry-run
