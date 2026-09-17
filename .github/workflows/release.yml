@@ -95,7 +95,7 @@ jobs:
           fi
 
       # 预发布版本（如 2.0.0-alpha.0）发到它自己的 dist-tag（alpha），**不动 latest**：
-      # 这一版要求宿主 0.1.6+ 的 plugins.bundle.config，在旧宿主上配置界面不会出现，
+      # 这一版要求宿主提供 plugins.bundle.config 槽（下限见 package.json 的 engines.dsh），在旧宿主上配置界面不会出现，
       # 直接推 latest 会让还在旧宿主线上的使用者静默失去配置入口。
       - name: Publish
         if: steps.probe.outputs.exists == 'false'
