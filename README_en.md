@@ -27,7 +27,7 @@
 > [!NOTE]
 > **The balance is read from the official `GET /user/balance`** — not estimated. The credential is resolved only through DSH's credential channel: the API key never lands in a settings file and is never returned to the UI.
 
-The balance needs somewhere to live that does not take up room. A permanent status ring at the bottom of the sidebar; click it for the three amounts and the freshness of the data. Anything you want to configure lives on that card on the **Plugins** page.
+The balance needs somewhere to live that does not take up room. A permanent status ring at the bottom of the sidebar; click it for the three amounts and the freshness of the data. Anything you want to configure lives on the plugin's details page under **Plugins → Installed**.
 
 <p align="center">
   <img src="assets/sidebar-popover_en.png" alt="The DeepSeek balance entry at the bottom of the sidebar, with its popover open" width="360">
@@ -106,12 +106,12 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 ## Configuration
 
-Open **Plugins → Installed → `dsh-ds-balance`**. Four groups, each collapsible:
+Open **Plugins → Installed** and step into the **dsh-ds-balance** details page. The form runs straight down that page, four groups all expanded by default and each collapsible:
 
 <p align="center">
-  <img src="assets/settings-cards-position_en.png" alt="Where the DeepSeek balance card sits in the settings page" width="480">
+  <img src="assets/settings-cards-position_en.png" alt="Where the DeepSeek balance entry sits in the Plugins list" width="480">
   <br>
-  <em>Where it sits in the full settings page: alongside the other plugins, opening as four header rows.</em>
+  <em>Where it sits: the Plugins page's list view, with <code>dsh-ds-balance</code> alongside the other installed plugins; the details page behind it carries the form shown above.</em>
 </p>
 
 - **Connection**: the API base URL and the credential, both blank by default — a blank URL means the official DeepSeek endpoint, and the credential is inherited from the official model page and is read-only.

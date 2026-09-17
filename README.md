@@ -27,7 +27,7 @@
 > [!NOTE]
 > **余额读自 DeepSeek 官方 `GET /user/balance`**，不是估算。凭据只经 DSH 的凭据通道解析：API Key 不会出现在设置文件里，也不会返回给界面。
 
-余额要有地方看，但不该占地方。左边栏底部一个常驻的状态环，点开是三段金额与数据新鲜度；要改配置，进侧边栏**插件**页里那一张卡片。
+余额要有地方看，但不该占地方。左边栏底部一个常驻的状态环，点开是三段金额与数据新鲜度；要改配置，进侧边栏**插件（Plugins）**页里本插件的详情页。
 
 <p align="center">
   <img src="assets/sidebar-popover.png" alt="左边栏底部的「DeepSeek 余额」条目与展开的余额浮层" width="360">
@@ -106,12 +106,12 @@ dsh plugin --profile web add "$PWD"
 
 ## 配置
 
-打开 **插件 → 已安装 → `dsh-ds-balance`**，四组各自可折叠：
+打开侧边栏 **插件（Plugins）** →「已安装（Installed）」组，点进 **dsh-ds-balance** 的详情页；配置表单直接铺在那一页上，四组默认全展开、各自可折叠：
 
 <p align="center">
-  <img src="assets/settings-cards-position.png" alt="整页设置里「DeepSeek 余额」卡片的位置" width="480">
+  <img src="assets/settings-cards-position.png" alt="Plugins 页列表里「DeepSeek 余额」的位置" width="480">
   <br>
-  <em>整页设置里的位置：与其他插件并排，卡片一打开只占四行折叠头。</em>
+  <em>Plugins 页列表里的位置：<code>dsh-ds-balance</code> 与其他已安装插件并排；点进它的详情页才是上面那张配置表单。</em>
 </p>
 
 - **连接**：API 地址与凭据，两项都默认留空 —— 地址留空即用 DeepSeek 官方端点，凭据继承官方模型页那一份、只读不可改；
