@@ -25,13 +25,9 @@
 ---
 
 > [!NOTE]
-> **The balance is read from the official `GET /user/balance`** — not estimated, and not someone else's cache.
-> Amounts stay eight-decimal strings end to end and never pass through floating point; colour comes
-> **only from the `severity` the server returns**, and the frontend does no amount comparison of its own.
+> **The balance is read from the official `GET /user/balance`** — not estimated. The credential is resolved only through DSH's credential channel: the API key never lands in a settings file and is never returned to the UI.
 
-The balance needs somewhere to live that does not take up room. A permanent status ring at the bottom of the
-sidebar; click it for the three amounts and the freshness of the data. Anything finer, or anything you want to
-configure, lives on the settings card.
+The balance needs somewhere to live that does not take up room. A permanent status ring at the bottom of the sidebar; click it for the three amounts and the freshness of the data. Anything you want to configure lives on the settings card.
 
 <p align="center">
   <img src="assets/sidebar-popover_en.png" alt="The DeepSeek balance entry at the bottom of the sidebar, with its popover open" width="360">
@@ -43,12 +39,11 @@ configure, lives on the settings card.
 
 | Surface | One line | Use it for |
 |---|---|---|
-| Sidebar ring | A status ring plus label at the bottom of the sidebar; **its arc is the balance as a fraction of that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
+| Sidebar ring | A status ring plus label at the bottom of the sidebar; **how full it is = how far the balance is from that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
 | Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown) | Checking the exact figures, and how many minutes old they are |
 | Settings card | Connection / Display / Thresholds / Refresh, each collapsible, all collapsed by default | Changing the endpoint, the currency, the warning lines, the cadence |
 
-The division of labour is fixed: **the ring answers "roughly how much is left", the popover answers "exactly how much",
-and the card answers "how is that computed".**
+The division of labour is fixed: **the ring answers "roughly how much is left", the popover answers "exactly how much", and the card answers "how is that computed".**
 
 <p align="center">
   <img src="assets/settings-card_en.png" alt="The DeepSeek balance card in the plugin settings" width="360">
@@ -58,23 +53,23 @@ and the card answers "how is that computed".**
 
 ## Capabilities
 
-- A permanent status ring plus label at the bottom of the sidebar; click it to open a popover with the balance breakdown. The collapsed and expanded states share the same ring.
-- Reads the real DeepSeek balance (`GET /user/balance`); the server refreshes on `serverRefreshSeconds` and the browser reads the cache on `clientPollSeconds` without hitting the upstream.
-- Popover: total balance, granted / topped-up split, data freshness, and a manual refresh with cooldown.
-- Multiple currencies: the **server** picks which currency to show; when the currency chosen in settings is absent from the account, the popover says so and offers a one-click switch.
-- The settings card has four collapsible groups — Connection / Display / Thresholds / Refresh — all collapsed by default; a group with an invalid draft is forced open.
-- Credential fields carry a "provided by launch environment / configured / not configured / overridden" badge; a read-only field stays empty and lets the badge and the line under it explain why. The credential is inherited from the official model settings by default, so there is nothing to re-enter.
-- Colour comes only from the `severity` the server returns; thresholds only scale the ring arc and never affect colour.
+- A permanent status ring plus label at the bottom of the sidebar; click it for the breakdown. The collapsed and expanded states share the same ring, in the same place.
+- The balance refreshes on its own schedule and the UI reads a cache — leaving the interface open does not hammer the upstream.
+- The popover shows the total, the granted / topped-up split, how old the data is, and a manual refresh with a cooldown.
+- Multiple currencies: the account decides which currency is shown; when the one chosen in settings is absent, the popover explains and offers a one-click switch.
+- The settings card has four collapsible groups, all collapsed by default; a group holding a bad value opens itself.
+- The credential is inherited from the official model settings by default, so there is nothing to re-enter; where it comes from is on a badge
+  (provided by launch environment / configured / not configured / overridden), and a read-only field explains itself instead of offering an edit.
+- Colour carries state only (normal / low / critical), never an amount; see "[Reading the ring](#reading-the-ring)".
 
 ## Installation
 
 ### Requirements
 
-- **DSH `^0.1.6-alpha.1`** — the range declared in [package.json](package.json) under `engines.dsh` and `peerDependencies`.
-- Node `>= 20` — same source of truth: `engines.node` in `package.json`.
+- **DSH**: the range is whatever [package.json](package.json) declares under `engines.dsh` and `peerDependencies`; this plugin follows the alpha line the host is on.
+- Node `>= 20` (same source of truth: `engines.node`).
 
 Install the host by **naming the version line explicitly**: the `latest` tag of `@deepseek-ai/dsh` is older than the line this plugin requires — a default install lands outside the declared range.
-For the actual versions, run `node scripts/compat-swap.mjs check`; the semantics are in [docs/PUBLISHING.md](docs/PUBLISHING.md) under "Compatibility".
 
 ```bash
 npm install -g @deepseek-ai/dsh@alpha     # the line this plugin promises to support
@@ -88,7 +83,7 @@ Compatibility is measured, not inferred: every week [compat.yml](.github/workflo
 dsh plugin --profile web add dsh-ds-balance
 ```
 
-The package declares `dsh.bundle.patch`, so `dsh plugin` installs it as a profile layer and records it in `dsh.profile.bundles`. **It takes effect after restarting `dsh --profile web`.**
+**Restarting `dsh --profile web`** is what makes it take effect.
 
 ### From source
 
@@ -100,7 +95,7 @@ npm install && npm run build
 dsh plugin --profile web add "$PWD"
 ```
 
-Same bundle-layer route as npm, same restart to take effect. Changes to the host half require that restart — the browser half is hot-swapped by `dsh-client-hmr`.
+Same as the npm route: it takes effect after a restart.
 
 ### Discovery
 
@@ -113,29 +108,32 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 Open **Settings → Plugins → Plugin configuration → DeepSeek balance**. Four groups, each collapsible:
 
-- **Connection**: the read-only credential state, an editable API base URL, and the apiKey / apiKeyRef kept inside the nested "Customised settings".
+- **Connection**: the API base URL and the credential, inherited from the official model page by default and kept inside the nested "Customised settings".
 - **Display**: which currency to use for amounts, or let it follow the account.
-- **Thresholds**: two alert lines per currency (warning / critical). They are **stored, never evaluated** — the frontend does not colour anything from them; colour still comes from the server's `severity`. The only place that reads them is the ring arc.
-- **Refresh**: the server refresh interval and the browser poll interval.
+- **Thresholds**: two alert lines per currency (warning / critical). **Within one currency the critical line must be strictly lower than the warning line** — equality is rejected too.
+- **Refresh**: the server refresh interval and the UI poll interval.
 
-### Two hard rules about thresholds
+Saving applies immediately; there is no need to restart DSH.
 
-- **Within one currency the critical line must be strictly lower than the warning line.** Equality is rejected too: at that point a balance sitting exactly on the line would be classified into both bands, and "warning" would stop meaning anything. The host validates before writing (the error names the currency); the frontend hints after blur and disables Save. Saving applies it immediately.
-- **The ring arc is the balance as a fraction of the warning line**, capped at 100%. The critical line does not take part — it already decided the colour on the server. When no threshold is configured, the arc falls back to the `severity`: green / grey full ring, amber 3/4, red 1/4, unknown empty.
+### Reading the ring
+
+- How full the ring is = the current balance as a fraction of that currency's **warning line**, capped at 100%; the critical line takes no part in drawing it — it already decided the colour.
+- Colour carries state only, never an amount: normal, low and critical each get one hue; an account that cannot be read gets a ring with a cross instead.
+- A currency with no threshold configured falls back to state: full ring for normal and unavailable, 3/4 for low, 1/4 for critical, empty for unknown.
+- Why colour is never computed from an amount, and why thresholds are only a scale → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), under "Data flow".
 
 ### Credentials
 
 The key is resolved only through DSH's credential channel; the card's "API key" inherits the one already configured on the official model settings page.
-When it comes from the launch environment (an environment variable) the field is read-only and the badge reads "Provided by launch environment".
+When it comes from the launch environment (an environment variable) the field is read-only and the badge says where it came from.
 
 ## Security and boundaries
 
-- Endpoints are registered by the host half under `/api/v1/*` via `ctx.connection.fetch`; the physical carrier already applies trust and browser authentication.
-- **The API key is never returned to the frontend**: the config endpoint returns only a fixed-length mask, not even the last few characters.
-- The key is never logged and never written to a file owned by this plugin.
-- Balance snapshots land in DSH's own storage (`ctx.storageDomain`), grouped by a ledger identifier derived from the credential. Changing the key opens a new ledger; old snapshots are never mixed in.
-- One non-record file, `.salt`, lives under `$DSH_HOME` and derives the ledger identifier. **Losing it makes old snapshots unreadable.**
-- Only `api.deepseek.com` is contacted; nothing is proxied or forwarded. The full response shape is in [docs/ui-handoff.md](docs/ui-handoff.md).
+- **The API key is never returned to the UI**: the config endpoint returns only a fixed-length mask, not even the last few characters.
+- The key is never logged and never written to a file owned by this plugin; the settings file holds only a reference name, so the card is safe to screenshot or share.
+- Balance snapshots live in DSH's own data directory, grouped by a ledger identifier derived from the credential — changing the key opens a new ledger and old snapshots are never mixed in.
+- That identifier also involves a `.salt` file in DSH's home directory; **lose it and old snapshots become unreadable**.
+- Only `api.deepseek.com` is contacted; nothing is proxied or forwarded.
 
 ## License
 
@@ -145,7 +143,4 @@ When it comes from the launch environment (an environment variable) the field is
 
 Where to report bugs, what to check before proposing a feature, and what to do before sending a PR → [CONTRIBUTING_en.md](CONTRIBUTING_en.md).
 
-Design stance: **colour comes only from the server's `severity`; the frontend makes no amount judgements**, and the UI uses only the native slots and the `--dsw-*` semantic tokens.
-The writing conventions are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-The maintainer's document map is [AGENTS.md](AGENTS.md); the release flow and version-bump decision chain are in [docs/PUBLISHING.md](docs/PUBLISHING.md).
+Design stance and implementation constraints → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); the release flow and the version-bump decision chain → [docs/PUBLISHING.md](docs/PUBLISHING.md); the maintainer's document map → [AGENTS.md](AGENTS.md).

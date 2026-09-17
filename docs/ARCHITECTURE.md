@@ -24,6 +24,9 @@
   官方 token 里 `error-primary` 与 `error-secondary` 在深色主题下同值，没有第五种色相，
   所以 `unavailable` 用红弧加**中心叉号**与 `critical` 区分。这是维护者拍板的取舍，不要改回红系双色。
 - **`selected` 由后端权威**：前端不挑币种，只把设置里的 `displayCurrency` 当查询参数传过去。
+- **弧长是唯一读阈值的去处，且只读 `warn`**：弧长 = 余额 / 该币种 `warn` 阈值，封顶 1，金额比较走整数不走浮点。
+  阈值没配或非正数时退回按 `severity` 定性：`ok` 与 `unavailable` 满环、`warn` 3/4、`critical` 1/4、`unknown` 空环。
+  判据只有 [../src/client/model.ts](../src/client/model.ts) 的 `ringRatioOf` 一处 —— 别在组件里再算一遍。
 
 ## 关键决策
 
