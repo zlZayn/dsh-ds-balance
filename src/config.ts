@@ -18,6 +18,19 @@ export const CURRENCY_AUTO = 'auto'
 /** 官方凭据的默认引用名。与 `llm-deepseek` 的默认逐字相同。 */
 export const DEFAULT_API_KEY_REF = 'DEEPSEEK_API_KEY'
 
+/**
+ * 生效的端点基址。
+ *
+ * **空串翻译成官方默认地址的唯一一处**：界面默认留空（官方「网页搜索」卡片同款），
+ * 用户填了就用填的。抓取与测连接都必须走这里，不许各自判空。
+ * @param config - 至少含 `baseUrl` 的配置。
+ * @returns 可以直接拼路径的基址。
+ */
+export function endpointOf(config: Pick<Config, 'baseUrl'>): string {
+  const url = config.baseUrl.trim()
+  return url === '' ? DEFAULT_BASE_URL : url
+}
+
 /** 超时常量。UI 不暴露，改环境变量即可。 */
 export const DEFAULT_TIMEOUT_MS = 8000
 
@@ -33,7 +46,7 @@ export interface Config {
   apiKey: string
   /** 凭据引用名。必须匹配 `^[A-Za-z_][A-Za-z0-9_]*$`。 */
   apiKeyRef: string
-  /** 端点基址。**端点独立**，不继承对话适配器。 */
+  /** 端点基址。**端点独立**，不继承对话适配器；**留空表示用官方默认地址**。 */
   baseUrl: string
   /** 服务端刷新频率（秒）。 */
   serverRefreshSeconds: number
@@ -82,7 +95,7 @@ export const CONFIG_FIELDS = [
 export const Config = z.object({
   apiKey: z.string().role('secret').default(''),
   apiKeyRef: z.string().role('credential-ref').default(DEFAULT_API_KEY_REF),
-  baseUrl: z.string().default(DEFAULT_BASE_URL),
+  baseUrl: z.string().default(''),
   serverRefreshSeconds: z.natural().min(10).max(3600).default(60),
   clientPollSeconds: z.natural().min(5).max(600).default(30),
   manualRefreshCooldownSeconds: z.natural().min(0).max(600).default(30),

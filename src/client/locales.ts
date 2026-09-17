@@ -61,10 +61,8 @@ export const zh = {
   'settings.hint.clientPollSeconds': '刷新显示的间隔；只读本地缓存，不访问上游。',
   'settings.hint.manualRefreshCooldownSeconds': '两次手动刷新之间的最短间隔。',
   'settings.currency.auto': '自动（跟随账户）',
-  // 凭据行的**状态徽章**：三条逐字用官方措辞 —— 「已配置 / 未配置密钥」取自
-  // ui-settings-plugins 的 webSearchApiKeySet / webSearchApiKeyUnset（去掉搜索相关的后半句），
-  // 「由启动环境提供（只读）」取自 ui-settings-models 的 keyEnvLocked。
-  'settings.credential.envLocked': '由启动环境提供（只读）',
+  // 凭据行的**状态徽章**：两条逐字用官方措辞 —— 取自 ui-settings-plugins 的
+  // webSearchApiKeySet / webSearchApiKeyUnset（后者去掉搜索相关的后半句）。
   'settings.credential.configured': '已配置密钥。',
   'settings.credential.notConfigured': '未配置密钥。',
   // 凭据行下方的说明。官方 webSearchApiKeyHint 是一句与状态无关的常量说明，这里照做：
@@ -160,7 +158,6 @@ export const en: Record<LocaleKey, string> = {
   'settings.hint.clientPollSeconds': 'How often the display refreshes; local cache only.',
   'settings.hint.manualRefreshCooldownSeconds': 'Minimum gap between two manual refreshes.',
   'settings.currency.auto': 'Automatic (follow account)',
-  'settings.credential.envLocked': 'Provided by the launch environment (read-only)',
   'settings.credential.configured': 'A key is configured.',
   'settings.credential.notConfigured': 'No key is configured.',
   'settings.hint.credential': 'Stored outside the settings file. Leave blank to keep the current key.',

@@ -341,7 +341,7 @@ const Config = z.object({
   // 连接
   apiKey: z.string().role('secret').default(''),
   apiKeyRef: z.string().role('credential-ref').default('DEEPSEEK_API_KEY'),
-  baseUrl: z.string().default('https://api.deepseek.com'),
+  baseUrl: z.string().default(''),          // 留空 = 官方默认地址；空串只在 endpointOf 翻译一次
 
   // 刷新
   serverRefreshSeconds: z.natural().min(10).max(3600).default(60),

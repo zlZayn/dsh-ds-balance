@@ -42,10 +42,12 @@ const DEFAULT_API_KEY_REF = 'DEEPSEEK_API_KEY'
  * 四档的判据在 `use-credential-state.ts` 的 `credentialViewOf`：它答的是「当前生效的值从哪来」。
  */
 const CREDENTIAL_BADGE: Readonly<Record<CredentialView, LocaleKey>> = {
-  env: 'settings.credential.envLocked',
+  // 官方那张卡右上角只有一句话：「已配置密钥。」——继承来的、自己填的、环境提供的都算配置好了。
+  // 四档判据留着，是因为「覆盖 / 未覆盖」决定二级折叠里那两个字段的状态；徽章本身不区分它们。
+  env: 'settings.credential.configured',
   configured: 'settings.credential.configured',
   notConfigured: 'settings.credential.notConfigured',
-  overridden: 'settings.overridden',
+  overridden: 'settings.credential.configured',
 }
 
 /** 四个配置分组的键。 */

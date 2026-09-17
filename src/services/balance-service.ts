@@ -16,6 +16,7 @@ import type { CoreStore } from '../ports/core-store.js'
 import type { DeepSeekClient } from '../ports/deepseek-client.js'
 import type { Logger } from '../ports/logger.js'
 import { noopMetrics, type Metrics } from '../ports/metrics.js'
+import { endpointOf } from '../config.js'
 import { accountTag8, computeAccountTag } from './account-tag.js'
 import type { ConfigService } from './config-service.js'
 import type { KeyResolver } from './key-resolver.js'
@@ -183,7 +184,7 @@ export class BalanceService {
       const apiKey = await this.options.keys.resolve()
       const config = this.options.config.current()
       const raw = await this.options.client.fetchBalance({
-        baseUrl: config.baseUrl,
+        baseUrl: endpointOf(config),
         apiKey,
         timeoutMs: this.options.config.timeoutMs(),
       })

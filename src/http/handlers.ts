@@ -21,7 +21,7 @@ import type { BalanceService } from '../services/balance-service.js'
 import type { ConfigService } from '../services/config-service.js'
 import type { KeyResolver } from '../services/key-resolver.js'
 import type { Scheduler } from '../services/scheduler.js'
-import { CONFIG_FIELDS, type Config } from '../config.js'
+import { CONFIG_FIELDS, endpointOf, type Config } from '../config.js'
 import { PLUGIN_VERSION, SCHEMA_VERSION } from '../version.js'
 import {
   newRequestId,
@@ -252,7 +252,7 @@ export async function handleTestConnection(request: Request, deps: HttpDeps): Pr
     const body = await readJsonObject(request)
     const config = deps.config.current()
     const rawBaseUrl = body?.baseUrl
-    const baseUrl = typeof rawBaseUrl === 'string' && rawBaseUrl.trim() !== '' ? rawBaseUrl.trim() : config.baseUrl
+    const baseUrl = typeof rawBaseUrl === 'string' && rawBaseUrl.trim() !== '' ? rawBaseUrl.trim() : endpointOf(config)
     const rawTimeout = Number(body?.timeoutMs)
     const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= TEST_TIMEOUT_RANGE.min && rawTimeout <= TEST_TIMEOUT_RANGE.max
       ? Math.trunc(rawTimeout)

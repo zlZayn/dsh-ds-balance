@@ -265,7 +265,8 @@ export const TEST_LATENCY_MS = 800
 
 /**
  * 判定一次模拟连接测试是否失败。
- * 规则：Base URL 必须以 http:// 或 https:// 开头；API Key 与引用名不能同时为空。
+ * 规则：Base URL **留空合法**（走官方默认地址），非空时必须以 http:// 或 https:// 开头；
+ * API Key 与引用名不能同时为空。
  * 返回的是宿主诊断风格的英文短句，与官方卡片直接展示宿主诊断的做法一致。
  * @param baseUrl - 当前草稿或生效的 Base URL。
  * @param apiKey - 当前草稿或生效的 API Key。
@@ -274,7 +275,7 @@ export const TEST_LATENCY_MS = 800
  */
 export function probeFailure(baseUrl: string, apiKey: string, apiKeyRef: string): string | null {
   const url = baseUrl.trim()
-  if (!/^https?:\/\//i.test(url)) return 'base URL must start with http:// or https://'
+  if (url !== '' && !/^https?:\/\//i.test(url)) return 'base URL must start with http:// or https://'
   if (apiKey.trim() === '' && apiKeyRef.trim() === '') return 'no API key or credential reference configured'
   return null
 }
