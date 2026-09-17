@@ -2,7 +2,7 @@
 
 - 职责：领域层与服务的单元测试。**只测纯逻辑与端口替身，不做端到端。**
 - 运行方式：`npm test`（**自带 `npm run build`** —— 产物级测试要读 `lib/`）。只想跑用例时用 `npx --no-install vitest run`，但那要求 `lib/` 已是最新。
-- 契约测试单独一条入口：`npm run test:contract`（要 `DSH_CI_API_KEY`，打真实上游，**不进 ci.yml**）。
+- 契约测试单独一条入口：`npm run test:contract`（要 `DSH_CI_API_KEY`，缺了回落 `DEEPSEEK_API_KEY`；打真实上游，**不进 ci.yml**）。
 - 变更影响路由：改 `src/domain/` 的判定规则 → 必须同步对应测试；改契约形状 → 同步 [docs/backend-architecture.md](../docs/backend-architecture.md) §13 的测试表。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 
@@ -10,6 +10,9 @@
 
 - **一个被测模块一个同名测试文件**，平铺在 `test/` 下；清单以目录为准，**不在此复制**（复制必漂）。
 - `redlines.test.ts` 是唯一的例外：它不是某个模块的测试，而是**把约定变成断言**。改红线等于改约定，要单独说明理由。
+- `contract-key.ts` 是唯一的**非测试**文件：契约测试的凭据解析放在这里，只为让它**可单测** ——
+  契约测试本体在模块加载时就 throw，那条「两个变量都空」的路径没法当用例断言。
+  它的同名测试 `contract-key.test.ts` 不匹配 `contract-live-*`，因此归日常配置收，不发任何请求。
 
 ## 覆盖范围（按类别）
 
@@ -24,6 +27,7 @@
 - 约定守卫：`redlines.test.ts`。
 - 契约层：`contract-live-*.test.ts` 打真实上游核对响应指纹，由 [vitest.contract.config.ts](../vitest.contract.config.ts) 单独收集；
   日常 [vitest.config.ts](../vitest.config.ts) 显式排除它，所以 `npm test` 不会去真上游。缺凭据时它失败而不是跳过。
+  凭据先取 `DSH_CI_API_KEY`、缺了回落 `DEEPSEEK_API_KEY`，判据在 [contract-key.ts](contract-key.ts)（纯函数，已被单测覆盖）。
 - 待覆盖：真机端到端（要真实宿主与凭据），需要独立实例，做法见 [决策记录](../.agents/notes/2026-09-17-verification-recipes.md)。
 
 ## 约定入口

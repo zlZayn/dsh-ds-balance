@@ -108,6 +108,7 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 
 1. 仓库 secret `DSH_CI_API_KEY` —— 契约巡检的专用 key，见下面的「CI 说明」。
 2. 本地环境变量 `DEEPSEEK_API_KEY` —— 插件日常继承的那把；跑 `acceptance.mjs` 时要它在环境里。
+   本机跑 `npm run test:contract` 时，缺 `DSH_CI_API_KEY` 也会回落用它，所以不必为本地另配一把。
 
 **两把 key 不要混用**：前者每周打一次真上游，混进主 key 的调用记录里就分不清是谁在调。
 
