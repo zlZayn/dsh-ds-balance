@@ -4,17 +4,19 @@ import { describe, expect, it } from 'vitest'
  * 契约测试：打真实 DeepSeek 上游，盯 `GET /user/balance` 的响应指纹。
  *
  * 与日常测试分家的两点：
- * - 要真实凭据，只从环境变量 `DEEPSEEK_API_KEY` 读；缺凭据时**失败而不是跳过**。
+ * - 要真实凭据，只从环境变量 `DSH_CI_API_KEY` 读；缺凭据时**失败而不是跳过**。
+ *   这个变量名与插件日常继承的 `DEEPSEEK_API_KEY` **不同**：契约巡检用一把专用 key，
+ *   CI 上它来自同名仓库 secret。
  * - 只被 [vitest.contract.config.ts](../vitest.contract.config.ts) 收集，`npm test` 不会跑到它。
  *
  * 它不消耗余额：`/user/balance` 是查询接口。
  * 失败信息里绝不回显凭据本身。
  */
 
-const API_KEY = process.env.DEEPSEEK_API_KEY
+const API_KEY = process.env.DSH_CI_API_KEY
 if (!API_KEY) {
   throw new Error(
-    '缺 DEEPSEEK_API_KEY：契约测试打真实上游，需要一把能查余额的 key。' +
+    '缺 DSH_CI_API_KEY：契约测试打真实上游，需要一把能查余额的 key。' +
       '它只从环境变量读，不从仓库里的任何文件读。',
   )
 }

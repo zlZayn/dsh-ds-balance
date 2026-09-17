@@ -9,7 +9,7 @@
 
 - `npm run check:release` —— 发布态不变量：`dsh.bundle` 加回来了吗、`private` 去掉了吗。
 - `npm run typecheck` 与 `npm test`。
-- `node scripts/acceptance.mjs` —— 打真实上游的端到端验收，需要环境里有 `DEEPSEEK_API_KEY`。
+- `node scripts/acceptance.mjs` —— 打真实上游的端到端验收，需要环境里有 `DEEPSEEK_API_KEY`（**插件日常继承的那把**，不是契约巡检的专用 key）。
 - `git diff --name-only <上个 tag>..HEAD | node scripts/release-guard.mjs` —— 产物到底变没变。
 - 按下面的判定链定档，然后 `npm version <patch|minor|major> --no-git-tag-version`。
   这一步会同时改 `package.json` 与 `package-lock.json`；只手工改前者会被 CI 拦下。
@@ -104,6 +104,13 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 3. 在 GitHub 仓库设置里建同名 environment `release`，可以给它挂人工审批。
 4. 确认该包的 publishing access 允许 trusted publisher。
 
+另外两件一次性配置，与 npm 无关，但同属「跑起来之前要手动做」：
+
+1. 仓库 secret `DSH_CI_API_KEY` —— 契约巡检的专用 key，见下面的「CI 说明」。
+2. 本地环境变量 `DEEPSEEK_API_KEY` —— 插件日常继承的那把；跑 `acceptance.mjs` 时要它在环境里。
+
+**两把 key 不要混用**：前者每周打一次真上游，混进主 key 的调用记录里就分不清是谁在调。
+
 配好之后不必再动凭据。仓库里不该出现任何 npm token；出现了就说明配置没生效。
 
 ## CI 说明
@@ -115,7 +122,7 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 | [contract.yml](../.github/workflows/contract.yml) | 每周一 01:00 UTC | 打真实上游，核对响应指纹 |
 | [release.yml](../.github/workflows/release.yml) | 手动 | 上面那条发版流程 |
 
-契约巡检要仓库 secret `DEEPSEEK_API_KEY`；没配会红，并直说是缺 secret。
+契约巡检要仓库 secret `DSH_CI_API_KEY`（专用 key，与插件继承的 `DEEPSEEK_API_KEY` 是两把）；没配会红，并直说是缺 secret。
 `release.yml` 的 OIDC 认证不需要任何 secret。
 
 ## 兼容性

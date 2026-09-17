@@ -7,7 +7,8 @@ import { defineConfig } from 'vitest/config'
 //
 //   npm run test:contract
 //
-// 跑之前环境里要有 DEEPSEEK_API_KEY。缺凭据时它是失败，不是跳过。
+// 跑之前环境里要有 DSH_CI_API_KEY（契约巡检的专用 key；CI 上取自同名仓库 secret）。
+// 它与插件日常继承的 DEEPSEEK_API_KEY 是两把，别混用。缺凭据时它是失败，不是跳过。
 export default defineConfig({
   test: {
     include: ['test/contract-live-*.test.ts'],

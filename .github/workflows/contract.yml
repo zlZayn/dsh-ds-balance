@@ -11,6 +11,10 @@
 # 为什么不进 ci.yml：要真实凭据。每次推送都拿真 key 打真上游，既没必要也脏。
 # 这个接口是查询，不消耗余额。
 #
+# **凭据名与插件日常继承的那把不同**：插件继承的是 `DEEPSEEK_API_KEY`（dsh 官方凭据，见 src/config.ts），
+# 契约巡检用一把**专用** key，在仓库里存成 secret `DSH_CI_API_KEY`。两把不要混用 ——
+# 巡检每周打一次真上游，拿日常那把去跑等于把主 key 的调用记录混进日常用量里。
+#
 # 与 compat.yml 错开一小时。
 name: contract
 
@@ -37,17 +41,17 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      # 缺 secret 时说清楚是哪一步缺的，别让失败信息退化成测试里的那句「缺 DEEPSEEK_API_KEY」。
+      # 缺 secret 时说清楚是哪一步缺的，别让失败信息退化成测试里的那句「缺 DSH_CI_API_KEY」。
       - name: Verify the repository secret is configured
         env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DSH_CI_API_KEY: ${{ secrets.DSH_CI_API_KEY }}
         run: |
-          if [ -z "$DEEPSEEK_API_KEY" ]; then
-            echo "::error::仓库 secret DEEPSEEK_API_KEY 未配置，契约测试没有凭据可跑。"
+          if [ -z "$DSH_CI_API_KEY" ]; then
+            echo "::error::仓库 secret DSH_CI_API_KEY 未配置，契约测试没有凭据可跑。"
             exit 1
           fi
 
       - name: Contract test against the real upstream
         env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DSH_CI_API_KEY: ${{ secrets.DSH_CI_API_KEY }}
         run: npm run test:contract

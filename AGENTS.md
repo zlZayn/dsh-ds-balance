@@ -18,7 +18,7 @@
 
 - `npm run build`：宿主 tsc + 客户端 tsc + esbuild 打包，三步缺一不可
 - `npm run typecheck`、`npm test`
-- `npm run test:contract`：打真实上游的契约测试，要环境里有 `DEEPSEEK_API_KEY`；不进 ci.yml
+- `npm run test:contract`：打真实上游的契约测试，要环境里有 `DSH_CI_API_KEY`（专用，非插件继承那把）；不进 ci.yml
 - `npm run check:release`：发布态不变量；开发期会卡在 `dsh.bundle` 与 `private` 两条
 - `node scripts/acceptance.mjs`（端到端验收）、`node scripts/compat-swap.mjs check`（现查三条 dist-tag 线）
 - 挂载（不重启宿主）：先 `dsh plugin --profile <profile> add <仓库路径>`，再确认 profile 的 `dsh.profile.bundles` 里没有本插件，然后把 insert 行写进 profile 的 `cordis.patch.yml`
@@ -81,7 +81,7 @@
 - [ ] 发布前：加回 `dsh.bundle`、去掉 `private` —— [check-release.mjs](scripts/check-release.mjs) 会卡
 - [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
-- [ ] 首次发布前的手动配置：npm Trusted Publishing、仓库 secret `DEEPSEEK_API_KEY`、environment `release` → [发布手册](docs/PUBLISHING.md)
+- [ ] 首次发布前的手动配置：npm Trusted Publishing、仓库 secret `DSH_CI_API_KEY`、environment `release` → [发布手册](docs/PUBLISHING.md)
 
 ## 活跃坑
 
