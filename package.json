@@ -2,7 +2,7 @@
   "name": "dsh-ds-balance",
   "version": "0.0.1",
   "private": true,
-  "description": "DSH plugin: DeepSeek account balance in the sidebar footer plus a settings card. UI-only stage on mock data.",
+  "description": "DSH plugin: shows the DeepSeek account balance at the bottom of the sidebar, with a configuration card in settings.",
   "keywords": [
     "dsh",
     "deepseek-harness",
@@ -12,6 +12,15 @@
     "usage"
   ],
   "license": "MIT",
+  "author": "zlZayn",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zlZayn/dsh-ds-balance.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zlZayn/dsh-ds-balance/issues"
+  },
+  "homepage": "https://github.com/zlZayn/dsh-ds-balance#readme",
   "type": "module",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -31,6 +40,7 @@
     "!lib/**/*.map",
     "cordis.patch.yml",
     "README.md",
+    "README_en.md",
     "LICENSE"
   ],
   "engines": {
