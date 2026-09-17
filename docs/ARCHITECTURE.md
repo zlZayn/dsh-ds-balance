@@ -31,14 +31,15 @@
 ## 关键决策
 
 - 左下角落点 = `sidebar.footer.action`；折叠 / 展开由该槽的 `wide` prop 决定，不自行探测宽度。
-- 设置界面落点 = `settings.plugin.item`，取代任务书原稿的 `settings.section`。
+- 配置卡片落点 = `plugins.bundle.config`（key 逐字等于包名），取代已删除的 `settings.plugin.item`；槽的 owner props 是两视图，`summary` 那一档留空。
+- 卡片外壳照原生 `PluginConfigForm`：**无外框**（控件直接铺在 bundle 详情页里，不是卡中卡）、标题由页面画，卡内没有折叠头、也没有「放弃」控件 —— 只有保存才写，草稿随 unmount 丢弃。
 - 样式只用 CSS Modules + `--dsw-alias-*` 语义 token；禁 Tailwind、禁组件库、禁字面色值。
 - 主题由 `body[data-ds-dark-theme]` 承载，插件直接读 CSS 变量，不写主题选择器。
 - 构建 = `tsc` + `tsc -p tsconfig.client.json` + 自研 esbuild 打包（复刻 `window.__ModuleLoader__.load` 信封）。
 - `sidebar.footer.action` 的宿主容器缺 `flex-direction`，插件侧用 `:has()` 反选父元素补成纵向堆叠；这是唯一一处插件覆盖宿主布局的地方。
 - 依赖锚点跟随宿主运行的 alpha 线。
 - 设置卡片分四组、各自可折叠，顺序是 连接 → 展示 → 阈值 → 刷新（按使用频率排）；宿主 `Config` 的字段顺序是 连接 → 刷新 → 展示 → 阈值（按任务书排）。**两者有意不同，不要改成一样。**
-- 四组默认全收起，卡片一打开只占四行折叠头；组内有非法草稿时该组强制展开 —— 非法会禁用保存，收起的组会让 footer 的「请检查标红的字段」指向看不见的地方。
+- 四组默认全展开（这是 bundle 的专属配置页，进页面就该看见字段），各自可折叠；组内有非法草稿时该组强制展开 —— 非法会禁用保存，收起的组会让 footer 的「请检查标红的字段」指向看不见的地方。
 - 凭据行在标签行右侧只带两态胶囊：已配置密钥。/ 未配置密钥。（官方 `ui-settings-plugins` 原文）；
   四档判据（覆盖 > 环境 > 配没配）仍在 `credentialViewOf` 里，但它只影响二级折叠字段的状态，不再影响徽章。
 - 「显示币种」是整行左右布局（左文字 + 右选择器胶囊），不是上下结构。

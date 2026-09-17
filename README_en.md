@@ -27,7 +27,7 @@
 > [!NOTE]
 > **The balance is read from the official `GET /user/balance`** — not estimated. The credential is resolved only through DSH's credential channel: the API key never lands in a settings file and is never returned to the UI.
 
-The balance needs somewhere to live that does not take up room. A permanent status ring at the bottom of the sidebar; click it for the three amounts and the freshness of the data. Anything you want to configure lives on the settings card.
+The balance needs somewhere to live that does not take up room. A permanent status ring at the bottom of the sidebar; click it for the three amounts and the freshness of the data. Anything you want to configure lives on that card on the **Plugins** page.
 
 <p align="center">
   <img src="assets/sidebar-popover_en.png" alt="The DeepSeek balance entry at the bottom of the sidebar, with its popover open" width="360">
@@ -41,14 +41,14 @@ The balance needs somewhere to live that does not take up room. A permanent stat
 |---|---|---|
 | Sidebar ring | A status ring plus label at the bottom of the sidebar; **how full it is = how far the balance is from that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
 | Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown) | Checking the exact figures, and how many minutes old they are |
-| Settings card | Connection / Display / Thresholds / Refresh, each collapsible, all collapsed by default | Changing the endpoint, the currency, the warning lines, the cadence |
+| Settings card | Connection / Display / Thresholds / Refresh, all expanded by default, each collapsible | Changing the endpoint, the currency, the warning lines, the cadence |
 
 The division of labour is fixed: **the ring answers "roughly how much is left", the popover answers "exactly how much", and the card answers "how is that computed".**
 
 <p align="center">
-  <img src="assets/settings-card_en.png" alt="The DeepSeek balance card in the plugin settings" width="360">
+  <img src="assets/settings-card_en.png" alt="The DeepSeek balance card on the Plugins page" width="360">
   <br>
-  <em>The card is those four groups: each collapsible, all collapsed by default; a group holding a bad value opens itself.</em>
+  <em>The card is those four groups: all expanded by default, each collapsible; a group holding a bad value opens itself.</em>
 </p>
 
 ## Capabilities
@@ -57,7 +57,7 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
 - The balance refreshes on its own schedule and the UI reads a cache — leaving the interface open does not hammer the upstream.
 - The popover shows the total, the granted / topped-up split, how old the data is, and a manual refresh with a cooldown.
 - Multiple currencies: the account decides which currency is shown; when the one chosen in settings is absent, the popover explains and offers a one-click switch.
-- The settings card has four collapsible groups, all collapsed by default; a group holding a bad value opens itself.
+- The settings card has four groups, all expanded by default and each collapsible; a group holding a bad value opens itself.
 - The credential is inherited from the official model settings by default, so there is nothing to re-enter; where it comes from is on a badge
   (a key is configured / no key is configured, exactly the official card's wording), and a read-only field explains itself instead of offering an edit.
 - Colour carries state only (normal / low / critical), never an amount; see "[Reading the ring](#reading-the-ring)".
@@ -106,7 +106,7 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 ## Configuration
 
-Open **Settings → Plugins → Plugin configuration → DeepSeek balance**. Four groups, each collapsible:
+Open **Plugins → Installed → `dsh-ds-balance`**. Four groups, each collapsible:
 
 <p align="center">
   <img src="assets/settings-cards-position_en.png" alt="Where the DeepSeek balance card sits in the settings page" width="480">

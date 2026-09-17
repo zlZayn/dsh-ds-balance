@@ -1,14 +1,13 @@
 /**
- * 「DeepSeek 余额」在设置页里的配置卡片。
+ * 「DeepSeek 余额」在 Plugins 页里该 bundle 详情页上的配置卡片：标题由页面画，卡内只有控件与保存。
  * 只做配置：连接、展示、阈值、刷新四组；不展示任何额度信息，也不按阈值给任何东西上色。
  * 分组按使用频率排序：刷新三项有合理默认值，放最后。
  * @module dsh-ds-balance/client/settings/BalanceSettingsCard
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import clsx from 'clsx'
+import { useState, type ReactNode } from 'react'
 import {
-  IconApiOutline14, IconChevronDownOutline14, IconGlobeOutline14, IconRefreshOutline14, IconWarningOutline16, Tag,
+  IconApiOutline14, IconGlobeOutline14, IconRefreshOutline14, IconWarningOutline16,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { interpolate } from '../locales.ts'
 import type { LocaleKey } from '../locales.ts'
@@ -53,12 +52,12 @@ const CREDENTIAL_BADGE: Readonly<Record<CredentialView, LocaleKey>> = {
 /** 四个配置分组的键。 */
 type GroupKey = 'connection' | 'display' | 'thresholds' | 'refresh'
 
-/** 分组的默认展开状态：四组全收着，卡片一打开只占四行折叠头。 */
+/** 分组的默认展开状态：四组全展开 —— 这是 bundle 的专属配置页，进页面就该看见字段。 */
 const DEFAULT_GROUP_OPEN: Readonly<Record<GroupKey, boolean>> = {
-  connection: false,
-  display: false,
-  thresholds: false,
-  refresh: false,
+  connection: true,
+  display: true,
+  thresholds: true,
+  refresh: true,
 }
 
 /** 每组包含哪些字段；用来判断「这一组里有没有需要用户看见的非法草稿」。 */
@@ -102,9 +101,7 @@ function isFilled(value: unknown): boolean {
  */
 export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
   const form = useConfigForm(scope)
-  const [open, setOpen] = useState(false)
   const [groupOpen, setGroupOpen] = useState<Readonly<Record<GroupKey, boolean>>>(DEFAULT_GROUP_OPEN)
-  const saveStarted = useRef(false)
 
   // 各组独立展开，不做手风琴：多项同时展开是刻意的（官方 PluginCard.tsx:8-9 的注释）。
   const toggleGroup = (key: GroupKey): void => {
@@ -121,17 +118,6 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
 
   const { writable, dirty, invalid, saving, failed } = form.state
   const disabled = !writable || saving
-
-  // 保存落定后才折叠：被拒绝的写入保持展开，草稿与诊断留在原地供修正。
-  useEffect(() => {
-    if (saving) {
-      saveStarted.current = true
-      return
-    }
-    if (!saveStarted.current) return
-    saveStarted.current = false
-    if (!dirty && !failed) setOpen(false)
-  }, [dirty, failed, saving])
 
   // 凭据字段的状态胶囊：只描述已经存下来的事实，不看编辑中的草稿。
   // 官方 SecretField 与知乎卡片同构：标签行右侧一个 Tag，neutral 表示有值，quiet 表示没有。
@@ -278,137 +264,107 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
       : null
 
   return (
-    <li className={clsx(css.card, open && css.cardOpen)}>
-      <button
-        type="button"
-        className={css.header}
-        aria-expanded={open}
-        onClick={() => { setOpen(!open) }}
+    // 页面把这一格渲染在自己的 <section> 里：无外框的一列控件，所以根节点是 div、不是 li。
+    <div className={css.form}>
+      {writable ? null : <p className={css.readOnly} role="status">{t('settings.readOnly')}</p>}
+
+      <FieldGroup
+        icon={<IconApiOutline14 size={14} />}
+        title={t('settings.group.connection')}
+        open={groupOpenNow('connection')}
+        onToggle={() => { toggleGroup('connection') }}
       >
-        <span className={css.headText}>
-          <span className={css.name}>{t('settings.title')}</span>
-          <span className={css.description}>{t('settings.description')}</span>
-        </span>
-        {dirty ? <Tag tone="neutral" className={css.pending}>{t('settings.unsaved')}</Tag> : null}
-        {/* 折叠箭头是纯装饰：包一层 aria-hidden，图标本身不接受这个属性。 */}
-        <span className={css.chevronWrap} aria-hidden="true">
-          <IconChevronDownOutline14 className={clsx(css.chevron, open && css.chevronOpen)} />
-        </span>
-      </button>
+        {/* 凭据状态：只读展示。结构照搬官方「模型」卡片对「启动环境提供的密钥」的处理 ——
+            字段照常渲染，disabled、整块降到 60%，而不是隐藏或另做只读块。
+            **框内不写字**：状态改由标签行右侧的徽章（四档）与它下方的说明行承担；
+            灰字占位符读起来像「这里该填但没填」，语气是错的。
+            要覆盖它，展开下方的「自定义设置」。 */}
+        <FieldFrame
+          id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
+          label={t('settings.field.apiKey')}
+          status={{ label: t(CREDENTIAL_BADGE[credentialView]), tone: credentialView === 'notConfigured' ? 'quiet' : 'neutral' }}
+          pending={false}
+          resettable={false}
+          pendingLabel={t('settings.unsaved')}
+          resetLabel={t('settings.reset')}
+          invalid={false}
+          hint={t('settings.hint.credential')}
+          disabled
+          onReset={() => {}}
+        >
+          <ReadOnlyControl
+            id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
+          />
+        </FieldFrame>
 
-      {open
-        ? (
-          <div className={css.body}>
-            {writable ? null : <p className={css.readOnly} role="status">{t('settings.readOnly')}</p>}
+        {textRow('baseUrl', 'settings.field.baseUrl', 'settings.hint.baseUrl', false)}
 
-            <FieldGroup
-              icon={<IconApiOutline14 size={14} />}
-              title={t('settings.group.connection')}
-              open={groupOpenNow('connection')}
-              onToggle={() => { toggleGroup('connection') }}
-            >
-              {/* 凭据状态：只读展示。结构照搬官方「模型」卡片对「启动环境提供的密钥」的处理 ——
-                  字段照常渲染，disabled、整块降到 60%，而不是隐藏或另做只读块。
-                  **框内不写字**：状态改由标签行右侧的徽章（四档）与它下方的说明行承担；
-                  灰字占位符读起来像「这里该填但没填」，语气是错的。
-                  要覆盖它，展开下方的「自定义设置」。 */}
-              <FieldFrame
-                id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
-                label={t('settings.field.apiKey')}
-                status={{ label: t(CREDENTIAL_BADGE[credentialView]), tone: credentialView === 'notConfigured' ? 'quiet' : 'neutral' }}
-                pending={false}
-                resettable={false}
-                pendingLabel={t('settings.unsaved')}
-                resetLabel={t('settings.reset')}
-                invalid={false}
-                hint={t('settings.hint.credential')}
-                disabled
-                onReset={() => {}}
-              >
-                <ReadOnlyControl
-                  id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
-                />
-              </FieldFrame>
+        <div className={fieldCss.field} key="test">
+          <ActionRow
+            label={form.test.running ? t('settings.testing') : t('settings.test')}
+            disabled={disabled || form.test.running}
+            result={testResult}
+            onClick={form.runTest}
+          />
+        </div>
 
-              {textRow('baseUrl', 'settings.field.baseUrl', 'settings.hint.baseUrl', false)}
+        {/* 二级折叠，默认收起：**只能改凭据引用名，不能再填一个 Key** ——
+            界面上唯一的 API Key 就是上面那个继承官方、不可改的框（官方「网页搜索」卡片同款）。
+            Key 本身仍可由配置文件提供，所以 schema 与写入面都不动。 */}
+        <DetailsGroup title={t('settings.group.customized')}>
+          {textRow('apiKeyRef', 'settings.field.apiKeyRef', 'settings.hint.apiKeyRef', true)}
+        </DetailsGroup>
+      </FieldGroup>
 
-              <div className={fieldCss.field} key="test">
-                <ActionRow
-                  label={form.test.running ? t('settings.testing') : t('settings.test')}
-                  disabled={disabled || form.test.running}
-                  result={testResult}
-                  onClick={form.runTest}
-                />
-              </div>
+      <FieldGroup
+        icon={<IconGlobeOutline14 size={14} />}
+        title={t('settings.group.display')}
+        open={groupOpenNow('display')}
+        onToggle={() => { toggleGroup('display') }}
+      >
+        {currencyRow}
+      </FieldGroup>
 
-              {/* 二级折叠，默认收起：**只能改凭据引用名，不能再填一个 Key** ——
-                  界面上唯一的 API Key 就是上面那个继承官方、不可改的框（官方「网页搜索」卡片同款）。
-                  Key 本身仍可由配置文件提供，所以 schema 与写入面都不动。 */}
-              <DetailsGroup title={t('settings.group.customized')}>
-                {textRow('apiKeyRef', 'settings.field.apiKeyRef', 'settings.hint.apiKeyRef', true)}
-              </DetailsGroup>
-            </FieldGroup>
+      <FieldGroup
+        icon={<IconWarningOutline16 size={14} />}
+        title={t('settings.group.thresholds')}
+        note={t('settings.hint.threshold')}
+        open={groupOpenNow('thresholds')}
+        onToggle={() => { toggleGroup('thresholds') }}
+      >
+        {numberRow('cnyWarn', 'settings.field.cnyWarn')}
+        {numberRow('cnyCritical', 'settings.field.cnyCritical', undefined, pairNote('CNY'))}
+        {numberRow('usdWarn', 'settings.field.usdWarn')}
+        {numberRow('usdCritical', 'settings.field.usdCritical', undefined, pairNote('USD'))}
+      </FieldGroup>
 
-            <FieldGroup
-              icon={<IconGlobeOutline14 size={14} />}
-              title={t('settings.group.display')}
-              open={groupOpenNow('display')}
-              onToggle={() => { toggleGroup('display') }}
-            >
-              {currencyRow}
-            </FieldGroup>
+      {/* 刷新三项都有合理默认值，属于装了就不用动的那一档，因此排在最后。 */}
+      <FieldGroup
+        icon={<IconRefreshOutline14 size={14} />}
+        title={t('settings.group.refresh')}
+        note={t('settings.hint.refreshAdvanced')}
+        open={groupOpenNow('refresh')}
+        onToggle={() => { toggleGroup('refresh') }}
+        last
+      >
+        {numberRow('serverRefreshSeconds', 'settings.field.serverRefreshSeconds', 'settings.hint.serverRefreshSeconds')}
+        {numberRow('clientPollSeconds', 'settings.field.clientPollSeconds', 'settings.hint.clientPollSeconds')}
+        {numberRow('manualRefreshCooldownSeconds', 'settings.field.manualRefreshCooldownSeconds', 'settings.hint.manualRefreshCooldownSeconds')}
+      </FieldGroup>
 
-            <FieldGroup
-              icon={<IconWarningOutline16 size={14} />}
-              title={t('settings.group.thresholds')}
-              note={t('settings.hint.threshold')}
-              open={groupOpenNow('thresholds')}
-              onToggle={() => { toggleGroup('thresholds') }}
-            >
-              {numberRow('cnyWarn', 'settings.field.cnyWarn')}
-              {numberRow('cnyCritical', 'settings.field.cnyCritical', undefined, pairNote('CNY'))}
-              {numberRow('usdWarn', 'settings.field.usdWarn')}
-              {numberRow('usdCritical', 'settings.field.usdCritical', undefined, pairNote('USD'))}
-            </FieldGroup>
-
-            {/* 刷新三项都有合理默认值，属于装了就不用动的那一档，因此排在最后。 */}
-            <FieldGroup
-              icon={<IconRefreshOutline14 size={14} />}
-              title={t('settings.group.refresh')}
-              note={t('settings.hint.refreshAdvanced')}
-              open={groupOpenNow('refresh')}
-              onToggle={() => { toggleGroup('refresh') }}
-              last
-            >
-              {numberRow('serverRefreshSeconds', 'settings.field.serverRefreshSeconds', 'settings.hint.serverRefreshSeconds')}
-              {numberRow('clientPollSeconds', 'settings.field.clientPollSeconds', 'settings.hint.clientPollSeconds')}
-              {numberRow('manualRefreshCooldownSeconds', 'settings.field.manualRefreshCooldownSeconds', 'settings.hint.manualRefreshCooldownSeconds')}
-            </FieldGroup>
-
-            <div className={css.footer}>
-              {footerNote === null
-                ? null
-                : <p className={footerNote.className} role="status">{footerNote.text}</p>}
-              <button
-                type="button"
-                className={css.discard}
-                disabled={!dirty || saving}
-                onClick={form.discard}
-              >
-                {t('settings.discard')}
-              </button>
-              <button
-                type="button"
-                className={css.save}
-                disabled={!dirty || invalid || saving || !writable}
-                onClick={() => { void form.save() }}
-              >
-                {saving ? t('settings.saving') : t('settings.save')}
-              </button>
-            </div>
-          </div>
-        )
-        : null}
-    </li>
+      <div className={css.footer}>
+        {footerNote === null
+          ? null
+          : <p className={footerNote.className} role="status">{footerNote.text}</p>}
+        <button
+          type="button"
+          className={css.save}
+          disabled={!dirty || invalid || saving || !writable}
+          onClick={() => { void form.save() }}
+        >
+          {saving ? t('settings.saving') : t('settings.save')}
+        </button>
+      </div>
+    </div>
   )
 }

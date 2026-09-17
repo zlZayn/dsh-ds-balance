@@ -1,6 +1,6 @@
 # settings/ — 设置卡片手册
 
-- 职责：把本插件的配置渲染成设置页里的一张卡片；四组配置各自可折叠，编辑先落本地草稿，保存是草稿变成设置的唯一出口。
+- 职责：把本插件的配置渲染成 Plugins 页里该 bundle 详情页上的一张卡片；四组配置各自可折叠，编辑先落本地草稿，保存是草稿变成设置的唯一出口。
 - 变更影响路由：改字段名 → 同步宿主 schema [src/index.ts](../../index.ts) 的 `Config`；改对外可见行为 → 同步 [docs/ui-handoff.md](../../../docs/ui-handoff.md) 的设置小节、根 [README.md](../../../README.md) 与 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 - 回根 → [../../../AGENTS.md](../../../AGENTS.md)（仓库根）；直接上层是 [../AGENTS.md](../AGENTS.md)（src/client 规则层）。
@@ -11,23 +11,24 @@
 
 ### BalanceSettingsCard.tsx
 
-- 职责：卡片本体。持有卡片展开、密钥显隐、分组展开三份局部状态，外加一个保存起始标记（ref）；把 `useConfigForm` 的状态翻译成 JSX。
+- 职责：卡片本体。持有分组展开一份局部状态；把 `useConfigForm` 的状态翻译成 JSX。
 - 关键导出：`BalanceSettingsCard`、`BalanceSettingsCardProps`，并转发 `SettingsScope`。
 - 分组：连接 → 展示 → 阈值 → 刷新。这是 UI 的排列顺序（按使用频率）；宿主 `Config` 的字段顺序是 连接 → 刷新 → 展示 → 阈值，**两者有意不同**，见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md) 的关键决策。
 - 连接组是**两段式**：外面是只读的凭据状态（`ReadOnlyControl`，继承官方、不可改）与可编辑的 Base URL；二级「自定义设置」折叠里只有**凭据引用名**（`apiKeyRef`，默认收起）。
   **界面上唯一的 API Key 就是那个只读框** —— 卡片不再提供填 Key 的入口；Key 仍可由配置文件给出，所以 schema 与写入面没动。
-- 默认展开：四组全收起（`DEFAULT_GROUP_OPEN` 全 `false`），卡片一打开只占四行折叠头。
+- 默认展开：四组全展开（`DEFAULT_GROUP_OPEN` 全 `true`）—— 这是 bundle 的专属配置页，进页面就该看见字段；折叠能力保留，收起态只活在当前挂载期。
 - 组内有非法草稿时该组强制展开（`groupOpenNow`），否则 footer 的「请检查标红的字段」会指向一个收起来的组。
 - 被谁依赖：`src/client/index.tsx` 的 `SettingsSeatComponent`。
-- 改后必测：四组各自展开与收起；暂存、保存、放弃；非法数字禁用保存；密钥显隐切换；测试连接的三种结果。
+- 改后必测：四组各自展开与收起；暂存与保存；非法数字禁用保存；测试连接的三种结果。
 
 ### BalanceSettingsCard.module.css
 
-- 职责：卡片外壳与卡级提示的样式；取值逐条对齐官方 `ui-settings-plugins/PluginCard.module.css`。
-- 关键规则：`.card`（0.5px 边框 + radius 16）、`.header`、`.body`（border-top 0.5px + margin 0 16px + **padding-bottom 0**）、`.footer`（**padding 12px 0** + border-top 0.5px）。
-- **`.footer` 是 `.body` 的孩子而不是兄弟**：按钮下方到卡片下缘的留白由 `.footer` 自己的 `padding-bottom` 出（12px）。官方是 `.body` 的 8px 加 footer 的 4px 凑出同样的 12px；此处让 footer 自持，避免误读。
+- 职责：表单外壳（一列控件 + 保存行）的样式；取值逐条对齐官方 `ui-settings-plugins/PluginConfigForm.module.css` 与 `fields.module.css`。
+- 关键规则：`.form`（flex 列；**无外框、无圆角、无底色、无内边距**，控件直接铺在宿主的 `<section data-plugin-config>` 里）、`.readOnly`（`margin: 0 0 12px`）、`.footer`（`padding-top: 16px` + `gap: 8px`；**无 border-top**）、`.save`。
+- **保存按钮不右推**：官方没有 `margin-left:auto`，只有失败提示靠 `flex:1` 把按钮顶到右边；没有失败提示时按钮就在左边。
+- 字段之间的分隔线不归这里，归 [fields.module.css](fields.module.css) 的 `.fields > * + *`。
 - 被谁依赖：`BalanceSettingsCard.tsx`。
-- 改后必测：`.body` 的 `padding-bottom` 保持 0（组间节奏归 `.group` / `.groupLast`）；`.footer` 的 `padding-bottom` 保持 12px（按钮到卡片下缘）；中性边框保持 0.5px。
+- 改后必测：`.form` 上不出现 border / border-radius / background / padding；`.footer` 不出现 border-top 与 `justify-content`；中性实线边框保持 0.5px。
 - 错误文本用 `var(--dsw-alias-state-error-primary)`；官方 `--dsw-alias-label-error` 从未定义。
 
 ### fields.tsx

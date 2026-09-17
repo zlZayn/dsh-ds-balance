@@ -33,8 +33,6 @@ export const zh = {
   'state.noKey': '尚未填写 API Key',
   'state.noBalance': '暂无余额',
 
-  'settings.title': 'DeepSeek 余额',
-  'settings.description': '配置账户连接、刷新节奏与预警阈值。',
   'settings.group.connection': '连接',
   'settings.group.refresh': '刷新',
   'settings.group.display': '展示',
@@ -75,7 +73,6 @@ export const zh = {
   'settings.test.fail': '连接失败：{message}',
   'settings.save': '保存',
   'settings.saving': '保存中…',
-  'settings.discard': '放弃修改',
   'settings.failed': '保存失败，请重试。',
   'settings.readOnly': '当前配置只读，无法保存修改。',
   'settings.unsaved': '未保存',
@@ -130,8 +127,6 @@ export const en: Record<LocaleKey, string> = {
   'state.noKey': 'API key missing',
   'state.noBalance': 'No balance',
 
-  'settings.title': 'DeepSeek balance',
-  'settings.description': 'Connection, refresh cadence, and warning thresholds.',
   'settings.group.connection': 'Connection',
   'settings.group.refresh': 'Refresh',
   'settings.group.display': 'Display',
@@ -168,7 +163,6 @@ export const en: Record<LocaleKey, string> = {
   'settings.test.fail': 'Connection failed: {message}',
   'settings.save': 'Save',
   'settings.saving': 'Saving…',
-  'settings.discard': 'Discard',
   'settings.failed': 'Saving failed. Try again.',
   'settings.readOnly': 'This configuration is read-only.',
   'settings.unsaved': 'Unsaved',

@@ -1,6 +1,6 @@
 # client/ — 浏览器半边手册
 
-- 职责：注册两个 slot（左下角条目、设置卡片）与中英词典；所有界面都在这里。
+- 职责：注册两个 slot（左下角条目、Plugins 页里的配置卡片）与中英词典；所有界面都在这里。
 - 变更影响路由：改这里的对外行为 → 同步根 [README.md](../../README.md) 与 [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)；改完必须 `npm run build`，产物由 `dsh-client-hmr` 自动替换。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 
@@ -19,8 +19,8 @@
 
 ## 关键导出
 
-- `SETTINGS_NAMESPACE`：必须与宿主半边逐字一致，它是两半的配对键，也是设置卡片的 `key` 与左下角条目的 `id`。
-- `apply(ctx)`：注册两个 slot；两半都能拿到同一个作用域对象（`apply` 期建一次，引用稳定）。
+- `SETTINGS_NAMESPACE`：必须与宿主半边逐字一致，它是两半的配对键，也是左下角条目的 `id`；配置卡片的 `key` 是包名，与它无关。
+- `apply(ctx)`：向 `plugins.bundle.config`（key = 包名）与 `sidebar.footer.action` 各注册一次；两半都能拿到同一个作用域对象（`apply` 期建一次，引用稳定）。
 
 ## 依赖面
 

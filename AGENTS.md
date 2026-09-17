@@ -65,7 +65,7 @@
 - [ ] 六条待产品决策的默认值 → [决策记录](.agents/notes/2026-09-17-implementation-deviations.md) 末节
 - [x] 重启宿主一次让后端半边生效（维护者已做，13:15）
 - [x] 本轮 UI 改动的收尾：文档同步、报告回填、提交
-- [ ] 设置卡片的折叠状态不持久化（v1 有意不做，官方仅一处先例）
+- [x] 卡片的折叠头已按原生形态取消：不再有要持久化的折叠状态
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
 - [x] 发布前：加回 `dsh.bundle`、去掉 `private` → `npm run check:release` 0 失败
 - [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)

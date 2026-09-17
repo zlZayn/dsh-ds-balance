@@ -46,6 +46,18 @@ describe('构建产物', () => {
     expect(bundle).toContain('id: ' + JSON.stringify(pkg.name))
   })
 
+  it('配置卡片挂在 Plugins 页的 bundle 槽上，key 逐字等于包名', () => {
+    const bundle = readFileSync('lib/client.js', 'utf8')
+    // 宿主的 bundle 详情页按包名取这一格；key 写错就整块不出现，也不会报错。
+    expect(bundle).toContain('plugins.bundle.config')
+    expect(bundle).toContain('key: ' + JSON.stringify(pkg.name))
+    // 旧槽已被宿主整体删除 —— 留着它等于卡片在活界面上不渲染。
+    expect(bundle).not.toContain('settings.plugin.item')
+    // 槽的 owner props 是两视图：page 出表单，summary 留空返回 null。
+    expect(bundle).toContain('case "page"')
+    expect(bundle).toContain('case "summary"')
+  })
+
   it('浏览器信封把样式内联回 factory（DSH 不加载独立的 css 文件）', () => {
     const bundle = readFileSync('lib/client.js', 'utf8')
     expect(bundle).toContain('data-plugin-css')

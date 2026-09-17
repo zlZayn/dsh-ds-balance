@@ -1,8 +1,8 @@
 /**
- * 浏览器半边入口：注册词典、设置卡片与左下角条目。
+ * 浏览器半边入口：注册词典、Plugins 页里的配置卡片与左下角条目。
  *
- * 这两半各占一个 slot，互不依赖；设置卡片的位置由宿主 `installSection` 与
- * 本文件注册的 `settings.plugin.item` 用同一个命名空间配对决定。
+ * 这两半各占一个 slot，互不依赖；配置卡片挂在 `plugins.bundle.config` 上，
+ * 宿主按**包名**取这一格，设置命名空间只用来绑作用域。
  * @module dsh-ds-balance/client
  */
 
@@ -12,7 +12,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // 类型导入即声明：这两行让下面两个 slot 键的契约进入类型系统。
-import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
+import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { BalanceSettingsCard } from './settings/BalanceSettingsCard.tsx'
 import type { SettingsScope, SettingsScopeSnapshotLike } from './settings/use-config-form.ts'
@@ -173,14 +173,26 @@ function SidebarSeatComponent(props: { seat: SidebarSeat; scope: SettingsScope }
   )
 }
 
-/** 设置卡片的座位 props。 */
+/** 配置卡片的座位 props。 */
 interface SettingsSeat {
+  /** 槽的 owner props：`page` 是 bundle 详情页里的表单，`summary` 是列表里的一行说明。 */
+  view: 'summary' | 'page'
   t: unknown
 }
 
-/** 设置卡片。宿主没服务这个命名空间时面板不会渲染这张卡，这里不需要额外判断。 */
+/**
+ * Plugins 页里的配置卡片。
+ *
+ * 这个槽的 owner props 有两个视图；本卡片只有表单形态，`summary` 那一档留空返回 null
+ * （列表里的一行说明由页面自己画）。宿主现在只以 `page` 渲染这一格。
+ */
 function SettingsSeatComponent(props: { seat: SettingsSeat; scope: SettingsScope }): ReactNode {
-  return <BalanceSettingsCard t={props.seat.t as Translate} scope={props.scope} />
+  switch (props.seat.view) {
+    case 'page':
+      return <BalanceSettingsCard t={props.seat.t as Translate} scope={props.scope} />
+    case 'summary':
+      return null
+  }
 }
 
 /** 挂载两半。 */
@@ -189,9 +201,11 @@ export function apply(ctx: ClientContext): void {
 
   const scope = adaptScope(ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE }))
 
-  ctx.slots.inject('settings.plugin.item', () =>
+  // 配置卡片的 key 逐字等于 package.json 的 name：bundle 详情页按包名取这一格，
+  // 写错就整块不出现，也不会报错。设置命名空间只用来绑作用域，与它无关。
+  ctx.slots.inject('plugins.bundle.config', () =>
     ctx.slots.register(
-      { name: 'settings.plugin.item', key: SETTINGS_NAMESPACE, locale: NS },
+      { name: 'plugins.bundle.config', key: 'dsh-ds-balance', locale: NS },
       (seat: SettingsSeat) => <SettingsSeatComponent seat={seat} scope={scope} />,
     ))
 
