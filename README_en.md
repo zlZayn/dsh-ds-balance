@@ -48,7 +48,7 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
 <p align="center">
   <img src="assets/settings-card_en.png" alt="The DeepSeek balance card in the plugin settings" width="360">
   <br>
-  <em>Sits alongside other plugins in <strong>Settings → Plugins → Plugin configuration</strong>; all four groups are collapsed by default, so the card opens as four header rows.</em>
+  <em>The card is those four groups: each collapsible, all collapsed by default; a group holding a bad value opens itself.</em>
 </p>
 
 ## Capabilities
@@ -107,6 +107,12 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 ## Configuration
 
 Open **Settings → Plugins → Plugin configuration → DeepSeek balance**. Four groups, each collapsible:
+
+<p align="center">
+  <img src="assets/settings-cards-position_en.png" alt="Where the DeepSeek balance card sits in the settings page" width="480">
+  <br>
+  <em>Where it sits in the full settings page: alongside the other plugins, opening as four header rows.</em>
+</p>
 
 - **Connection**: the API base URL and the credential, both blank by default — a blank URL means the official DeepSeek endpoint, and the credential is inherited from the official model page and is read-only.
   The nested "Customised settings" holds only the credential reference name.

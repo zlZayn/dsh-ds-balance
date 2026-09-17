@@ -48,7 +48,7 @@
 <p align="center">
   <img src="assets/settings-card.png" alt="插件配置页中的「DeepSeek 余额」卡片" width="360">
   <br>
-  <em>在 <strong>设置 → 插件 → 插件配置</strong> 中与其他插件并排；四组默认全收起，卡片一打开只占四行折叠头。</em>
+  <em>卡片就是这四组：各自可折叠，默认全收起；组里有填错的项时那一组会自己展开。</em>
 </p>
 
 ## 能力
@@ -107,6 +107,12 @@ dsh plugin --profile web add "$PWD"
 ## 配置
 
 打开 **设置 → 插件 → 插件配置 → DeepSeek 余额**，四组各自可折叠：
+
+<p align="center">
+  <img src="assets/settings-cards-position.png" alt="整页设置里「DeepSeek 余额」卡片的位置" width="480">
+  <br>
+  <em>整页设置里的位置：与其他插件并排，卡片一打开只占四行折叠头。</em>
+</p>
 
 - **连接**：API 地址与凭据，两项都默认留空 —— 地址留空即用 DeepSeek 官方端点，凭据继承官方模型页那一份、只读不可改；
   二级「自定义设置」里只放凭据引用名。
