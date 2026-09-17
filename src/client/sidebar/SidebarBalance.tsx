@@ -22,7 +22,8 @@ import {
 import type { BalanceResponse, Severity } from '../api-types.ts'
 import { interpolate, type LocaleKey } from '../locales.ts'
 import {
-  formatMoney, ringRatioOf, ringSpecOf, selectionOf, type CurrencySelection, type RingMarker,
+  currentAgeMs, formatMoney, ringRatioOf, ringSpecOf, selectionOf,
+  type CurrencySelection, type RingMarker,
 } from '../model.ts'
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
@@ -113,15 +114,25 @@ function ringSpecFor(severity: Severity): { state: RingState; marker: RingMarker
  * @returns 条目元素。
  */
 export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.Element | null {
+  /**
+   * 余额视图与它的**年龄基准**。
+   *
+   * 两者是一件事，所以合成一份状态：后端给的是「这份快照到现在多久」（`ageMs`），
+   * 要变成本地年龄就得记住「收到它的那一刻」。分开存必然出现「换了响应、没换基准」
+   * 的中间态 —— 那正是自动轮询拨不回「刚刚」的成因。
+   * 口径见 [sidebar/README.md](README.md) 的「时效」一节。
+   */
+  const [view, setView] = useState(() => {
+    const response = resolveScenario() === null ? pendingView() : currentBalance()
+    return { response, seenAt: Date.now(), seenAgeMs: response.ageMs }
+  })
+  const response = view.response
   /** 是否走 mock 旁路。默认否 —— 真机上必须显示真实余额。 */
   const [mock, setMock] = useState(() => resolveScenario() !== null)
-  const [response, setResponse] = useState<BalanceResponse>(() => (resolveScenario() === null ? pendingView() : currentBalance()))
   /** 是否至少成功取过一次。失败的轮询不该把已显示的数据换成错误态。 */
   const loadedRef = useRef(false)
   /** 「改用 X」只写本地偏好；父代理后续把它接到设置。 */
   const [localCurrency, setLocalCurrency] = useState<string | null>(null)
-  /** 模拟刷新后的抓取时刻；null 表示仍用 mock 给的值。 */
-  const [localFetchedAt, setLocalFetchedAt] = useState<number | null>(null)
   const [open, setOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [cooldownUntil, setCooldownUntil] = useState(0)
@@ -132,17 +143,31 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
   const panelRef = useRef<HTMLElement>(null)
   const refreshTimer = useRef<number | undefined>(undefined)
   const lastScenario = useRef<string | null>(null)
-  /** 挂载时刻：把后端给的 ageMs 换算成一个绝对时刻。 */
-  const mountedAt = useRef(Date.now())
+
+  /** 收到一份真实余额视图：视图与年龄基准一起换。 */
+  const acceptBalance = useCallback((next: BalanceResponse): void => {
+    setView({ response: next, seenAt: Date.now(), seenAgeMs: next.ageMs })
+  }, [])
+
+  /**
+   * 端点不可达：只换视图，**不动年龄基准**。
+   *
+   * 这条路上没有新快照，说「刚刚」是假话；基准留在最后一份真实数据上，时间继续往上走才对。
+   * @param error - 抛出物，取它的 message 当作给用户看的一句话。
+   */
+  const showUnreachable = useCallback((error: unknown): void => {
+    const message = error instanceof Error ? error.message : String(error)
+    setView((current) => ({ ...current, response: unreachableView(message) }))
+  }, [])
+
+  /** mock 旁路的手动「刷新」：没有新响应可收，只能把年龄就地拨回零。 */
+  const markFresh = useCallback((): void => {
+    setView((current) => ({ ...current, seenAt: Date.now(), seenAgeMs: 0 }))
+  }, [])
 
   const preference = localCurrency ?? config.displayCurrency
   // 币种由后端选定，前端只做映射：见 model.ts 的 selectionOf。
   const selection = useMemo(() => selectionOf(response, preference), [response, preference])
-
-  // 生效的抓取时刻。本地模拟刷新后就是刷新那一刻；
-  // 否则以 ageMs 反推 —— mock 的 fetchedAt 是固定的 T0，只有 ageMs 是真实年龄，
-  // 而且后端时钟与浏览器时钟未必一致，基准本来就该取 ageMs。
-  const fetchedAt = localFetchedAt ?? (mountedAt.current - response.ageMs)
 
   // 开发场景切换时换数据。subscribeScenario 会立刻回调一次，用 key 比对跳过它。
   // 每次回调都重判来源：`?dsb=live` 打开后会把 localStorage 里的场景清掉，
@@ -152,12 +177,11 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
     setMock(active)
     if (!active || lastScenario.current === key) return
     lastScenario.current = key
-    setResponse(currentBalance())
-    setLocalFetchedAt(null)
+    acceptBalance(currentBalance())
     setRefreshing(false)
     setCooldownUntil(0)
     setOpen(false)
-  }), [])
+  }), [acceptBalance])
 
   // 真实数据：首拉一次，然后按 clientPollSeconds 轮询。
   // 轮询读的是后端缓存，不穿透到上游 —— 上游节奏由 serverRefreshSeconds 决定。
@@ -169,11 +193,10 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
         const next = await requestBalance({ currency: preference })
         if (cancelled) return
         loadedRef.current = true
-        setResponse(next)
-        setLocalFetchedAt(null)
+        acceptBalance(next)
       } catch (error) {
         if (cancelled || loadedRef.current) return
-        setResponse(unreachableView(error instanceof Error ? error.message : String(error)))
+        showUnreachable(error)
       }
     }
     void load()
@@ -186,7 +209,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
     // - preference：「改用 X」写的是本地偏好，换币种必须立刻按新币种重问一次后端。
     // - configSignature：改阈值要当场看到圆环变色，不能等下一轮轮询。
     // 两条都不穿透上游 —— 后端从缓存快照按新阈值重算，只有 state 不是 ok 时才会真去拉。
-  }, [mock, preference, config.clientPollSeconds, config.configSignature])
+  }, [mock, preference, config.clientPollSeconds, config.configSignature, acceptBalance, showUnreachable])
 
   useEffect(() => () => {
     if (refreshTimer.current !== undefined) window.clearTimeout(refreshTimer.current)
@@ -242,8 +265,9 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
     // 冷却中：不旋转，浮层里的就地文字已经在报剩余秒数。
     if (Date.now() < cooldownUntil) return
     setRefreshing(true)
+    // 收尾只管刷新态与冷却：时间基准由收到的响应决定，
+    // 真实路径读回的那份 ageMs 已经归零，mock 路径由 markFresh 就地拨。
     const finish = (): void => {
-      setLocalFetchedAt(Date.now())
       setRefreshing(false)
       setCooldownUntil(Date.now() + Math.max(0, config.manualRefreshCooldownSeconds) * MS_PER_SECOND)
     }
@@ -251,6 +275,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
     if (mock) {
       refreshTimer.current = window.setTimeout(() => {
         refreshTimer.current = undefined
+        markFresh()
         finish()
       }, REFRESH_SIMULATION_MS)
       return
@@ -261,14 +286,14 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
         await requestRefresh({ reason: 'manual' })
         const next = await requestBalance({ currency: preference })
         loadedRef.current = true
-        setResponse(next)
+        acceptBalance(next)
       } catch (error) {
-        if (!loadedRef.current) setResponse(unreachableView(error instanceof Error ? error.message : String(error)))
+        if (!loadedRef.current) showUnreachable(error)
       } finally {
         finish()
       }
     })()
-  }, [cooldownUntil, config.manualRefreshCooldownSeconds, mock, preference, refreshing])
+  }, [cooldownUntil, config.manualRefreshCooldownSeconds, mock, preference, refreshing, acceptBalance, showUnreachable, markFresh])
 
   const handleUseShown = useCallback((): void => {
     const current = selection.shown
@@ -314,6 +339,9 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
   if (markerLabel !== null) ariaParts.push(markerLabel)
   const ariaLabel = ariaParts.join(' ')
   const cooldownSeconds = Math.max(0, Math.ceil((cooldownUntil - now) / MS_PER_SECOND))
+  // 年龄 = 收到那份响应时后端报的年龄 + 此后流逝的时间。基准随每次响应一起换，
+  // 所以自动轮询带回来的新快照同样会把「多久之前」拨回「刚刚」。
+  const ageMs = currentAgeMs(view.seenAt, view.seenAgeMs, now)
 
   // 折叠态只有环、没有任何可见文字，用原生 title 补一条悬停提示；
   // 展开态标签与标记就在旁边，不再叠第二个 tooltip。
@@ -367,8 +395,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
           t={t}
           selection={selection}
           displayCurrency={preference}
-          fetchedAt={fetchedAt}
-          now={now}
+          ageMs={ageMs}
           refreshing={refreshing}
           cooldownSeconds={cooldownSeconds}
           panelRef={panelRef}

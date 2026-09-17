@@ -3,6 +3,7 @@ import type { BalanceResponse } from '../src/client/api-types.ts'
 import {
   ageBucket,
   currencySymbol,
+  currentAgeMs,
   dotStateOf,
   formatAmount,
   formatMoney,
@@ -113,6 +114,28 @@ describe('ageBucket', () => {
     expect(ageBucket(50 * 3_600_000).bucket).toBe('days')
     expect(ageBucket(Number.NaN).bucket).toBe('unknown')
     expect(ageBucket(-1).bucket).toBe('unknown')
+  })
+})
+
+describe('currentAgeMs', () => {
+  it('年龄随时间流逝增长，且不会变成负数', () => {
+    expect(currentAgeMs(1_000_000, 12_000, 1_012_000)).toBe(24_000)
+    // 两端时钟有偏差时，未来的基准不该算出负年龄。
+    expect(currentAgeMs(1_000_000, 0, 999_000)).toBe(0)
+  })
+
+  it('换一份新响应就换一次基准 —— 自动轮询必须也能把年龄拨回「刚刚」', () => {
+    // 旧基准下过了 60 秒，年龄已经涨到 72 秒。
+    expect(currentAgeMs(1_000_000, 12_000, 1_060_000)).toBe(72_000)
+    // 同一时刻后端给了新快照（刚抓的，ageMs 0），年龄必须归零重算 ——
+    // 这就是「只有手动刷新才动」那条缺陷的判据：基准必须跟着响应走。
+    expect(currentAgeMs(1_060_000, 0, 1_060_000)).toBe(0)
+    expect(currentAgeMs(1_060_000, 0, 1_061_000)).toBe(1_000)
+  })
+
+  it('基准缺失或为负时按 0 算（客户端对宿主形状的防御）', () => {
+    expect(currentAgeMs(1_000_000, Number.NaN, 1_005_000)).toBe(5_000)
+    expect(currentAgeMs(1_000_000, -1, 1_005_000)).toBe(5_000)
   })
 })
 

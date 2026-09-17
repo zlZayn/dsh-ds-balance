@@ -202,3 +202,19 @@ export function ageBucket(ageMs: number): { bucket: AgeBucket; value: number } {
   if (hours < 24) return { bucket: 'hours', value: hours }
   return { bucket: 'days', value: Math.floor(hours / 24) }
 }
+
+/**
+ * 当前年龄：上一次得知的年龄，加上此后流逝的时间。
+ *
+ * 基准必须是**收到那份响应的时刻**，不是组件挂载的时刻 ——
+ * 拿挂载时刻去换算 `ageMs` 的话，自动轮询带回来的新快照永远拨不回「刚刚」，
+ * 只有另记了时刻的手动刷新看起来才会动。
+ * @param seenAt - 收到那份响应的本地时刻（毫秒）。
+ * @param seenAgeMs - 那份响应里后端算好的年龄（毫秒）。
+ * @param now - 当前本地时刻（毫秒）。
+ * @returns 毫秒计的当前年龄；基准缺失时按 0 算。
+ */
+export function currentAgeMs(seenAt: number, seenAgeMs: number, now: number): number {
+  const base = Number.isFinite(seenAgeMs) ? Math.max(0, seenAgeMs) : 0
+  return Math.max(0, base + (now - seenAt))
+}

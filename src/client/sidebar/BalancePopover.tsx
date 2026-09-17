@@ -68,10 +68,8 @@ export interface BalancePopoverProps {
   selection: CurrencySelection
   /** 用户在设置里选的币种，用于不匹配文案。 */
   displayCurrency: string
-  /** 生效的抓取时刻（毫秒）；模拟刷新会替换它。 */
-  fetchedAt: number
-  /** 当前时刻（毫秒），由父组件按秒推进。 */
-  now: number
+  /** 数据现在的年龄（毫秒）= 收到那份响应时后端报的年龄 + 此后流逝的时间。 */
+  ageMs: number
   /** 是否正在刷新。 */
   refreshing: boolean
   /** 冷却剩余秒数；0 表示可以刷新。 */
@@ -95,7 +93,7 @@ export interface BalancePopoverProps {
  */
 export function BalancePopover(props: BalancePopoverProps): JSX.Element {
   const {
-    t, selection, displayCurrency, fetchedAt, now, refreshing, cooldownSeconds,
+    t, selection, displayCurrency, ageMs, refreshing, cooldownSeconds,
     panelRef, style, onRefresh, onUseShown, onOpenSettings,
   } = props
 
@@ -104,7 +102,7 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
   const grantedText = shown === null ? BALANCE_PLACEHOLDER : formatMoney(shown.granted, shown.currency)
   const toppedUpText = shown === null ? BALANCE_PLACEHOLDER : formatMoney(shown.toppedUp, shown.currency)
 
-  const age = ageBucket(now - fetchedAt)
+  const age = ageBucket(ageMs)
   const updatedText = age.bucket === 'just-now' || age.bucket === 'unknown'
     ? t('popover.updated.justNow')
     : interpolate(t('popover.updated'), {
