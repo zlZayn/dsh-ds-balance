@@ -555,7 +555,7 @@ JSON 解析失败时退回纯文本前 200 字符。
 返回掩码后的配置。**`apiKey` 永不返回，只返回 `apiKeyMasked`。**
 另回一段 `credential`（`{ ref, configured, source, writable }`），形状逐字对齐官方
 `credentialProvider.describe()`：**只有三个事实，没有装值的槽**。界面靠它决定凭据字段是
-「可编辑」还是「由启动环境提供（只读）」。凭据端口缺席或 `describe` 失败时回 `null`。
+「可编辑」还是「由启动环境提供」。凭据端口缺席或 `describe` 失败时回 `null`。
 
 ### 8.6 `PUT /api/v1/config`
 

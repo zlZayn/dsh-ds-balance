@@ -19,7 +19,8 @@ import {
 import type { FieldStatus, SelectorOption } from './fields.tsx'
 import { AUTO_CURRENCY, currencyCodes, useConfigForm } from './use-config-form.ts'
 import type { SettingsScope } from './use-config-form.ts'
-import { useCredentialState } from './use-credential-state.ts'
+import { credentialViewOf, useCredentialState } from './use-credential-state.ts'
+import type { CredentialView } from './use-credential-state.ts'
 import css from './BalanceSettingsCard.module.css'
 import fieldCss from './fields.module.css'
 
@@ -35,6 +36,25 @@ export interface BalanceSettingsCardProps {
 
 /** 与宿主 schema 的默认值逐字一致的凭据引用名；快照缺字段时兜底。 */
 const DEFAULT_API_KEY_REF = 'DEEPSEEK_API_KEY'
+
+/**
+ * 只读凭据行的状态徽章。
+ * 四档的判据在 `use-credential-state.ts` 的 `credentialViewOf`：它答的是「当前生效的值从哪来」。
+ */
+const CREDENTIAL_BADGE: Readonly<Record<CredentialView, LocaleKey>> = {
+  env: 'settings.credential.envLocked',
+  configured: 'settings.configured',
+  notConfigured: 'settings.notConfigured',
+  overridden: 'settings.overridden',
+}
+
+/** 徽章下方那一行说明，逐档对应。 */
+const CREDENTIAL_HINT: Readonly<Record<CredentialView, LocaleKey>> = {
+  env: 'settings.hint.credential.env',
+  configured: 'settings.hint.credential.configured',
+  notConfigured: 'settings.hint.credential.notConfigured',
+  overridden: 'settings.hint.credential.overridden',
+}
 
 /** 四个配置分组的键。 */
 type GroupKey = 'connection' | 'display' | 'thresholds' | 'refresh'
@@ -193,13 +213,9 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
     ? apiKeyRef.effective
     : DEFAULT_API_KEY_REF
   const credential = useCredentialState(effectiveRef)
-  // 读不到一律当「只读」：这个字段本来就是只读状态展示，编辑入口在下面的「自定义设置」，
-  // 所以「当只读」在任何一种未知情况下都不会说错话，也不会因为字段缺失把卡片打挂。
-  const credentialPlaceholder = credential?.writable === true
-    ? credential.configured
-      ? t('settings.configured')
-      : t('settings.notConfigured')
-    : t('settings.credential.envLocked')
+  // 只读凭据行显示哪一档：覆盖优先（折叠里存过值就是它生效），其次才看宿主能不能写。
+  // 「读不到就说什么」的策略也在这个函数里，见它的文档注释。
+  const credentialView = credentialViewOf(credential, apiKey.stored || apiKeyRef.stored)
 
   const currency = form.field('displayCurrency')
   const currencyId = typeof currency.value === 'string' && currency.value !== '' ? currency.value : AUTO_CURRENCY
@@ -278,23 +294,26 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
               open={groupOpenNow('connection')}
               onToggle={() => { toggleGroup('connection') }}
             >
-              {/* 凭据状态：只读。结构照搬官方「模型」卡片对「启动环境提供的密钥」的处理 ——
-                  字段照常渲染，disabled + 只读占位说明，整块降到 60%，而不是隐藏或另做只读块。
+              {/* 凭据状态：只读展示。结构照搬官方「模型」卡片对「启动环境提供的密钥」的处理 ——
+                  字段照常渲染，disabled、整块降到 60%，而不是隐藏或另做只读块。
+                  **框内不写字**：状态改由标签行右侧的徽章（四档）与它下方的说明行承担；
+                  灰字占位符读起来像「这里该填但没填」，语气是错的。
                   要覆盖它，展开下方的「自定义设置」。 */}
               <FieldFrame
                 id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
                 label={t('settings.field.apiKey')}
+                status={{ label: t(CREDENTIAL_BADGE[credentialView]), tone: credentialView === 'notConfigured' ? 'quiet' : 'neutral' }}
                 pending={false}
                 resettable={false}
                 pendingLabel={t('settings.unsaved')}
                 resetLabel={t('settings.reset')}
                 invalid={false}
+                hint={t(CREDENTIAL_HINT[credentialView])}
                 disabled
                 onReset={() => {}}
               >
                 <ReadOnlyControl
                   id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
-                  placeholder={credentialPlaceholder}
                 />
               </FieldFrame>
 

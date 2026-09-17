@@ -12,7 +12,10 @@ settings/ 特有约束：
 - 纵向间距只有两个所有者：`.group` 的顶部 12px 与 `.groupLast` 的尾部 12px（[fields.module.css](fields.module.css)）；新加元素不许在旁边叠 margin。
 - 分组折叠头一律用原语 `DisclosureRow`，不自己画（[fields.tsx](fields.tsx) 的 `FieldGroup`）。
   - **例外**：连接组里的二级「自定义设置」用原生 `<details>`（[fields.tsx](fields.tsx) 的 `DetailsGroup`），因为官方 `ProviderEditor` 那一处就是这么做的；本插件照搬官方形态优先于自定规则。
-- 凭据字段的只读形态照搬官方：`disabled` + 只读占位说明 + 60% 透明度，**不隐藏字段、不另做只读块**。官方只有 `keyEnvLocked` 一条措辞且属于 `settings.models` 命名空间，别的插件拿不到，所以同义文案自备（[../locales.ts](../locales.ts) 的 `settings.credential.envLocked`）。
+- 凭据字段的只读形态照搬官方：`disabled` + 60% 透明度，**不隐藏字段、不另做只读块、框内不写占位符**。
+  状态走标签行右侧的徽章，因由走它下方那行说明；两处的键分别是 `settings.credential.*` 与 `settings.hint.credential.*`（[../locales.ts](../locales.ts)）。
+  官方那两条同义措辞属于 `settings.models` 命名空间、别的插件拿不到，所以文案自备。
+- 只读凭据行的四档只有一个判据：[use-credential-state.ts](use-credential-state.ts) 的 `credentialViewOf`（覆盖 > 环境 > 配没配）。**不许在组件里另写一份分支。**
 - **读宿主新增字段必须先过形状守卫**：客户端半边由 HMR 立刻换新，宿主半边要重启才换。见 [../data.ts](../data.ts) 的 `readCredential` 与 [use-credential-state.ts](use-credential-state.ts)。
 - 错误文本用 `var(--dsw-alias-state-error-primary)`；官方 `--dsw-alias-label-error` 从未定义，照抄会静默失效。
 - 选择器触发 pill 没有公共组件，取值照抄 `packages/client/locale/src/client/LanguageRow.module.css:28-51`。

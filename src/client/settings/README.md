@@ -34,7 +34,7 @@
 - 职责：字段行的容器与全部控件，以及分组的折叠头。
 - 关键导出：`FieldGroup`、`FieldFrame`、`FieldBadges`、`TextControl`、`ReadOnlyControl`、`SecretControl`、`SelectorControl`、`ActionRow`、`DetailsGroup`，以及类型 `FieldStatus` 与 `SelectorOption`。
 - `FieldGroup` 的折叠头用原语 `DisclosureRow`，不自己画；展开体由原语在 open 时条件渲染，无动画。
-- `ReadOnlyControl` 是只读输入：字段照常渲染、`disabled` + 只读占位说明，逐字照搬官方 `ProviderEditor` 处理「凭据由启动环境提供」的做法。
+- `ReadOnlyControl` 是只读输入：字段照常渲染、`disabled`、**框内不写任何文字**，形态照搬官方 `ProviderEditor` 的凭据字段。只读的因由改由标签行右侧的状态徽章与它下方的说明行承担，两处文案都来自词典。
 - `DetailsGroup` 是**二级折叠**，用原生 `<details>`/`<summary>` 而不是 `DisclosureRow` —— 官方那一处也是原生 details 配一个 `::before` 折角。它是受控但跟手的：`open` 由 state 持有，用户拨动时从 DOM 读回真实状态，卡片重渲染不会把它弹回去。
 - 类名拼接统一用官方 `clsx`（平台样式规则要求），不自备工具函数。
 - 被谁依赖：`BalanceSettingsCard.tsx`。
@@ -49,12 +49,13 @@
 
 ### use-credential-state.ts
 
-- 职责：问 `GET /api/v1/config` 要凭据的三个事实（`configured` / `source` / `writable`），决定凭据字段显示「由启动环境提供（只读）」还是「已配置 / 未配置」。
-- 关键导出：`useCredentialState(ref)`，返回 `CredentialInfo | null`。
+- 职责：问 `GET /api/v1/config` 要凭据的三个事实（`configured` / `source` / `writable`），决定只读凭据行显示哪一档。
+- 关键导出：`useCredentialState(ref)`（返回 `CredentialInfo | null`）、`credentialViewOf(credential, overridden)` 与类型 `CredentialView`。
+- `credentialViewOf` 是四档的唯一判据，优先级是 覆盖 > 环境 > 配没配；**组件里不许另写一份分支**。
 - **读不到一律当 `null`**：宿主旧版本、请求失败、字段缺失都走这一条，绝不把 `undefined` 漏进组件（否则卡片会崩、整个 slot 条目消失）。
 - 引用名一变就重读一次；用的是**生效**引用名，草稿未保存时后端认的仍是存下来的那个。
 - 被谁依赖：`BalanceSettingsCard.tsx`。
-- 改后必测：宿主回旧结构时卡片仍渲染；`writable: false` 时占位符是官方那句只读说明。
+- 改后必测：宿主回旧结构时卡片仍渲染（读不到一律当「环境提供」）；四档的优先级有专门用例，见 [test/use-credential-state.test.ts](../../../test/use-credential-state.test.ts)。
 
 ### use-config-form.ts
 

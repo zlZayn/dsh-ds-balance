@@ -13,6 +13,33 @@
 import { useEffect, useState } from 'react'
 import { requestConfig, type CredentialInfo } from '../data.ts'
 
+/** 只读凭据行要显示的状态。 */
+export type CredentialView = 'env' | 'configured' | 'notConfigured' | 'overridden'
+
+/**
+ * 决定只读凭据行显示哪一档。
+ *
+ * 它回答的是「**当前生效的值从哪来**」，不是「这个框能不能改」：
+ * - `overridden` 优先：折叠里存过 apiKey 或引用名时，生效的就是折叠里那一份。
+ * - 其次看宿主能不能写：写不了就是启动环境给的。
+ * - 再退到「配没配」。
+ * - 凭据信息读不到（`null`）一律当 `env`：这一行本来就是只读展示，编辑入口在下面的
+ *   「自定义设置」，所以「环境提供」在任何未知情况下都不会说错话，也不会因为字段缺失把卡片打挂。
+ *
+ * 优先级本身有测试兜底（`test/use-credential-state.test.ts`）—— 它是最容易被改错的一处。
+ * @param credential - 宿主的凭据描述；`null` 表示读不到。
+ * @param overridden - 用户层是否存着覆盖值（`apiKey` 或引用名）。
+ * @returns 四档之一。
+ */
+export function credentialViewOf(
+  credential: CredentialInfo | null,
+  overridden: boolean,
+): CredentialView {
+  if (overridden) return 'overridden'
+  if (credential?.writable !== true) return 'env'
+  return credential.configured ? 'configured' : 'notConfigured'
+}
+
 /**
  * 订阅凭据的只读描述。
  * @param ref - 当前生效的凭据引用名；它一变就重读一次。

@@ -60,8 +60,14 @@ export const zh = {
   'settings.hint.clientPollSeconds': '刷新显示的间隔；只读本地缓存，不访问上游。',
   'settings.hint.manualRefreshCooldownSeconds': '两次手动刷新之间的最短间隔。',
   'settings.currency.auto': '自动（跟随账户）',
-  // 逐字对齐官方 settings.models 的 keyEnvLocked：凭据由启动环境提供时字段不可写。
-  'settings.credential.envLocked': '由启动环境提供（只读）',
+  // 凭据只读时的**状态徽章**文案。此前这里放的是输入框占位符，逐字抄官方 settings.models
+  // 的 keyEnvLocked；现在输入框留空、状态走标签行右侧的徽章，措辞随之改短。
+  'settings.credential.envLocked': '已由启动环境提供',
+  // 只读凭据行下方的说明，按状态四选一。其中「已配置」那条逐字用官方 webSearchApiKeyHint。
+  'settings.hint.credential.env': '启动环境提供，只读。',
+  'settings.hint.credential.configured': '不写入设置文件。留空表示保持当前密钥。',
+  'settings.hint.credential.notConfigured': '尚未配置。',
+  'settings.hint.credential.overridden': '使用自定义设置里的值，忽略继承。',
   'settings.group.customized': '自定义设置',
   'settings.test': '测试连接',
   'settings.testing': '测试中…',
@@ -151,7 +157,11 @@ export const en: Record<LocaleKey, string> = {
   'settings.hint.clientPollSeconds': 'How often the display refreshes; local cache only.',
   'settings.hint.manualRefreshCooldownSeconds': 'Minimum gap between two manual refreshes.',
   'settings.currency.auto': 'Automatic (follow account)',
-  'settings.credential.envLocked': 'Provided by the launch environment (read-only)',
+  'settings.credential.envLocked': 'Provided by launch environment',
+  'settings.hint.credential.env': 'Provided by the launch environment; read-only.',
+  'settings.hint.credential.configured': 'Never written to the settings file. Leave empty to keep the current key.',
+  'settings.hint.credential.notConfigured': 'Not configured yet.',
+  'settings.hint.credential.overridden': 'Uses the value in Customised settings; the inherited one is ignored.',
   'settings.group.customized': 'Customized settings',
   'settings.test': 'Test connection',
   'settings.testing': 'Testing…',

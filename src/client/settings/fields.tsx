@@ -180,21 +180,22 @@ export function TextControl(props: TextControlProps) {
 }
 
 /**
- * 只读输入：字段照常渲染，但不可编辑，占位符说明为什么。
+ * 只读输入：字段照常渲染，但不可编辑，**框内不写任何文字**。
  *
- * 逐字照搬官方 ProviderEditor 处理「凭据由启动环境提供」的做法：
- * 不是隐藏字段、也不是换一块只读文本，而是 `disabled` 的真输入框配只读占位说明。
- * `readOnly` 与 `disabled` 同时给：前者挡住程序化写入，后者给出官方的视觉与可访问语义。
+ * 不从「隐藏字段」也不从「换一块只读文本」走：仍是 `disabled` 的真输入框，
+ * 与官方凭据字段同一形态。`readOnly` 与 `disabled` 同时给 ——
+ * 前者挡住程序化写入，后者给出官方的视觉与可访问语义。
+ *
+ * **为什么没有 placeholder**：灰字写在框里读起来像「这里该填但没填」。
+ * 只读的因由改由标签行右侧的状态徽章与它下方的说明行承担，那两处的措辞来自词典。
  */
 export interface ReadOnlyControlProps {
   id: string
-  /** 只读原因，逐字来自词典。 */
-  placeholder: string
 }
 
 /**
  * 渲染只读输入。
- * @param props - 控件 id 与只读占位说明。
+ * @param props - 控件 id。
  * @returns 输入框元素。
  */
 export function ReadOnlyControl(props: ReadOnlyControlProps) {
@@ -206,7 +207,6 @@ export function ReadOnlyControl(props: ReadOnlyControlProps) {
       value=""
       readOnly
       disabled
-      placeholder={props.placeholder}
     />
   )
 }

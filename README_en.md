@@ -24,7 +24,7 @@ The balance is read from the real `GET /user/balance`; colour comes only from th
 - Popover: total balance, granted / topped-up split, data freshness, and a manual refresh with cooldown.
 - Multiple currencies: the **server** picks which currency to show; when the currency chosen in settings is absent from the account, the popover says so and offers a one-click switch.
 - The settings card has four collapsible groups — Connection / Display / Thresholds / Refresh — all collapsed by default; a group with an invalid draft is forced open.
-- Credential fields carry a "configured / not configured / overridden" badge; the credential is inherited from the official model settings by default, so there is nothing to re-enter.
+- Credential fields carry a "provided by launch environment / configured / not configured / overridden" badge; a read-only field stays empty and lets the badge and the line under it explain why. The credential is inherited from the official model settings by default, so there is nothing to re-enter.
 - Colour comes only from the `severity` the server returns; thresholds only scale the ring arc and never affect colour.
 
 ## Installation
