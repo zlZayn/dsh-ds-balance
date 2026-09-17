@@ -9,8 +9,9 @@
 - `settings-card.png`：设置卡片的中文实拍，被根 [README.md](../README.md) 引用。
 - `settings-card_en.png`：同一画面的英文版，被 [README_en.md](../README_en.md) 引用。
 
-**这两张现在是占位图** —— 一张灰底斜纹块，不是界面。
-替换流程、重截判据与验收标准见 [AGENTS.md](AGENTS.md)。
+两张都是**从真实界面实拍**的：中文那张直接取自运行中的 GUI，
+英文那张是同一次会话里临时把界面语言切成 English 之后拍的（拍完已切回）。
+重截流程、判据与验收标准见 [AGENTS.md](AGENTS.md)。
 
 ## 风格基准
 

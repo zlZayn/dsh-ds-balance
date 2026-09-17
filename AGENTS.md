@@ -57,6 +57,10 @@
 - **主实例已重启**（13:15），跑的是最新产物；维护者已实机确认界面与功能。
 - 工程面对齐（同日第二轮）：三个发版脚本、三条 workflow、契约测试层、assets 双件、PUBLISHING、
   CONTRIBUTING 中英、双语门面全部落地；判定与实测见 [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)。
+- 两张设置卡片截图已实拍替换占位图（中英各一张，取自运行中的 GUI），拍英文时临时切过语言并已切回；
+  实拍踩到的两条约束写进 [assets/AGENTS.md](assets/AGENTS.md) 的「已知约束」。
+- 圆环弧长改为「余额占 warn 阈值的比例」（颜色映射不变），同步改了 9 处文档；
+  链接校验与换行校验在这一轮全部重跑过。
 - 维护者第二轮反馈四项全部落地并实测：刷新按钮冷却期内置灰（`disabled` 为真、状态行「N 秒后可再次刷新」）；
   改阈值圆环当场变色且**上游请求数保持 0**；五档形状 ok 绿实弧 / warn 琥珀实弧 / critical 红实弧 / unavailable 红弧+中心叉号 / unknown 灰实弧；
   连接组的只读凭据显示「由启动环境提供（只读）」、Base URL 带官方提示、「自定义设置」折叠里有 apiKey 与 apiKeyRef。
@@ -74,7 +78,7 @@
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
 - [ ] 发布前：加回 `dsh.bundle`、去掉 `private` —— [check-release.mjs](scripts/check-release.mjs) 会卡
 - [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)
-- [ ] 两张设置卡片截图仍是占位图 → 按 [assets/AGENTS.md](assets/AGENTS.md) 的流程重截
+- [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
 - [ ] 首次发布前的手动配置：npm Trusted Publishing、仓库 secret `DEEPSEEK_API_KEY`、environment `release` → [发布手册](docs/PUBLISHING.md)
 
 ## 活跃坑
