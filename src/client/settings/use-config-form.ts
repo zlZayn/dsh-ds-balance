@@ -107,6 +107,53 @@ export const AUTO_CURRENCY = 'auto'
 /** 已知币种。阈值分组就是按这两个币种定义的，故它们是币种列表的最小闭集。 */
 export const KNOWN_CURRENCIES: readonly string[] = ['CNY', 'USD']
 
+/** 一对阈值：同一币种内的预警与告急。 */
+export interface ThresholdPair {
+  readonly currency: string
+  readonly warn: string
+  readonly critical: string
+  /**
+   * 两个字段的宿主默认值。
+   *
+   * **必须在这里存一份**：草稿清空之后生效的是默认值而不是旧值，判「空值算不算合法」就得知道它。
+   * 两个半体不许值导入，所以抄一份是没办法的事 —— 与宿主 schema 的一致性由
+   * `test/threshold-pairs.test.ts` 对着 [src/config.ts](../../config.ts) 的 `Config` 兜底。
+   */
+  readonly defaultWarn: number
+  readonly defaultCritical: number
+}
+
+/** 阈值成对的清单；字段名沿用宿主 schema 的「币种代码小写 + Warn / Critical」。 */
+export const THRESHOLD_PAIRS: readonly ThresholdPair[] = [
+  { currency: 'CNY', warn: 'cnyWarn', critical: 'cnyCritical', defaultWarn: 10, defaultCritical: 5 },
+  { currency: 'USD', warn: 'usdWarn', critical: 'usdCritical', defaultWarn: 2, defaultCritical: 1 },
+]
+
+/** 草稿文本折算成数字；空草稿按默认值算，不是数字则给 `null`（那由字段自己的 parse 报错）。 */
+function pairNumber(state: FieldState, fallback: number): number | null {
+  const text = state.text.trim()
+  if (text === '') return fallback
+  const parsed = Number(text)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+/**
+ * 一对阈值是否满足「预警 **严格大于** 告急」。
+ *
+ * 相等也拒绝：那时余额恰好压线会被同时判成 warn 与 critical，「预警」这一档等于不存在。
+ * 任一侧的草稿不是数字时返回 `true` —— 那种情况由各自的 `parse` 报错，不在这里重复报。
+ * @param pair - 币种与它的两个字段。
+ * @param warn - 预警字段的状态。
+ * @param critical - 告急字段的状态。
+ * @returns 是否通过。
+ */
+export function thresholdsOk(pair: ThresholdPair, warn: FieldState, critical: FieldState): boolean {
+  const w = pairNumber(warn, pair.defaultWarn)
+  const c = pairNumber(critical, pair.defaultCritical)
+  if (w === null || c === null) return true
+  return w > c
+}
+
 /**
  * 下拉可选的币种代码。
  * 已知币种打底；传入的取值里若是未知代码也一并保留，避免把用户已存或编辑中的取值弄丢。
@@ -201,6 +248,12 @@ export interface ConfigFormApi {
   discard(): void
   /** 写入全部草稿，并从快照读回落定结果。 */
   save(): Promise<void>
+  /** 一个币种的阈值草稿是否满足「预警 > 告急」；空草稿按默认值算。 */
+  thresholdPairOk(currency: string): boolean
+  /** 该字段是否已经失焦过；用来决定要不要显示成对校验提示。 */
+  touched(field: string): boolean
+  /** 记一次失焦。 */
+  touch(field: string): void
   /** 测试连接状态。 */
   readonly test: TestState
   /** 跑一次本地模拟的连接测试。 */
@@ -334,6 +387,43 @@ function planWrites(
 }
 
 /**
+ * 把写入计划里的成对字段排成「每一步合并后都合法」的顺序。
+ *
+ * 宿主的 `validate` 在**合并后的完整候选值**上跑，所以单字段写入会让中间态短暂非法：
+ * 把 (20, 15) 改成 (10, 5)，先写 warn 会得到 (10, 15)，宿主直接拒绝整次写入。
+ *
+ * 判据只看 warn：先写 warn 之后是 `(warn', critical)`，合法就保持原顺序；不合法就只能先写 critical ——
+ * 那时 `critical' < warn' ≤ critical < warn`，所以 `(warn, critical')` 必然合法。两者必有一个成立。
+ * @param writes - 待写入的编辑。
+ * @param current - 当前生效值，用来看「另一半现在是多少」。
+ * @returns 排好序的新数组。
+ */
+export function orderPairWrites(
+  writes: readonly PlannedWrite[],
+  current: Record<string, unknown>,
+): PlannedWrite[] {
+  const ordered = [...writes]
+  for (const pair of THRESHOLD_PAIRS) {
+    const warnAt = ordered.findIndex(item => item.field === pair.warn)
+    const criticalAt = ordered.findIndex(item => item.field === pair.critical)
+    // 只有一半要写时天然安全：另一半没动，草稿合法就等价于中间态合法。
+    if (warnAt === -1 || criticalAt === -1) continue
+    // 已经是「先告急后预警」就不用动。
+    if (criticalAt < warnAt) continue
+    const write = ordered[warnAt].write
+    if (write === undefined) continue
+    // 清空之后生效的是默认值，不是旧值。
+    const next = write.kind === 'clear' ? pair.defaultWarn : Number(write.value)
+    if (!Number.isFinite(next)) continue
+    const criticalNow = current[pair.critical]
+    if (typeof criticalNow === 'number' && Number.isFinite(criticalNow) && next > criticalNow) continue
+    const [moved] = ordered.splice(warnAt, 1)
+    ordered.splice(criticalAt, 0, moved)
+  }
+  return ordered
+}
+
+/**
  * 读一个字段的渲染状态。
  * @param snapshot - 当前快照。
  * @param spec - 字段规格。
@@ -380,6 +470,17 @@ function fieldStateOf(
   }
 }
 
+/** 取一个字段的渲染状态；字段不在规格表里时给一份全空的保守值。 */
+function fieldOf(snapshot: NormalizedSnapshot, name: string, edit: StagedEdit | undefined): FieldState {
+  const spec = SPEC_BY_FIELD.get(name)
+  if (spec === undefined) {
+    return {
+      text: '', value: undefined, effective: undefined, stored: false, overridden: false, dirty: false, invalid: false,
+    }
+  }
+  return fieldStateOf(snapshot, spec, edit)
+}
+
 /**
  * 绑定一个设置命名空间的配置表单。
  * @param scope - 卡片拿到的设置作用域。
@@ -417,6 +518,8 @@ export function useConfigForm(scope: SettingsScope): ConfigFormApi {
   const [staged, setStaged] = useState<ReadonlyMap<string, StagedEdit>>(() => new Map())
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
+  /** 已经失焦过的字段。成对校验的提示在失焦后才出现，免得打字中途闪一下。 */
+  const [blurred, setBlurred] = useState<ReadonlySet<string>>(() => new Set<string>())
   const savingRef = useRef(false)
   const [test, setTest] = useState<TestState>({ running: false, ok: null, message: '' })
   const testTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -429,7 +532,17 @@ export function useConfigForm(scope: SettingsScope): ConfigFormApi {
   }, [])
 
   const plan = useMemo(() => planWrites(snapshot, staged), [snapshot, staged])
-  const invalid = plan.some(item => item.write === undefined)
+  // 成对校验按**草稿**判，所以必须和 field() 看同一份状态；它也算进整体 invalid，
+  // 「有非法项就置灰保存」这条才对这个跨字段规则成立。
+  const pairsInvalid = useMemo(
+    () => THRESHOLD_PAIRS.some(pair => !thresholdsOk(
+      pair,
+      fieldOf(snapshot, pair.warn, staged.get(pair.warn)),
+      fieldOf(snapshot, pair.critical, staged.get(pair.critical)),
+    )),
+    [snapshot, staged],
+  )
+  const invalid = plan.some(item => item.write === undefined) || pairsInvalid
 
   const stage = useCallback((field: string, edit: StagedEdit | null) => {
     setStaged((current) => {
@@ -479,7 +592,7 @@ export function useConfigForm(scope: SettingsScope): ConfigFormApi {
   const save = useCallback(async (): Promise<void> => {
     if (savingRef.current) return
     const current = readSnapshot()
-    const writes = planWrites(current, staged)
+    const writes = orderPairWrites(planWrites(current, staged), current.value)
     if (writes.length === 0) return
     if (writes.some(item => item.write === undefined)) return
     savingRef.current = true
@@ -527,15 +640,32 @@ export function useConfigForm(scope: SettingsScope): ConfigFormApi {
     }, TEST_LATENCY_MS)
   }, [readSnapshot, staged])
 
-  const field = useCallback((name: string): FieldState => {
-    const spec = SPEC_BY_FIELD.get(name)
-    if (spec === undefined) {
-      return {
-        text: '', value: undefined, effective: undefined, stored: false, overridden: false, dirty: false, invalid: false,
-      }
-    }
-    return fieldStateOf(snapshot, spec, staged.get(name))
-  }, [snapshot, staged])
+  const field = useCallback(
+    (name: string): FieldState => fieldOf(snapshot, name, staged.get(name)),
+    [snapshot, staged],
+  )
+
+  const thresholdPairOk = useCallback(
+    (currency: string): boolean => {
+      const pair = THRESHOLD_PAIRS.find(item => item.currency === currency)
+      if (pair === undefined) return true
+      return thresholdsOk(
+        pair,
+        fieldOf(snapshot, pair.warn, staged.get(pair.warn)),
+        fieldOf(snapshot, pair.critical, staged.get(pair.critical)),
+      )
+    },
+    [snapshot, staged],
+  )
+
+  /**
+   * 记一次失焦。集合只增不减：提示一旦出现过就不该在下次敲键时消失。
+   */
+  const touch = useCallback((name: string): void => {
+    setBlurred(current => (current.has(name) ? current : new Set(current).add(name)))
+  }, [])
+
+  const touched = useCallback((name: string): boolean => blurred.has(name), [blurred])
 
   return {
     state: {
@@ -551,6 +681,9 @@ export function useConfigForm(scope: SettingsScope): ConfigFormApi {
     resetField,
     discard,
     save,
+    thresholdPairOk,
+    touched,
+    touch,
     test,
     runTest,
   }

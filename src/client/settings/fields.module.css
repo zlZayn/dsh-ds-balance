@@ -299,6 +299,29 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+/* 阈值成对的校验提示：琥珀、一行小字、左侧一个小圆点。
+   它是输入校验不是系统错误，所以用 warn 而不是 error，也不加图标。
+   位置在成对的两个输入框下面 —— 由调用方把它放进那一对的字段体里，因此不参与 .fields 的分隔线节奏。 */
+.pairNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.pairNote::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: currentColor;
+}
+
 /* 非法提示：只换色，位置与字号与 hint 相同，避免布局跳动。 */
 .invalid {
   margin: 0;

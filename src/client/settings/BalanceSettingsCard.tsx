@@ -5,7 +5,7 @@
  * @module dsh-ds-balance/client/settings/BalanceSettingsCard
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
 import {
   IconApiOutline14, IconChevronDownOutline14, IconGlobeOutline14, IconRefreshOutline14, IconWarningOutline16, Tag,
@@ -17,7 +17,7 @@ import {
   SelectorControl, TextControl,
 } from './fields.tsx'
 import type { FieldStatus, SelectorOption } from './fields.tsx'
-import { AUTO_CURRENCY, currencyCodes, useConfigForm } from './use-config-form.ts'
+import { AUTO_CURRENCY, currencyCodes, THRESHOLD_PAIRS, useConfigForm } from './use-config-form.ts'
 import type { SettingsScope } from './use-config-form.ts'
 import { credentialViewOf, useCredentialState } from './use-credential-state.ts'
 import type { CredentialView } from './use-credential-state.ts'
@@ -121,7 +121,10 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
   // 组里有非法草稿时该组强制展开：非法会禁用保存，用户必须看得见那个标红的字段，
   // 否则 footer 的「请检查标红的字段」会指向一个收起来的组。改好后即可自行收起。
   const groupOpenNow = (key: GroupKey): boolean =>
-    groupOpen[key] || GROUP_FIELDS[key].some(name => form.field(name).invalid)
+    groupOpen[key]
+    || GROUP_FIELDS[key].some(name => form.field(name).invalid)
+    // 成对校验不是字段级 invalid，得单独问一次：否则收起的阈值组会挡住「保存为什么是灰的」。
+    || (key === 'thresholds' && THRESHOLD_PAIRS.some(pair => !form.thresholdPairOk(pair.currency)))
 
   const { writable, dirty, invalid, saving, failed } = form.state
   const disabled = !writable || saving
@@ -178,7 +181,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
   // 数字字段：只有 inputMode 提示数字键盘，接受范围由宿主 schema 决定。
   // 给了 hintKey 的字段常态出说明，非法时换成 settings.invalidNumber —— 两句不同的话，
   // 而不是同一句话换个颜色。没给的（阈值四行）常态不出说明，由分组说明承担常驻提示。
-  const numberRow = (name: string, labelKey: LocaleKey, hintKey?: LocaleKey) => {
+  const numberRow = (name: string, labelKey: LocaleKey, hintKey?: LocaleKey, note?: ReactNode) => {
     const state = form.field(name)
     return (
       <FieldFrame
@@ -200,10 +203,27 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
           numeric
           invalid={state.invalid}
           disabled={disabled}
+          onBlur={() => { form.touch(name) }}
           onEdit={(text) => { form.edit(name, text) }}
         />
+        {note ?? null}
       </FieldFrame>
     )
+  }
+
+  /**
+   * 阈值成对的校验提示。它被放进那一对**最后一个字段的字段体**里，因此紧贴输入框下方，
+   * 也不会在 `.fields` 的分隔线节奏里多出一条线。
+   *
+   * **打字时不出现**：只在其中一个失焦过、或这一对本来就非法（例如从旧版本带过来的值）时才显示。
+   * 保存按钮不按这条走 —— 它有非法项就置灰，判据在 use-config-form 的 `state.invalid`。
+   */
+  const pairNote = (currency: string): ReactNode => {
+    const pair = THRESHOLD_PAIRS.find(item => item.currency === currency)
+    if (pair === undefined || form.thresholdPairOk(currency)) return null
+    const drafting = form.field(pair.warn).dirty || form.field(pair.critical).dirty
+    if (drafting && !form.touched(pair.warn) && !form.touched(pair.critical)) return null
+    return <p className={fieldCss.pairNote} role="alert">{t('settings.hint.thresholdPair')}</p>
   }
 
   const apiKey = form.field('apiKey')
@@ -375,9 +395,9 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
               onToggle={() => { toggleGroup('thresholds') }}
             >
               {numberRow('cnyWarn', 'settings.field.cnyWarn')}
-              {numberRow('cnyCritical', 'settings.field.cnyCritical')}
+              {numberRow('cnyCritical', 'settings.field.cnyCritical', undefined, pairNote('CNY'))}
               {numberRow('usdWarn', 'settings.field.usdWarn')}
-              {numberRow('usdCritical', 'settings.field.usdCritical')}
+              {numberRow('usdCritical', 'settings.field.usdCritical', undefined, pairNote('USD'))}
             </FieldGroup>
 
             {/* 刷新三项都有合理默认值，属于装了就不用动的那一档，因此排在最后。 */}

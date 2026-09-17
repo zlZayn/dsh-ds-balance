@@ -14,7 +14,7 @@ import { credentialRef, type CredentialProvider } from '@deepseek-ai/dsh-credent
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import type { SettingsScope } from '@deepseek-ai/dsh-settings'
 import type { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
-import { Config, SETTINGS_NAMESPACE, type Config as ConfigShape } from './config.js'
+import { Config, SETTINGS_NAMESPACE, validateThresholds, type Config as ConfigShape } from './config.js'
 import { DomainCoreStore, type DomainLike, type DomainOpener } from './adapters/domain-core-store.js'
 import { HttpDeepSeekClient } from './adapters/http-deepseek-client.js'
 import { SALT_BYTES, SALT_ENCODING, loadOrCreateSalt } from './adapters/salt-file.js'
@@ -168,7 +168,12 @@ export async function apply(ctx: Context, config: ConfigShape): Promise<void> {
   const logger = createConsoleLogger()
   const salt = await resolveSalt(logger)
 
-  const scope = ctx.settings.register(SETTINGS_NAMESPACE, Config, { base: config })
+  // validate 是跨字段约束的落点：schemastery 表达不了「warn > critical」，
+  // 而它拿到的是合并后的完整候选值，抛错即拒绝写入。见 config.ts 的 validateThresholds。
+  const scope = ctx.settings.register(SETTINGS_NAMESPACE, Config, {
+    base: config,
+    validate: validateThresholds,
+  })
   const configService = new ConfigService({ source: adaptSettingsScope(scope) })
   // 端口只建一次：KeyResolver 与 HTTP 端点读的是同一份「可不可写」的事实。
   const credentials = credentialsPort(ctx)

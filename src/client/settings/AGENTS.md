@@ -6,9 +6,14 @@ settings/ 特有约束：
 
 - 卡片**只做配置**：不许出现任何额度信息、金额、图表、快照列表或估算明细。
 - 数值一律按字符串处理；阈值**只存不判**，界面不得依据阈值给任何东西上色 —— 颜色只由后端 `severity` 决定。
+  - 唯一的读阈值处是圆环弧长（`../model.ts` 的 `ringRatioOf`），且只读 `warn`。
 - 不许 import 官方 `ui-settings-plugins` 的内部构件（bundle-purity gate 会拒），只能照抄模式。
 - 数字字段用 `type="text"` + `inputMode="numeric"`，不用 `type="number"`（[fields.tsx](fields.tsx) 的 `TextControl`）。
-- 新增字段必须同时改宿主 schema（[src/index.ts](../../index.ts) 的 `Config`）与 `CONFIG_FIELDS`（[use-config-form.ts](use-config-form.ts)），否则两半漂移。
+- 新增字段必须同时改宿主 schema（[src/config.ts](../../config.ts) 的 `Config`）与 `CONFIG_FIELDS`（[use-config-form.ts](use-config-form.ts)），否则两半漂移。
+- **跨字段约束要两半各写一道**：宿主挂在 `ctx.settings.register` 的 `validate` 上（schemastery 没有跨字段钩子），前端负责体验。
+  前端那道不许另抄一份判断 —— 判据只有 [use-config-form.ts](use-config-form.ts) 的 `thresholdsOk`。
+- **加跨字段约束时必须一并处理写入顺序**：宿主在**合并后的完整值**上校验，而一次保存是逐字段写的，
+  单字段写入会让中间态短暂非法。排序在 [use-config-form.ts](use-config-form.ts) 的 `orderPairWrites`。
 - 纵向间距只有两个所有者：`.group` 的顶部 12px 与 `.groupLast` 的尾部 12px（[fields.module.css](fields.module.css)）；新加元素不许在旁边叠 margin。
 - 分组折叠头一律用原语 `DisclosureRow`，不自己画（[fields.tsx](fields.tsx) 的 `FieldGroup`）。
   - **例外**：连接组里的二级「自定义设置」用原生 `<details>`（[fields.tsx](fields.tsx) 的 `DetailsGroup`），因为官方 `ProviderEditor` 那一处就是这么做的；本插件照搬官方形态优先于自定规则。

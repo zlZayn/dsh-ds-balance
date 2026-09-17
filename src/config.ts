@@ -93,6 +93,50 @@ export const Config = z.object({
   usdCritical: z.number().min(0).default(1),
 })
 
+/** 一对阈值：同一币种内的预警与告急。 */
+export interface ThresholdPair {
+  readonly currency: string
+  readonly warn: keyof Config
+  readonly critical: keyof Config
+}
+
+/**
+ * 阈值成对的清单。
+ *
+ * 字段名的约定是「币种代码小写 + Warn / Critical」；客户端按同一条约定把这两个字段
+ * 归成一对来判（[use-config-form.ts](client/settings/use-config-form.ts) 的 `THRESHOLD_PAIRS`）。
+ * 两边各存一份是因为**宿主与浏览器两个半体不许值导入**；约定本身由测试对着本表兜底。
+ */
+export const THRESHOLD_PAIRS: readonly ThresholdPair[] = [
+  { currency: 'CNY', warn: 'cnyWarn', critical: 'cnyCritical' },
+  { currency: 'USD', warn: 'usdWarn', critical: 'usdCritical' },
+]
+
+/**
+ * 跨字段校验：每个币种内 `warn` 必须**严格大于** `critical`。
+ *
+ * 挂在 `ctx.settings.register` 的 `validate` 上，不挂在 schema 上：
+ * schemastery 没有 refine / superRefine 这类跨字段钩子，而
+ * `SettingsRegisterOptions.validate` 正是为「schema 表达不了的约束」准备的 ——
+ * 它拿到的是**合并后、schema 已通过**的完整候选值，抛错即拒绝写入、什么都不落盘。
+ *
+ * **它在合并后的完整值上跑**，所以单字段写入会让中间态短暂非法；
+ * 客户端把成对的写入排过序（`orderPairWrites`），保证每一步中间态都合法。
+ *
+ * 为什么必须严格大于：两者相等时，余额恰好压线会被同时判成 warn 与 critical，
+ * 「预警」这一档就不存在了。
+ * @param value - 合并后的完整配置。
+ * @throws {Error} 违反约束时抛出；消息指向具体币种，便于用户定位。
+ */
+export function validateThresholds(value: Config): void {
+  for (const pair of THRESHOLD_PAIRS) {
+    const warn = value[pair.warn]
+    const critical = value[pair.critical]
+    if (warn > critical) continue
+    throw new Error(`${pair.currency} 预警必须大于告急（当前 ${String(warn)} / ${String(critical)}）`)
+  }
+}
+
 /**
  * 解析当前生效的超时。
  *

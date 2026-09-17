@@ -60,7 +60,12 @@
 ### use-config-form.ts
 
 - 职责：字段规格表、草稿状态机、保存与读回判定，以及「测试连接」的本地模拟。
-- 关键导出：`useConfigForm`、`SettingsScope`、`SettingsScopeSnapshotLike`、`CONFIG_FIELDS`、`SPEC_BY_FIELD`、`FieldState`、`ConfigFormState`、`TestState`、`ConfigFormApi`、`textField` / `numberField` / `selectField`、`currencyCodes`、`AUTO_CURRENCY`、`KNOWN_CURRENCIES`、`probeFailure`、`TEST_LATENCY_MS`。
+- 关键导出：`useConfigForm`、`SettingsScope`、`SettingsScopeSnapshotLike`、`CONFIG_FIELDS`、`SPEC_BY_FIELD`、`FieldState`、`ConfigFormState`、`TestState`、`ConfigFormApi`、`textField` / `numberField` / `selectField`、`currencyCodes`、`AUTO_CURRENCY`、`KNOWN_CURRENCIES`、`probeFailure`、`TEST_LATENCY_MS`、`THRESHOLD_PAIRS`、`thresholdsOk`、`orderPairWrites`。
+- **成对校验**：`thresholdsOk` 判「同一币种内预警 > 告急」，草稿为空时按**默认值**算（不是旧值），
+  所以 `THRESHOLD_PAIRS` 里存了一份默认值 —— 两个半体不许值导入，这份抄写由 [test/threshold-pairs.test.ts](../../../test/threshold-pairs.test.ts) 对着宿主 schema 对账。
+- **成对写入要排序**：宿主那道校验看的是合并后的完整值，`orderPairWrites` 保证每一步中间态都合法。理由见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)。
+- **失焦才提示**：`touch` / `touched` 记「哪些字段失焦过」，卡片据此决定要不要显示成对提示，避免打字中途闪一下。
+  保存按钮不按这条走 —— 它看 `state.invalid`，有非法项立刻置灰。
 - `CONFIG_FIELDS` 是字段清单的唯一来源：`SPEC_BY_FIELD` 由它派生，卡片渲染的每个字段都必须在这里登记。
 - 被谁依赖：`BalanceSettingsCard.tsx`；`src/client/index.tsx` 只用它的两个类型。
 - 改后必测：字段名与宿主 `Config` 一一对应；保存后的读回判定（见下）；`probeFailure` 的两条失败规则。

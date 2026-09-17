@@ -156,6 +156,8 @@ export interface TextControlProps {
   numeric: boolean
   invalid: boolean
   disabled: boolean
+  /** 失焦回调；阈值字段用它触发成对校验。 */
+  onBlur?: () => void
   onEdit: (text: string) => void
 }
 
@@ -174,6 +176,7 @@ export function TextControl(props: TextControlProps) {
       {...props.invalid ? { 'aria-invalid': true } : {}}
       value={props.text}
       disabled={props.disabled}
+      onBlur={props.onBlur}
       onChange={(event) => { props.onEdit(event.target.value) }}
     />
   )
