@@ -19,4 +19,5 @@ settings/ 特有约束：
 - `set` / `unset` 的返回值不许丢弃：宿主拒绝写入时不抛错，成败只能靠读回快照的 `user` 层判定（[use-config-form.ts](use-config-form.ts) 的 `landedWrite`）。
 - 组件拿不到 `ctx`：数据只能走 props，或用注册项的 `inject` 工厂（见 [../index.tsx](../index.tsx)）。
 - 文案一律走词典，键集真源是 [../locales.ts](../locales.ts)；组件里不写死字符串。
+- **字段说明只回答「为什么关心」**：一句、一行，不重复标签和分组说明已经说过的信息（[../locales.ts](../locales.ts) 的 `settings.hint.*`）。空话（「请填写兼容的地址」）不算说明。
 - 相对导入保留 `.ts` / `.tsx` 后缀。

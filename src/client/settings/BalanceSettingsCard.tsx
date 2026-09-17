@@ -156,9 +156,9 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
   }
 
   // 数字字段：只有 inputMode 提示数字键盘，接受范围由宿主 schema 决定。
-  // 常态不给说明，非法时才出现 settings.invalidNumber —— 这样非法态的文案与常态是两句话，
-  // 而不是同一句话换个颜色；分组说明承担「留空即默认」的常驻提示。
-  const numberRow = (name: string, labelKey: LocaleKey) => {
+  // 给了 hintKey 的字段常态出说明，非法时换成 settings.invalidNumber —— 两句不同的话，
+  // 而不是同一句话换个颜色。没给的（阈值四行）常态不出说明，由分组说明承担常驻提示。
+  const numberRow = (name: string, labelKey: LocaleKey, hintKey?: LocaleKey) => {
     const state = form.field(name)
     return (
       <FieldFrame
@@ -170,6 +170,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
         resetLabel={t('settings.reset')}
         invalid={state.invalid}
         invalidNote={t('settings.invalidNumber')}
+        hint={hintKey === undefined ? undefined : t(hintKey)}
         disabled={disabled}
         onReset={() => { form.resetField(name) }}
       >
@@ -369,9 +370,9 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
               onToggle={() => { toggleGroup('refresh') }}
               last
             >
-              {numberRow('serverRefreshSeconds', 'settings.field.serverRefreshSeconds')}
-              {numberRow('clientPollSeconds', 'settings.field.clientPollSeconds')}
-              {numberRow('manualRefreshCooldownSeconds', 'settings.field.manualRefreshCooldownSeconds')}
+              {numberRow('serverRefreshSeconds', 'settings.field.serverRefreshSeconds', 'settings.hint.serverRefreshSeconds')}
+              {numberRow('clientPollSeconds', 'settings.field.clientPollSeconds', 'settings.hint.clientPollSeconds')}
+              {numberRow('manualRefreshCooldownSeconds', 'settings.field.manualRefreshCooldownSeconds', 'settings.hint.manualRefreshCooldownSeconds')}
             </FieldGroup>
 
             <div className={css.footer}>
