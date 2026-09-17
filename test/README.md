@@ -2,6 +2,7 @@
 
 - 职责：领域层与服务的单元测试。**只测纯逻辑与端口替身，不做端到端。**
 - 运行方式：`npm test`（**自带 `npm run build`** —— 产物级测试要读 `lib/`）。只想跑用例时用 `npx --no-install vitest run`，但那要求 `lib/` 已是最新。
+- 契约测试单独一条入口：`npm run test:contract`（要 `DEEPSEEK_API_KEY`，打真实上游，**不进 ci.yml**）。
 - 变更影响路由：改 `src/domain/` 的判定规则 → 必须同步对应测试；改契约形状 → 同步 [docs/backend-architecture.md](../docs/backend-architecture.md) §13 的测试表。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 
@@ -19,7 +20,9 @@
 - 浏览器半边：视图模型映射、severity → 环形态、mock 场景自洽性、数据层的 URL 构造与失败路径，以及**对抗旧宿主的形状守卫**（宿主没有新字段时不能把组件打挂）。
 - 产物级：`artifacts.test.ts` 只读 `lib/`，断言宿主入口可求值、信封 id、样式内联、`exports` 指向真实产物。
 - 约定守卫：`redlines.test.ts`。
-- 待覆盖：真机端到端（要真实宿主与凭据）、契约测试（打真实上游）—— 都需要独立实例，做法见 [决策记录](../.agents/notes/2026-09-17-verification-recipes.md)。
+- 契约层：`contract-live-*.test.ts` 打真实上游核对响应指纹，由 [vitest.contract.config.ts](../vitest.contract.config.ts) 单独收集；
+  日常 [vitest.config.ts](../vitest.config.ts) 显式排除它，所以 `npm test` 不会去真上游。缺凭据时它失败而不是跳过。
+- 待覆盖：真机端到端（要真实宿主与凭据），需要独立实例，做法见 [决策记录](../.agents/notes/2026-09-17-verification-recipes.md)。
 
 ## 约定入口
 

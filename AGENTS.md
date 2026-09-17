@@ -18,6 +18,9 @@
 
 - `npm run build`：宿主 tsc + 客户端 tsc + esbuild 打包，三步缺一不可
 - `npm run typecheck`、`npm test`
+- `npm run test:contract`：打真实上游的契约测试，要环境里有 `DEEPSEEK_API_KEY`；不进 ci.yml
+- `npm run check:release`：发布态不变量；开发期会卡在 `dsh.bundle` 与 `private` 两条
+- `node scripts/acceptance.mjs`（端到端验收）、`node scripts/compat-swap.mjs check`（现查三条 dist-tag 线）
 - 挂载（不重启宿主）：先 `dsh plugin --profile <profile> add <仓库路径>`，再确认 profile 的 `dsh.profile.bundles` 里没有本插件，然后把 insert 行写进 profile 的 `cordis.patch.yml`
 - **重启前必须再确认一次**：`dsh.profile.bundles` 与 patch 同时存在会导致双挂载（宿主 reconcile 会把 bundles 那条回填）
 - 回滚：给 patch 里那行加 `disabled: true`，热生效
@@ -52,6 +55,8 @@
 - 界面实测（隔离实例 + 无头浏览器）：左下角圆环显示真实金额，浮层三段金额与相对时间正确，Escape 关闭，控制台零报错。
 - 测试与类型检查：跑 `npm test`（自带 build）与 `npm run typecheck`，或看 [CI](.github/workflows/ci.yml)。**数字不在本文档里抄。**
 - **主实例已重启**（13:15），跑的是最新产物；维护者已实机确认界面与功能。
+- 工程面对齐（同日第二轮）：三个发版脚本、三条 workflow、契约测试层、assets 双件、PUBLISHING、
+  CONTRIBUTING 中英、双语门面全部落地；判定与实测见 [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)。
 - 维护者第二轮反馈四项全部落地并实测：刷新按钮冷却期内置灰（`disabled` 为真、状态行「N 秒后可再次刷新」）；
   改阈值圆环当场变色且**上游请求数保持 0**；五档形状 ok 绿实弧 / warn 琥珀实弧 / critical 红实弧 / unavailable 红弧+中心叉号 / unknown 灰实弧；
   连接组的只读凭据显示「由启动环境提供（只读）」、Base URL 带官方提示、「自定义设置」折叠里有 apiKey 与 apiKeyRef。
@@ -69,7 +74,9 @@
 - [ ] 设置卡片的折叠状态不持久化（v1 有意不做，官方仅一处先例）
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
 - [ ] 发布前：加回 `dsh.bundle`、去掉 `private` —— [check-release.mjs](scripts/check-release.mjs) 会卡
-- [ ] 六项发布面挂起（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [触发条件](.agents/notes/2026-09-17-deferred-release-surface.md)
+- [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)
+- [ ] 两张设置卡片截图仍是占位图 → 按 [assets/AGENTS.md](assets/AGENTS.md) 的流程重截
+- [ ] 首次发布前的手动配置：npm Trusted Publishing、仓库 secret `DEEPSEEK_API_KEY`、environment `release` → [发布手册](docs/PUBLISHING.md)
 
 ## 活跃坑
 
@@ -110,6 +117,8 @@
 - 后端架构（修正版，已复审；只含设计与契约）→ [docs/backend-architecture.md](docs/backend-architecture.md)
 - 后端架构文档对照审查（设计依据）→ [docs/backend-architecture-review.md](docs/backend-architecture-review.md)
 - **UI 侧契约与移交（可原样转发给后端）** → [docs/ui-handoff.md](docs/ui-handoff.md)
+- 发布手册（流程与版本号判定链）→ [docs/PUBLISHING.md](docs/PUBLISHING.md)
+- 门面截图与其判据 → [assets/README.md](assets/README.md) · [assets/AGENTS.md](assets/AGENTS.md)
 - 决策记录 → [.agents/notes/](.agents/notes/)
 - 源码手册 → [src/README.md](src/README.md)
 - 浏览器半边 → [src/client/README.md](src/client/README.md)
