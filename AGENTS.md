@@ -44,8 +44,8 @@
 - 维护者已实机确认：条目可见、设置卡片渲染、圆环与标签正常。
 - 修复过并复测的实机缺陷：footer 三条目互挤、展开态条目不可见、折叠态与邻居贴住、点邻居却弹我们的浮层。
 - 维护者已实机验收全部界面：圆环与标签、点击浮层、折叠分组、与邻居插件共存。
-- 未验证：窄视口（<722px）下浮层的钳制表现。
-- **后端完成**：§14 第 1~10 步落地 —— 进度与偏离项见 [docs/PLAN.md](docs/PLAN.md)。
+- 窄视口浮层钳制已补验：360 / 480 / 600 / 700 / 721 五个宽度全部落在视口内。
+- **后端与界面完成**：§14 第 1~11 步落地。实现与文档不一致的 15 条 → [决策记录](.agents/notes/2026-09-17-implementation-deviations.md)。
 - 端点实测（隔离实例，真实 dsh 宿主）：六个端点全部可用；`severity` 四档、`NO_KEY` / `UPSTREAM_401` / `UPSTREAM_5XX` 三条错误路径、`422` 校验、冷却、配置掩码逐条核过。
 - 持久化实测：重启宿主后快照按 `accountTag` 读回，`.salt` 复用；上游不可达时降级成 `stale` 而不是丢数据。
 - 界面实测（隔离实例 + 无头浏览器）：左下角圆环显示真实金额，浮层三段金额与相对时间正确，Escape 关闭，控制台零报错。
@@ -59,11 +59,12 @@
 
 - [x] 首次 commit（工程骨架 / 文档网络 / UI 实现三个）
 - [x] `test/` 目录与双件
-- [x] 后端 §14 第 7~10 步 → 见 [docs/PLAN.md](docs/PLAN.md)
+- [x] 后端 §14 第 7~11 步
 - [x] `LICENSE` 文件（MIT）并加进 `package.json` 的 `files`
-- [x] §14 第 11 步收尾：文档同步、[报告](docs/final-report.md)、提交
+- [x] 文档同步与提交
+- [ ] 六条待产品决策的默认值 → [决策记录](.agents/notes/2026-09-17-implementation-deviations.md) 末节
 - [x] 重启宿主一次让后端半边生效（维护者已做，13:15）
-- [ ] 本轮 UI 改动的收尾：文档同步、报告回填、提交
+- [x] 本轮 UI 改动的收尾：文档同步、报告回填、提交
 - [ ] 脚本入口缺 `lint`；待定是否引入
 - [ ] 设置卡片的折叠状态不持久化（v1 有意不做，官方仅一处先例）
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
@@ -101,15 +102,13 @@
 - 原生集成勘察 → [docs/recon-native-integration.md](docs/recon-native-integration.md)
 - 连接与官方模型机制的融合判定 → [docs/model-integration-assessment.md](docs/model-integration-assessment.md)
 - 后端架构（修正版，已复审）→ [docs/backend-architecture.md](docs/backend-architecture.md)
-- 阶段 0 验证报告（探针实测）→ [docs/phase0-verification.md](docs/phase0-verification.md)
 - 后端架构文档对照审查 → [docs/backend-architecture-review.md](docs/backend-architecture-review.md)
 - **UI 侧契约与移交（可原样转发给后端）** → [docs/ui-handoff.md](docs/ui-handoff.md)
 - 决策记录 → [.agents/notes/](.agents/notes/)
 - 源码手册 → [src/README.md](src/README.md)
 - 浏览器半边 → [src/client/README.md](src/client/README.md)
-- **进行中计划（跨上下文交接）** → [docs/PLAN.md](docs/PLAN.md)
 - 领域模型手册 → [src/domain/README.md](src/domain/README.md)
 - 测试手册 → [test/README.md](test/README.md)
 - 构建脚本 → [scripts/README.md](scripts/README.md)
 - 事故复盘 → [docs/postmortem/](docs/postmortem/)
-- **收尾报告（完成标准逐条证据 / 偏离 / 待确认）** → [docs/final-report.md](docs/final-report.md)
+- 验证配方（隔离实例 / stub 上游 / 探针）→ [.agents/notes/2026-09-17-verification-recipes.md](.agents/notes/2026-09-17-verification-recipes.md)

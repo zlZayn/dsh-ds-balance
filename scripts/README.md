@@ -10,7 +10,7 @@
 - 改 `build-client.mjs` 的信封形状 → 同步 [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) 的构建决策与
   [src/client/README.md](../src/client/README.md)。
 - 改 `check-release.mjs` 的断言集合 → 同步 [AGENTS.md](../AGENTS.md) 的常用命令与
-  [docs/PLAN.md](../docs/PLAN.md) 的发布态风险行。
+  [AGENTS.md](../AGENTS.md) 的「重启前必须再确认一次」那条活跃坑。
 - 新增脚本 → 在下面「文件」节补一条，并在 [package.json](../package.json) 的 `scripts` 里给出入口。
 
 ## 文件
