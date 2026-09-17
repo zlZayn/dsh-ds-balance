@@ -183,6 +183,26 @@
   cursor: default;
 }
 
+/**
+ * 只读凭据框：视觉与交互都当静态文本 —— 悬停不换描边、指针不是插入符、点了也不出焦点环。
+ *
+ * 两条一起给才彻底：`pointer-events: none` 让鼠标根本落不到这个框上（宿主对 `input:hover`
+ * 的全局样式因此不会命中，指针也回落到父元素的普通箭头）；其余声明是兜底，
+ * 免得宿主那条同特异度的规则按加载顺序盖过来。
+ */
+input.inputStatic,
+input.inputStatic:hover,
+input.inputStatic:focus,
+input.inputStatic:focus-visible,
+input.inputStatic:active {
+  border-color: var(--dsw-alias-border-l4);
+  background: var(--dsw-alias-bg-layer-3);
+  outline: none;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* 非法草稿：换描边色，不换几何。显式重复 .input 的声明，不依赖 composes。 */
 .inputInvalid {
   box-sizing: border-box;

@@ -18,6 +18,7 @@ settings/ 特有约束：
 - 分组折叠头一律用原语 `DisclosureRow`，不自己画（[fields.tsx](fields.tsx) 的 `FieldGroup`）。
   - **例外**：连接组里的二级「自定义设置」用原生 `<details>`（[fields.tsx](fields.tsx) 的 `DetailsGroup`），因为官方 `ProviderEditor` 那一处就是这么做的；本插件照搬官方形态优先于自定规则。
 - 凭据字段的只读形态照官方「网页搜索」卡片：**常态空框（只 `readOnly`，不 `disabled`、不降透明度）**，**不隐藏字段、不另做只读块、框内不写占位符**。
+  **它与静态文本的唯一差别只剩「它在 DOM 里是个 input」**：悬停、指针、焦点、打字全不响应（`pointer-events: none` + 固定描边），改它之前先想清楚「为什么这一格要看起来能编辑」。
   状态走标签行右侧的徽章（`settings.credential.*`，**只有「已配置密钥。/ 未配置密钥。」两态**，与官方一致），说明走它下方那行（`settings.hint.credential`，一句与状态无关的常量）。
   **措辞逐字抄官方**：徽章取自 `ui-settings-plugins` 的 `webSearchApiKeySet` / `webSearchApiKeyUnset`，说明取自 `webSearchApiKeyHint`，标签取自 `webSearchApiKey` / `webSearchBaseUrl` —— 官方那套词在 `settings.models` / `settings.plugins` 命名空间、别的插件拿不到，所以抄进 [../locales.ts](../locales.ts)。
 - **端点基址默认留空**：界面显示空串（官方卡片同款），填空即覆盖、留空即官方默认；空串到官方地址的翻译只有 [../../config.ts](../../config.ts) 的 `endpointOf` 一处。

@@ -36,6 +36,7 @@
 - 关键导出：`FieldGroup`、`FieldFrame`、`FieldBadges`、`TextControl`、`ReadOnlyControl`、`SelectorControl`、`ActionRow`、`DetailsGroup`，以及类型 `FieldStatus` 与 `SelectorOption`。
 - `FieldGroup` 的折叠头用原语 `DisclosureRow`，不自己画；展开体由原语在 open 时条件渲染，无动画。
 - `ReadOnlyControl` 是只读输入：字段照常渲染、**只 `readOnly` 不 `disabled`**（常态空框，不降透明度），**框内不写任何文字**，形态照官方「网页搜索」卡片的凭据字段。只读的因由由标签行右侧的状态徽章与它下方的说明行承担，两处文案都来自词典。
+  **交互一律不响应**（`fields.module.css` 的 `input.inputStatic`，含 `pointer-events: none`）：悬停不换描边、指针是普通箭头不是插入符、点了也不出焦点环 —— 看着像能编辑才是错的。
 - 凭据徽章只有两态（已配置密钥。/ 未配置密钥。），与官方「网页搜索」卡片一致；四档判据（覆盖 > 环境 > 配没配）只决定二级折叠里那两个字段的状态。
 - `DetailsGroup` 是**二级折叠**，用原生 `<details>`/`<summary>` 而不是 `DisclosureRow` —— 官方那一处也是原生 details 配一个 `::before` 折角。它是受控但跟手的：`open` 由 state 持有，用户拨动时从 DOM 读回真实状态，卡片重渲染不会把它弹回去。
 - 类名拼接统一用官方 `clsx`（平台样式规则要求），不自备工具函数。

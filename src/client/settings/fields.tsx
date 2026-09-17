@@ -191,6 +191,8 @@ export function TextControl(props: TextControlProps) {
  * 只读的因由由标签行右侧的状态徽章与它下方的说明行承担，那两处的措辞来自词典。
  *
  * **为什么没有 placeholder**：灰字写在框里读起来像「这里该填但没填」。
+ * **交互一律不响应**：它看着像输入框，但悬停不换描边、指针不是插入符、点了也没有焦点环
+ * （`inputStatic` 那条规则，含 `pointer-events: none`）—— 看着像能编辑才是错的。
  */
 export interface ReadOnlyControlProps {
   id: string
@@ -205,7 +207,7 @@ export function ReadOnlyControl(props: ReadOnlyControlProps) {
   return (
     <input
       id={props.id}
-      className={css.input}
+      className={clsx(css.input, css.inputStatic)}
       type="text"
       value=""
       readOnly
