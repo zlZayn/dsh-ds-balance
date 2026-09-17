@@ -1,4 +1,4 @@
-# ds-balance 后端架构（修正版）
+# 后端架构（修正版）
 
 > 本文面向实现 Agent，自包含，可直接执行。
 > 来源：架构师原稿 + 本仓[后端架构文档对照审查](backend-architecture-review.md)的九条修正。

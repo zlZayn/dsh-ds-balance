@@ -9,7 +9,7 @@
 ## 坐标
 
 - 入口是 [../index.tsx](../index.tsx)：它 import 本目录的 `SidebarBalance`，并以副作用导入 `footer-stack.module.css`。
-- 槽位声明、owner props 与渲染点都不在本目录，见根 [AGENTS.md](../../../AGENTS.md) 的「活跃坑」与 [决策记录](../../../.agents/notes/2026-09-17-footer-stack-override.md)。
+- 槽位声明、owner props 与渲染点都不在本目录，见根 [活跃坑](../../../AGENTS.md#活跃坑) 与 [决策记录](../../../.agents/notes/2026-09-17-footer-stack-override.md)。
 - 宿主容器 `.footerActions` 的实情：不换行的 row flex、没有 `flex-direction`、没有 `gap`、没有 `flex-wrap`。
 
 ## 文件
@@ -46,7 +46,7 @@
 
 - 职责：折叠与展开**共用**的状态圆环；弧长是「余额 / `warn` 阈值」的比例，颜色只表达状态。
 - 关键导出：`PercentRing`、`PercentRingProps`（`state` / `marker` / `ratio` / `size` / `title`）、`RingState`。
-- `marker` 是中心符号，目前只有 `'cross'`：`unavailable` 用它把「账户维度不可用」与 `critical` 的「余额维度告急」分开 —— 两者都是红弧，因为官方 token 没有第五种色相（详见 [docs/ui-handoff.md](../../../docs/ui-handoff.md) 第四节）。
+- `marker` 是中心符号，目前只有 `'cross'`：`unavailable` 用它把「账户维度不可用」与 `critical` 的「余额维度告急」分开 —— 两者都是红弧，因为官方 token 没有第五种色相（详见 [docs/ui-handoff.md](../../../docs/ui-handoff.md)）。
 - 被谁依赖：`SidebarBalance.tsx`，两个形态都用它；形态由 [../model.ts](../model.ts) 的 `ringSpecOf` 给出，弧长由同一个文件的 `ringRatioOf` 给出。
 - 改后必测什么：四档 `state` 各自的颜色；`ratio` 为 0 时 svg 里没有 `.fill` 那条弧、为 1 时是满环；`unavailable` 时 svg 里恰好多两条 `<line>`；svg 自身的 `aria-hidden` 仍在（语义由外层 `aria-label` 承担）；折叠态的 `title` 只在有状态文案时出现。
 

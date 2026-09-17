@@ -1,4 +1,4 @@
-# src/client/mock/ — 开发场景手册
+# mock/ — 开发场景手册
 
 - 职责：给界面开发提供不依赖后端的稳定数据；不进生产路径。
 - 变更影响路由：加场景 → 同步根 [README.md](../../../README.md) 的场景清单说明与 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md) 的契约小节。

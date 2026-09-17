@@ -1,4 +1,4 @@
-# src/client/ — 浏览器半边手册
+# client/ — 浏览器半边手册
 
 - 职责：注册两个 slot（左下角条目、设置卡片）与中英词典；所有界面都在这里。
 - 变更影响路由：改这里的对外行为 → 同步根 [README.md](../../README.md) 与 [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)；改完必须 `npm run build`，产物由 `dsh-client-hmr` 自动替换。

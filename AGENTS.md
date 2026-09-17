@@ -77,27 +77,14 @@
 - **`sidebar.footer.action` 的宿主容器是 row flex（宿主遗漏）**：官方 cordis 面板与 `dsh-usage-statistics-panel` 都把根节点写成满宽且不收缩，横排下条目会被挤到 0 宽。我们已用 `:has()` 反选父元素把它改回纵向堆叠 → [决策](.agents/notes/2026-09-17-footer-stack-override.md)。依赖 `:has()` 与该锚点属性稳定。
 - **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包写进 profile 的 `dsh.profile.bundles`**，而 bundle 层与 patch 层的 insert 行**只在启动时读** —— 两条同时存在就是**双挂载**。开发期靠「不声明 `dsh.bundle`」躲开它，发布态不能这么干（包里必须有 bundle 层）。所以装法只能选一种：**`dsh plugin add` 或手写 patch 行，不要都做**。改本机 profile 前先看 `dsh.profile.bundles`。
 - **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。
-- **不要在侧栏底部写 `aria-haspopup="dialog"`**：已装的 `dsh-usage-statistics-panel` 用它从自己按钮往上逐层 `querySelector` 来找设置触发按钮，假设整条底部只有一个这样的按钮；我们的按钮会被它先命中并被 `click()`，表现为「点邻居却弹出我们的浮层」。改用 `aria-expanded`。同一插件的另一条隐式契约：它的 MutationObserver 会扫 `[role="dialog"] nav button`，所以浮层里不要放 `<nav>` 包着的按钮。
-- **向上展开的浮层在「打开时」会盖住上方邻居那一格**：footer 条目纵向堆叠，`side: 'top'` 的浮层底边正落在邻居底边。这是既定取舍（官方 cordis 面板同构）—— 关闭时点邻居落到邻居身上才是关键，那由「不写 `aria-haspopup`」保证。曾试图用右侧哨兵让两者不相交，实机上看位置与触发元素脱节、不优雅，已回退。
-- **esbuild 的 CSS Modules 必须显式开 `loader: { '.css': 'local-css' }`**，否则 `import css from './x.module.css'` 拿到 `{}`、类名全是 `undefined`。
-- **esbuild 把 CSS 抽成独立文件**，而 DSH 只服务 `lib/client.js`：样式必须在构建后内联回 factory，否则卡片渲染出来但一条样式都不生效。
-- **`src/client.ts(x)` 会与浏览器信封的输出路径 `lib/client.js` 抢文件**：历史上导致宿主启动 SyntaxError。构建脚本开头有守卫。
-- 宿主半边无热更；浏览器半边由 `dsh-client-hmr` 轮询 `lib/client.js` 自动替换。
-- **开发环的版本错位：客户端半边立刻换新，宿主半边要重启才换**。`dsh-client-hmr` 一轮询就换上新的 `lib/client.js`，而 `lib/index.js` 还是进程启动时那份 —— 于是新客户端会去读旧宿主不存在的字段。**客户端读新字段一律加防御**（`字段?.属性` + 形状守卫，缺失就退化成保守默认），否则组件直接崩、整个 slot 条目消失。改完宿主半边要主动重启，别指望 HMR。
-- **cordis 不许读没 `inject` 过的服务**：直接访问会抛 `cannot get property "..." without inject`。可选服务（`connection` / `storageDomain`）必须由 `ctx.inject` 把门并留降级路径；把它们塞进顶层 `inject` 会让缺服务的装配整个插件不装载。**降级路径会把这条配置错误伪装成运行时故障**，所以启动日志要当验收项看。
-- 符号链接安装下 `npm run build` 直接写线上，未验证的构建会立刻影响正在使用的界面。
-- `inject` 门禁按服务名逐字判，点号键不展开成父级。
 - dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 不在宿主那条线上。实际版本现查：`node scripts/compat-swap.mjs check`。
-- `dsh.client.inject` 只列真实客户端图行；`ui-slots` 与 `ui-primitives` 是 staticLinked 平台模块，列进去会被静默跳过。
 - **`npm ci` 会执行 `prepare`**：所以本仓库**不声明** `prepare`。声明了的话 CI 的 `npm ci` 会先产出 `lib/`，typecheck 就再也看不到「干净检出」这个状态 —— 那正是刚修掉的一类缺陷（`test/artifacts.test.ts` 在 CI 上 TS2307，本机因产物早就在而常绿）。见 [决策记录](.agents/notes/2026-09-17-prepare-script-decision.md)。
 - **写临时探针别用 `os.tmpdir()`**：进程环境为空时它在 Windows 上返回相对路径 `undefined\temp`，会把文件写进工作区，还会让 `robocopy` 自我递归出一棵超 MAX_PATH 的目录树。用 `$env:TEMP` 或显式绝对路径，用完即删。
 - **Agent 的 `write` 工具对「自己刚删掉的文件」会拒绝覆盖**（它缓存里那个文件还在）。换个路径，或用 Node 的 `fs.writeFileSync` 直接写。
 - **`package-lock.json` 的根条目会漏 `peerDependencies`**：`npm ci` 不校验它，所以这种漂移能一路绿到底。改完 peer 之后跑一次 `npm install --package-lock-only` 让 lockfile 对齐清单。
-- **跨字段校验看的是「合并后的完整值」，而一次保存是逐字段写的**：`ctx.settings.register` 的 `validate` 拿到的是合并候选值，
-  所以单字段写入会让中间态短暂非法 —— 把 (20, 15) 改成 (10, 5)，先写 `warn` 得到 (10, 15)，宿主拒绝整次写入。
-  成对的写入由 [use-config-form.ts](src/client/settings/use-config-form.ts) 的 `orderPairWrites` 排序；**以后再加跨字段约束，必须一并想清楚写入顺序**。
-- **跨字段约束在两个半体各写一道，判据不许抄第二份**：宿主挂在 `validate` 上（schemastery 没有 refine 之类的钩子），
-  前端只负责「失焦后提示 + 有非法项置灰保存」。前端那份判断只有 `thresholdsOk` 一处。
+- **跨字段约束的写法与写入顺序 → [settings 规则层](src/client/settings/AGENTS.md)**：宿主 `validate` 看的是合并后的完整值，
+  而一次保存是逐字段写的，所以单字段写入会让中间态短暂非法 —— 成对写入由 `orderPairWrites` 排序。
+- **宿主半边/浏览器半边的装载时机、cordis 服务门禁、构建链三类坑** → [src 规则层](src/AGENTS.md) 与 [scripts 规则层](scripts/AGENTS.md)（进目录即自动注入，这里不重抄）。
 
 ## 文档网络与自更新
 
@@ -126,7 +113,7 @@
 
 - 本表只列**层**；每层有什么在它自己的 README 里，不在这里重抄一份。
 - 设计、契约、发布手册与事故复盘 → [docs/README.md](docs/README.md)
-- 决策记录与验证配方（当时为什么这么定）→ [.agents/notes/README.md](.agents/notes/README.md)
+- 决策记录与验证配方（当时为什么这么定）→ [.agents/notes/](.agents/notes/)（写法见该目录 `AGENTS.md`，不建索引）
 - 源码手册 → [src/README.md](src/README.md)；浏览器半边 → [src/client/README.md](src/client/README.md)；领域模型 → [src/domain/README.md](src/domain/README.md)
 - 测试手册 → [test/README.md](test/README.md)；构建脚本 → [scripts/README.md](scripts/README.md)
 - 门面截图与判据 → [assets/README.md](assets/README.md) · [assets/AGENTS.md](assets/AGENTS.md)

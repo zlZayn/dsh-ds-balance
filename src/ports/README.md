@@ -1,4 +1,4 @@
-# src/ports/ — 端口层手册
+# ports/ — 端口层手册
 
 - 职责：定义上层依赖的**接口**（Layer 1）。只有类型与常量，没有实现。
 - 变更影响路由：改端口签名 → 同步实现（`src/adapters/`）与 [docs/backend-architecture.md](../../docs/backend-architecture.md) 的 §5。

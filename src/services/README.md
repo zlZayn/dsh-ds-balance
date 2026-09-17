@@ -1,4 +1,4 @@
-# src/services/ — 应用服务手册
+# services/ — 应用服务手册
 
 - 职责：把端口与领域模型组织成用例（Layer 3）。**不直接碰 `ctx`，只依赖构造时注入的端口。**
 - 变更影响路由：改解析链或调度策略 → 同步 [docs/backend-architecture.md](../../docs/backend-architecture.md) 的 §6；改错误分类 → 同步 §7.4。

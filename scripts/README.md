@@ -1,7 +1,7 @@
 # scripts/ — 构建与校验脚本手册
 
 - 职责：把源码变成 DSH 能加载的产物；不参与运行时。
-- 变更影响路由：改这里 → 同步 [README.md](../README.md) 的「快速上手」与 [AGENTS.md](../AGENTS.md) 的「常用命令」。
+- 变更影响路由：改这里 → 同步根 [README.md](../README.md) 安装一节的步骤与 [常用命令](../AGENTS.md#常用命令)。
 
 ## 变更影响路由
 
@@ -9,10 +9,10 @@
   [test/artifacts.test.ts](../test/artifacts.test.ts) 与 [test/redlines.test.ts](../test/redlines.test.ts) 的构建链断言。
 - 改 `build-client.mjs` 的信封形状 → 同步 [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) 的构建决策与
   [src/client/README.md](../src/client/README.md)。
-- 改 `check-release.mjs` 的断言集合 → 同步 [AGENTS.md](../AGENTS.md) 的常用命令与
-  [AGENTS.md](../AGENTS.md) 的「重启前必须再确认一次」那条活跃坑。
+- 改 `check-release.mjs` 的断言集合 → 同步 [常用命令](../AGENTS.md#常用命令) 与
+  [事实来源](../AGENTS.md#事实来源只查不抄) 里「发布态该有什么」那一行。
 - 新增脚本 → 在下面「文件」节补一条，并在 [package.json](../package.json) 的 `scripts` 里给出入口。
-- 改 `release-guard.mjs` 的分类常量 → 同步 [docs/PUBLISHING.md](../docs/PUBLISHING.md) 的「发版前确认」。
+- 改 `release-guard.mjs` 的分类常量 → 同步 [发版前确认](../docs/PUBLISHING.md#发版前确认)。
 - 改 `compat-swap.mjs` 的受管前缀 → 同步 [compat.yml](../.github/workflows/compat.yml) 的矩阵。
 
 ## 文件

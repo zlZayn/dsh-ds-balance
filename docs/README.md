@@ -23,7 +23,7 @@
 | [model-integration-assessment.md](model-integration-assessment.md) | 依据 | 与官方模型机制（凭据继承）的融合判定。 |
 | [backend-architecture-review.md](backend-architecture-review.md) | 依据 | 后端架构文档的逐条对照审查。 |
 | [recon-native-integration.md](recon-native-integration.md) | 记录 | 阶段 0 勘察：原生 slot / 组件 / token / 数据获取的实测结论。 |
-| [postmortem/](postmortem/) | 记录 | 按日期归档的事故复盘：现象、根因、防错。 |
+| [postmortem/](postmortem/README.md) | 记录 | 按日期归档的事故复盘：现象、根因、防错。 |
 
 ## 变更影响路由
 

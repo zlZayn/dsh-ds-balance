@@ -1,4 +1,4 @@
-# src/ports/ — 规则层
+# ports/ — 规则层
 
 继承根规则，见 [../../AGENTS.md](../../AGENTS.md)。
 

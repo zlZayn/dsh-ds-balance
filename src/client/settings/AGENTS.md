@@ -1,4 +1,4 @@
-# src/client/settings/ — 规则层
+# settings/ — 规则层
 
 继承根规则，见 [../../../AGENTS.md](../../../AGENTS.md)（仓库根）；直接上层是 [../AGENTS.md](../AGENTS.md)（src/client 规则层）。
 

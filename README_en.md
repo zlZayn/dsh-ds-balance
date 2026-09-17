@@ -75,7 +75,7 @@ Install the host by **naming the version line explicitly**: the `latest` tag of 
 npm install -g @deepseek-ai/dsh@alpha     # the line this plugin promises to support
 ```
 
-Compatibility is measured, not inferred: every week [compat.yml](.github/workflows/compat.yml) swaps packages onto the `alpha` and `next` lines and reruns the existing tests. The current verdict, and what to do when it goes red, are in [docs/PUBLISHING.md](docs/PUBLISHING.md) under "Compatibility".
+Compatibility is measured, not inferred: every week [compat.yml](.github/workflows/compat.yml) swaps packages onto the `alpha` and `next` lines and reruns the existing tests. The current verdict, and what to do when it goes red, are in [Compatibility](docs/PUBLISHING.md#兼容性).
 
 ### From npm
 
@@ -120,7 +120,7 @@ Saving applies immediately; there is no need to restart DSH.
 - How full the ring is = the current balance as a fraction of that currency's **warning line**, capped at 100%; the critical line takes no part in drawing it — it already decided the colour.
 - Colour carries state only, never an amount: normal, low and critical each get one hue; an account that cannot be read gets a ring with a cross instead.
 - A currency with no threshold configured falls back to state: full ring for normal and unavailable, 3/4 for low, 1/4 for critical, empty for unknown.
-- Why colour is never computed from an amount, and why thresholds are only a scale → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), under "Data flow".
+- Why colour is never computed from an amount, and why thresholds are only a scale → [Data flow](docs/ARCHITECTURE.md#数据流).
 
 ### Credentials
 

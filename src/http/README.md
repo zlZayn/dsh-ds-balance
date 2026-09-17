@@ -1,4 +1,4 @@
-# src/http/ — HTTP 端点手册
+# http/ — HTTP 端点手册
 
 - 职责：把应用服务暴露成 `ctx.connection.fetch` 上的一组精确路由。
 - 契约来源：[docs/backend-architecture.md](../../docs/backend-architecture.md) §3.3 / §8。

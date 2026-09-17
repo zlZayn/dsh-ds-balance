@@ -75,7 +75,7 @@
 npm install -g @deepseek-ai/dsh@alpha     # 本插件承诺支持的线
 ```
 
-兼容性不是推断出来的：每周由 [compat.yml](.github/workflows/compat.yml) 在 `alpha` 与 `next` 两条线上换包实跑一遍现有测试。当前结论与红了怎么办见 [docs/PUBLISHING.md](docs/PUBLISHING.md) 的「兼容性」。
+兼容性不是推断出来的：每周由 [compat.yml](.github/workflows/compat.yml) 在 `alpha` 与 `next` 两条线上换包实跑一遍现有测试。当前结论与红了怎么办见 [兼容性](docs/PUBLISHING.md#兼容性)。
 
 ### 从 npm 安装
 
@@ -120,7 +120,7 @@ dsh plugin --profile web add "$PWD"
 - 环里填多少 = 当前余额占该币种**预警线**的比例，100% 封顶；告急线不参与画环 —— 它已经决定了颜色。
 - 颜色只表达状态，与金额大小无关：正常、偏低、告急各一色；账户读不到时另画一个带叉号的环。
 - 没配阈值的币种退回按状态定性：正常与不可用画满环，偏低 3/4，告急 1/4，未知空环。
-- 为什么颜色不由金额算、阈值为什么只当刻度 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 的「数据流」。
+- 为什么颜色不由金额算、阈值为什么只当刻度 → [数据流](docs/ARCHITECTURE.md#数据流)。
 
 ### 凭据
 
