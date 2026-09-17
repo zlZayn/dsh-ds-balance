@@ -10,4 +10,4 @@
 export const SCHEMA_VERSION = 1
 
 /** 插件版本。与 `package.json` 的 `version` 一致（有测试兜底）。 */
-export const PLUGIN_VERSION = '0.0.1'
+export const PLUGIN_VERSION = '1.0.0'

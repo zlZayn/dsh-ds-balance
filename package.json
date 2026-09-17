@@ -1,6 +1,6 @@
 {
   "name": "dsh-ds-balance",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "DSH plugin: shows the DeepSeek account balance at the bottom of the sidebar, with a configuration card in settings.",
   "keywords": [
     "dsh",
