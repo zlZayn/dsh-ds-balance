@@ -26,7 +26,7 @@ const USAGE = `用法：
  * 这些前缀下的改动一律不进 npm 包。
  * 用「逐个排除」而不是「逐个收录」：未识别的路径算改变产物 —— 宁可漏判，不误拦。
  */
-const NON_ARTIFACT_PREFIXES = ['.agents/', '.github/', 'docs/', 'scripts/', 'test/']
+const NON_ARTIFACT_PREFIXES = ['.agents/', '.github/', 'assets/', 'docs/', 'scripts/', 'test/']
 
 /**
  * 上面那些前缀里确实会改变产物的例外。
