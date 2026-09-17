@@ -15,7 +15,7 @@
 - [BalanceSettingsCard.tsx](../src/client/settings/BalanceSettingsCard.tsx) 的 **JSX 结构**：字段增删、顺序、按钮、状态行
 - [fields.tsx](../src/client/settings/fields.tsx) 的**控件形态**：只读行、折叠头、二级 details
 - 三个 `*.module.css` 的**样式值**：字号、行高、间距、令牌、布局
-- 卡片**可见状态**的语义：未保存标记、凭据行的四档徽标、只读行留空、失败诊断
+- 卡片**可见状态**的语义：未保存标记、凭据徽标（两态）、只读行留空、失败诊断
 - **左边栏那张另有判据**：[SidebarBalance.tsx](../src/client/sidebar/SidebarBalance.tsx) 的行结构、
   [BalancePopover.tsx](../src/client/sidebar/BalancePopover.tsx) 的三行与状态行，
   以及 [PercentRing.tsx](../src/client/sidebar/PercentRing.tsx) 的**弧长与中心符号** ——

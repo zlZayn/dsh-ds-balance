@@ -59,7 +59,7 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
 - Multiple currencies: the account decides which currency is shown; when the one chosen in settings is absent, the popover explains and offers a one-click switch.
 - The settings card has four collapsible groups, all collapsed by default; a group holding a bad value opens itself.
 - The credential is inherited from the official model settings by default, so there is nothing to re-enter; where it comes from is on a badge
-  (provided by the launch environment (read-only) / a key is configured / no key is configured / overridden), and a read-only field explains itself instead of offering an edit.
+  (a key is configured / no key is configured, exactly the official card's wording), and a read-only field explains itself instead of offering an edit.
 - Colour carries state only (normal / low / critical), never an amount; see "[Reading the ring](#reading-the-ring)".
 
 ## Installation
