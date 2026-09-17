@@ -1,6 +1,6 @@
 # 决策：实现与本项目既定文档的偏离清单（2026-09-17）
 
-已实施：15 条偏离全部落地并实测；末尾 6 条是仍未拍板的产品决策。
+已实施：15 条偏离全部落地并实测；末尾列了仍未拍板与已拍板两份清单。
 
 ## 问题
 
@@ -37,11 +37,15 @@
 5. `BalanceStatus` 要不要暴露 `lastErrorAt`：原实现里这个字段只写不读，开 `noUnusedLocals` 时被点名，
    已按死状态删除。若原意是要与 `lastSuccessAt` 对称地对外暴露，那是一次对外契约变更，需要单独拍板。
 
-**已拍板**（从上面移下来，结论留档）：
+**已拍板**（结论留档，不再需要决策）：
 
-- `LICENSE` 的版权人：`zlZayn`。
+- `LICENSE` 的版权人：`zlZayn`（从上面的清单移下来）。
 - 是否引入 `lint`：不引入，改用 [tsconfig 的四个编译器开关](../../tsconfig.json)
-  → [决策记录](2026-09-17-no-linter-decision.md)。
+  → [决策记录](2026-09-17-no-linter-decision.md)（从上面的清单移下来）。
+- 非法阈值的处理：**不自动修正**。存在非法成对阈值（如 CNY 预警 20 / 告急 21）时，
+  加载即出提示、保存按钮置灰，要求用户自己改正 —— 静默改用户的配置比挡住保存更危险。
+  实现见 [use-config-form.ts](../../src/client/settings/use-config-form.ts) 的 `thresholdsOk`
+  与 [config.ts](../../src/config.ts) 的 `validateThresholds`。
 
 ## 替代方案
 
