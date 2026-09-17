@@ -8,7 +8,7 @@
 [![dsh](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FzlZayn%2Fdsh-ds-balance%2Fmain%2Fpackage.json&query=%24.engines.dsh&label=dsh&color=blueviolet)](package.json)
 
 > **NOTE**
-> 本包尚未发布（`private: true`），只能从源码安装。发布流程与版本号判定链见
+> 本包尚未发布到 npm，现在只能从源码安装。发布流程与版本号判定链见
 > [docs/PUBLISHING.md](docs/PUBLISHING.md)。
 
 在 DSH 的左边栏底部显示 DeepSeek 账户余额，并在设置里提供一张配置卡片。

@@ -1,9 +1,12 @@
 /**
  * 发布前检查。
  *
- * 开发期刻意从 package.json 去掉了 `dsh.bundle`：宿主在跑 `dsh plugin` 时会把
- * 任何声明它的已装包回填进 `dsh.profile.bundles`，与 patch 层的 insert 行形成
- * 双挂载。发布态必须把它加回来，否则装出来的包没有 bundle 层。
+ * 本仓库现在是**发布态**：`dsh.bundle.patch` 已加回、`private` 已去掉。
+ *
+ * 为什么曾经没有它：宿主在跑 `dsh plugin` 时会把任何声明它的已装包回填进
+ * `dsh.profile.bundles`，与 patch 层的 insert 行形成双挂载；开发期因此刻意去掉。
+ * 发布态又必须声明它，否则装出来的包没有 bundle 层 —— 那条坑改由根 AGENTS.md 的
+ * 「重启前必须再确认一次」把守。
  *
  * 本脚本把「发布态该有什么」变成可执行断言，避免靠人记得。
  */

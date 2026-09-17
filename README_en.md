@@ -8,7 +8,7 @@
 [![dsh](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FzlZayn%2Fdsh-ds-balance%2Fmain%2Fpackage.json&query=%24.engines.dsh&label=dsh&color=blueviolet)](package.json)
 
 > **NOTE**
-> This package is not published yet (`private: true`); it installs from source only.
+> This package is not on npm yet; it installs from source only.
 > The release flow and the version-bump decision chain are in
 > [docs/PUBLISHING.md](docs/PUBLISHING.md).
 

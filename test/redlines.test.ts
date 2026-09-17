@@ -59,11 +59,16 @@ describe('插件清单', () => {
     expect(pkg.files).toContain('LICENSE')
   })
 
-  it('开发期不得声明 dsh.bundle（否则被 dsh plugin 回填成双挂载）', () => {
+  it('dsh.bundle 的有无必须与 private 一致（否则被 dsh plugin 回填成双挂载）', () => {
     // 声明了它的已装包会被写回 profile 的 dsh.profile.bundles，与 patch 层的 insert 行
     // 形成双挂载 —— bundles 只在启动时读，所以下次重启才炸。
-    // 发布前必须加回：scripts/check-release.mjs 会把「缺席」报成失败项。
-    expect(pkg.dsh?.bundle).toBeUndefined()
+    // 所以这条不变量跟着 private 走：开发期（private）不许有，发布态必须有。
+    // 两态各自的完整断言在 scripts/check-release.mjs 里。
+    if (pkg.private === true) {
+      expect(pkg.dsh?.bundle).toBeUndefined()
+      return
+    }
+    expect(pkg.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
   })
 })
 
