@@ -655,13 +655,15 @@ scope.watch((next, prev) => {
 - **`open` 每进程只能一次**，重名抛 `DomainError('already-open')`。
 - **schema 分裂**：插件配置是 schemastery，**domain 内部记录 schema 是 zod**。
 
-可照抄的现行先例：已装第三方插件 `dsh-usage-statistics-panel/src/store.ts` 用 `defineDomain` + `domainTable` + `ctx.open(domain)`，落盘 `$DSH_HOME/storages/usage_history.json`。
+可照抄的现行先例（**官方自用**）：宿主仓 `packages/workspace/workspace/src/spec.ts` 用
+`defineDomain` + `domainTable` 声明域，`src/index.ts` 用 `ctx.storageDomain.open(spec)` 打开它 ——
+官方自己的完整链路就在那里，不用去别处找样例。
 
 ### 10.2 域定义
 
-> 下例的**字段形状以已装插件的真实用法为准** —— 本文没有逐字转录 `defineDomain` / `domainTable` 的类型定义。
-> 实现时打开 profile 里已装插件 `dsh-usage-statistics-panel` 的 `src/store.ts` 照抄，不要照抄本文的示意。
-> （该包在 `<DSH_HOME>/profiles/<profile>/node_modules/` 下。）
+> 下例的**字段形状以官方实现为准** —— 本文没有逐字转录 `defineDomain` / `domainTable` 的类型定义。
+> 实现时对照宿主仓：规范看 `packages/storage/storage-domain/README.md`，
+> 官方自用范例看 `packages/workspace/workspace/src/spec.ts`，不要照抄本文的示意。
 
 ```ts
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'

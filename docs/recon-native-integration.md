@@ -18,7 +18,7 @@
 - 主题靠 `body[data-ds-dark-theme]`；插件直接读 CSS 变量，无需 import。
 - 原语缺口：无数字输入、无通用卡片、无表格；无间距 / 圆角 / 层级 token。
 - 宿主仓库内**不存在任何余额 / 额度 / 计费 UI**；余额缺口只表现为一次失败的 LLM 请求。
-- 最贴近需求的现成先例是本机已装的 `dsh-usage-statistics-panel`（同时占了我们要的两个槽）。
+- 官方自用的多槽注册范例：`packages/extensions/ui-cordis/src/client/index.ts`（一次 `apply` 里注册 `sidebar.footer.action` 与 `tool.call.toolview`）；能注册哪些座位、每个座位要什么，权威清单是 `docs/subsystems/slots.md`。
 - 你已有的仓外插件 `dsh-zhihu-search` 是完整可照抄的模板。
 
 ---
@@ -133,15 +133,15 @@
 - 浮层：`position: fixed` + `useLayoutEffect` 量测锚点（:127-138）+ `useDismissOnOutsidePointer`；面板 420px / `max-width: calc(100vw - 24px)` / `max-height: 60vh` / `z-index: 30`（`CordisPanel.module.css:82-101`）。
 - 样式：`CordisPanel.module.css:3-35`，42px 行；badge `width: calc(100% + 4px)` / `margin: 0 -2px`。
 
-### 范例二：`dsh-usage-statistics-panel`（最贴近需求）
+### 范例二：多槽注册与槽位目录（官方）
 
-- 一次 `apply` 注册 3 个 slot（`src/client/index.tsx:80-111`）：
-  - `settings.section`，id `usage-statistics`，order 30。
-  - `sidebar.footer.action`，id `usage-statistics`，order 0。
-  - `conversation.composer.dock`，id `stats`，priority -1（遮蔽官方）。
-- `SidebarEntry.tsx:67-84` 用 `wide` 决定图标尺寸与是否显示文字；CSS 对齐官方 42px 行 / 36px rail。
-- 风险点：它从 footer 按钮「打开设置并跳到指定分区」靠 DOM 遍历（`:35-60`），原生无公开 API。
-- 另一风险：包内 `cordis.patch.yml` 注释警告同包双挂载会因路由前缀重复导致整棵插件树启动失败。
+- 一次 `apply` 注册多个 slot 的官方写法：`packages/extensions/ui-cordis/src/client/index.ts:86`
+  （`sidebar.footer.action`）、`:117` 与 `:124`（`tool.call.toolview`）。
+- 槽的权威清单（能注册哪些座位、每个座位要什么、order / priority 怎么算）：`docs/subsystems/slots.md`。
+- 槽键合进类型的机制：`packages/client/ui-plugin-manager/src/client/index.ts` 的
+  `declare module '@deepseek-ai/dsh-client-ui-slots'`（augmentation）。
+- 风险点（官方机制自带的）：footer 座位是**多个插件共享**的，谁后注册谁排在后面；
+  想「打开设置并跳到指定分区」**没有公开 API**，只能靠 DOM 遍历 —— 这条不因换成官方实现而消失。
 
 ### 范例三：`dsh-zhihu-search`（你自己的仓外插件模板）
 
@@ -211,7 +211,8 @@
 - 取文案两条路：注册项声明 `locale: NS` → 组件 `t` prop；组件外用 `ctx.locale.bind(ns)`。
 - 只内建 zh / en；外部语言包 `ctx.locale.addLanguage({ id, label, fallback })`，fallback 链必须终止于 `en`。
 - 切换入口 Settings → General，持久化到 `locale.preference`（本机实测为 `en`）。
-- 第三方多语言真实写法：`dsh-usage-statistics-panel/src/client/index.tsx:59-64`。
+- 官方注册写法：`packages/client/ui-commands/src/client/index.ts:59`
+  （`ctx.effect(() => ctx.locale.register(NS, { zh, en }), '…')`）；词典形状见上文 `ui-goal` 那条。
 
 ---
 

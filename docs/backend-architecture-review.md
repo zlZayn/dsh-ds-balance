@@ -73,7 +73,10 @@ namespace 必须匹配 `/^[a-z][a-z0-9-]*$/` → `ds-balance` 合法。
 - **`open` 每进程只能一次**：重名抛 `DomainError('already-open')`。
 - **schema 分裂**：插件配置是 schemastery，**domain 内部记录 schema 是 zod**。
 
-**定案：用官方接缝。** 可照抄的先例是已装第三方插件 `dsh-usage-statistics-panel/src/store.ts`：`defineDomain` + `domainTable` + `ctx.open(domain)`，落盘 `$DSH_HOME/storages/usage_history.json`。
+**定案：用官方接缝。** 官方自用的完整链路就在宿主仓里：
+`packages/workspace/workspace/src/spec.ts`（`defineDomain` + `domainTable` 声明）
+→ `src/index.ts`（`ctx.storageDomain.open(spec)` 打开）；规范见
+`packages/storage/storage-domain/README.md`。
 
 绕过官方存储的代价（留档，解释为什么不这么做）：
 
