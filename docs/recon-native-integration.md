@@ -342,5 +342,4 @@ Get-ChildItem "$env:DSH_HOME\profiles" -Directory | Select-Object -ExpandPropert
 ## 来源
 
 - 勘察方法：4 个 subagent 并行只读扫描，结论均带 `路径:行号`。
-- 原始长文在 `recon/`（被 `.gitignore` 忽略，当前 12 份，编号 00–11）。
 - 关键规范原文：`deepseek-harness/docs/web-styling.md`。

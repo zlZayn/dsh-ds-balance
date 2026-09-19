@@ -173,7 +173,6 @@ namespace 必须匹配 `/^[a-z][a-z0-9-]*$/` → `ds-balance` 合法。
 
 ## 参考
 
-- 原始核验（临时目录，被 `.gitignore` 忽略）：`recon/16-backend-doc-api-verification.md`
 - UI 侧契约 → [UI 侧契约与移交](ui-handoff.md)
 - 模型融合判定 → [连接与官方模型机制的融合判定](model-integration-assessment.md)
 - 架构设计 → [架构说明](ARCHITECTURE.md)

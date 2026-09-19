@@ -24,6 +24,3 @@ Thumbs.db
 .env
 .env.*
 *.local.yml
-
-# 勘察中间产物：临时目录，最终结论已并入 docs/recon-native-integration.md
-recon/

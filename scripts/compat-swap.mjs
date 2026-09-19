@@ -10,6 +10,10 @@
  * 为什么要有 `verify`：`npm install` 会**假绿** —— 它可能失败，而 node_modules 停在旧版本上，
  * 于是测试跑在旧依赖上、给出与事实相反的信号。换版后必须回头看实际装到了什么。
  *
+ * 包在某条线上没有版本时，按它**声明在哪**分档（与 dsh-zhihu-search 同一条规则）：
+ *   出现在 `peerDependencies` → **失败**：声明面点名了线上不存在的版本，使用者按这个区间装不出来。
+ *   只在 `devDependencies`     → **告警并跳过**：那只影响本地类型检查与构建，不影响使用者装本插件。
+ *
  * 退出码：0 = 通过 / 1 = 有未过 / 2 = 用法错误
  */
 
@@ -106,11 +110,22 @@ async function swap(line) {
   const manifest = readManifest()
   const names = managedNames(manifest)
   const plan = []
+  const skipped = []
   for (const name of names) {
     const tags = await distTags(name)
     const version = tags[line]
-    if (!version) throw new Error(`${name} 在 ${line} 线上没有版本`)
+    if (!version) {
+      // 判定分档见文件头：只有 peer 缺失才红。
+      if (name in (manifest.peerDependencies ?? {})) {
+        throw new Error(`${name} 在 ${line} 线上没有版本（它声明在 peerDependencies 里）`)
+      }
+      skipped.push(name)
+      continue
+    }
     plan.push({ name, version })
+  }
+  if (skipped.length > 0) {
+    console.log(`跳过 ${skipped.length} 个仅 dev 声明的包（${line} 线上没有版本）：${skipped.join(', ')}`)
   }
 
   let touched = 0
@@ -149,9 +164,21 @@ async function verify(line) {
   const manifest = readManifest()
   const names = managedNames(manifest)
   let failed = 0
+  let skipped = 0
   for (const name of names) {
     const tags = await distTags(name)
     const expected = tags[line]
+    if (!expected) {
+      // 判定分档同 swap()：peer 缺失算失败，仅 dev 缺失告警跳过。
+      if (name in (manifest.peerDependencies ?? {})) {
+        console.log(`FAIL  ${name} —— 在 peerDependencies 里，但 ${line} 线上没有版本`)
+        failed += 1
+        continue
+      }
+      console.log(`WARN  ${name} —— 仅 devDependency，${line} 线上没有版本，本仓不受影响`)
+      skipped += 1
+      continue
+    }
     const installedPath = join('node_modules', name, 'package.json')
     if (!existsSync(installedPath)) {
       console.log(`MISS  ${name} —— node_modules 里没有它`)
@@ -159,7 +186,7 @@ async function verify(line) {
       continue
     }
     const installed = JSON.parse(readFileSync(installedPath, 'utf8')).version
-    const suffix = manifest.dependencies?.[name] ?? manifest.devDependencies?.[name] ?? ''
+    const suffix = manifest.peerDependencies?.[name] ?? manifest.devDependencies?.[name] ?? ''
     if (installed !== expected) {
       console.log(`FAIL  ${name} —— 声明 ${suffix}，实际装到 ${installed}，${line} 线上是 ${expected}`)
       failed += 1
@@ -173,7 +200,7 @@ async function verify(line) {
     console.error(`${failed} 个包没有落在 ${line} 线上 —— 这次换版是假绿，别信它跑出来的绿。`)
     return 1
   }
-  console.log(`${names.length} 个包全部落在 ${line} 线上。`)
+  console.log(`${names.length - skipped} 个包全部落在 ${line} 线上${skipped > 0 ? `（另 ${skipped} 个仅 dev 声明，已跳过）` : ''}。`)
   return 0
 }
 

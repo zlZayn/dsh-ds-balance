@@ -174,6 +174,5 @@ pending → 最后一次 request header → 进程默认
 
 ## 参考
 
-- 原始勘察（临时目录，被 `.gitignore` 忽略）：`recon/13-model-provider-api.md` / `recon/14-credentials-and-model-page.md` / `recon/15-active-model-and-signals.md`
 - 本插件的后端契约 → [UI 侧契约与移交](ui-handoff.md)
 - 原生集成勘察 → [原生 UI 与插件机制勘察](recon-native-integration.md)

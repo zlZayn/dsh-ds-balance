@@ -21,6 +21,8 @@
 - 对外可见行为变化，同一次改动内同步 [README.md](README.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 颜色只由后端 `severity` 决定；前端读阈值的唯一去处是圆环弧长，且只读 `warn`、只当刻度
 - 样式只用 CSS Modules + `--dsw-alias-*`；禁 Tailwind、禁组件库、禁字面色值
+- **所有 `@deepseek-ai/dsh-*` 声明的下限不得低于 `engines.dsh` 的下限** —— 两份声明自相矛盾时，使用者按我们给的区间装不出可用的宿主。2026-09-20 抬过一批（peer 8 条 + 仅 dev 的 2 条），见[决策记录](.agents/notes/2026-09-20-declaration-floor-alignment.md)。
+- **只做类型面（module augmentation）、运行时由宿主经 `dsh.client.inject` 提供的官方包，只写 `devDependencies`，不写 `peerDependencies`** —— 目前只有 `@deepseek-ai/dsh-client-ui-plugin-manager`，理由与查证见[决策记录](.agents/notes/2026-09-20-plugin-manager-dependency-kind.md)。
 
 ## 常用命令
 
@@ -115,7 +117,7 @@
   | 宿主兼容下限与分水岭 | [package.json](package.json) 的 `engines.dsh` | 门面「版本兼容」一节只写分水岭、升级指引与指针，不重抄下限 |
 - **门面「版本兼容」一节的判据**：`package.json` 的 `engines.dsh` 或任一 `@deepseek-ai/dsh-*` 范围变了、或声明罩不住被跟的那条 dist-tag 线（`check:declaration` 变红）→ 同一次改动内更新 [README.md](README.md) 与 [README_en.md](README_en.md) 的那一节。
   「该槽由哪一版 dsh 引入」是**历史事实**，不随下限改；会漂的下限只写 [package.json](package.json) 指针，含版本的那一行必须与 `package.json` 同行（红线在 [test/redlines.test.ts](test/redlines.test.ts)）。过期判据就是这条命令本身。
-- **能落成校验的不写散文**：红线 → [test/redlines.test.ts](test/redlines.test.ts)；发布态不变量 → [scripts/check-release.mjs](scripts/check-release.mjs)；文档链接与换行 → **本仓暂无独立脚本**（`check-links.py` / `check-line-endings.py` 在本仓并不存在，此前是过期指针），改动后自做一次相对链接与锚点检查，再加 `git diff --check`；把它们做成脚本是待办。
+- **能落成校验的不写散文**：红线 → [test/redlines.test.ts](test/redlines.test.ts)；发布态不变量 → [scripts/check-release.mjs](scripts/check-release.mjs)；**锁文件的 `resolved` 必须指向官方源 → 红线的「锁文件」组**（此前这条只写在另一仓的发布手册里，所以没人执行）；文档链接与换行 → **本仓暂无独立脚本**（`check-links.py` / `check-line-endings.py` 在本仓并不存在，此前是过期指针），改动后自做一次相对链接与锚点检查，再加 `git diff --check`；把它们做成脚本是待办。
 - **改一处要查得到同步点**：每个子目录 `README.md` 的「变更影响路由」是同步清单入口；新增或改名文件后必须回填。
 - **改根 [README.md](README.md) 必同改 [README_en.md](README_en.md)**：能力清单、上手步骤、指针逐条对齐，冲突以中文为准。
 - **坑按作用域分流**：只在某个子目录才会踩的坑写进该目录的 `AGENTS.md`（进入即自动注入），本文件只留跨模块、致命的那几条。

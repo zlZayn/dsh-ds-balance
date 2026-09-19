@@ -21,10 +21,17 @@ describe('依赖分层', () => {
     expect(official).toEqual([])
   })
 
-  it('每个 @deepseek-ai/* 平台包都同时在 peer 与 dev', () => {
+  it('每个 @deepseek-ai/* 平台包都同时在 peer 与 dev，且版本逐条相等', () => {
+    // 版本相等不是洁癖：peer 与 dev 一旦漂开，本地类型检查通过的版本与
+    // 声明给使用者的版本就不是同一个，红线会假绿。2026-09-20 起从「存在」升级为「相等」。
+    // 例外：只做类型面依赖、不需要宿主在运行时提供的包可以只留 dev ——
+    // 目前只有 @deepseek-ai/dsh-client-ui-plugin-manager（它只提供 module augmentation，
+    // 且运行时关系由 dsh.client.inject 表达）。见 .agents/notes/2026-09-20-plugin-manager-dependency-kind.md。
     const peers = Object.keys(pkg.peerDependencies ?? {}).filter((name) => name.startsWith('@deepseek-ai/'))
+    const devs = pkg.devDependencies ?? {}
     for (const name of peers) {
-      expect(pkg.devDependencies?.[name], `${name} 缺 devDependency，本地类型检查会挂`).toBeTruthy()
+      expect(devs[name], `${name} 缺 devDependency，本地类型检查会挂`).toBeTruthy()
+      expect(devs[name], `${name} 的 peer 与 dev 版本不一致`).toBe(pkg.peerDependencies[name])
     }
   })
 
@@ -32,6 +39,23 @@ describe('依赖分层', () => {
     for (const name of Object.keys(pkg.dependencies ?? {})) {
       expect(name.startsWith('@deepseek-ai/'), `${name} 是官方包，应走 peer`).toBe(false)
     }
+  })
+})
+
+describe('锁文件', () => {
+  it('resolved 必须指向官方源', () => {
+    // 镜像生成的锁文件会让 CI 去镜像取包（供应链隐患），而且 `npm ci` 可能因 peer 未同步而失败。
+    // 这条以前只写在 docs/PUBLISHING.md 的散文里 —— 规则住在文字里就没人执行，
+    // 所以 2026-09-20 落成断言（当时 balance 实测 129/131 条走 registry.npmmirror.com）。
+    const lock = JSON.parse(readFileSync('package-lock.json', 'utf8')) as {
+      packages?: Record<string, { resolved?: string }>
+    }
+    const offenders = Object.entries(lock.packages ?? {})
+      // 只看 http(s) 来源；file:/link:/git 之类本就不是包的公开源。
+      .filter(([, meta]) => meta.resolved?.startsWith('http'))
+      .filter(([, meta]) => !meta.resolved!.startsWith('https://registry.npmjs.org/'))
+      .map(([name, meta]) => `${name || '(root)'} → ${new URL(meta.resolved!).host}`)
+    expect(offenders, `这些包的 resolved 不指向官方源：\n${offenders.join('\n')}`).toEqual([])
   })
 })
 
@@ -151,8 +175,7 @@ describe('文档不抄实测值', () => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = dir === '.' ? entry.name : `${dir}/${entry.name}`
       if (entry.isDirectory()) {
-        // recon/ 是勘察期的临时长文，被 .gitignore 忽略、不随仓库走，所以不在守卫范围内。
-        if (['node_modules', 'lib', '.git', 'recon'].includes(entry.name)) continue
+        if (['node_modules', 'lib', '.git'].includes(entry.name)) continue
         found.push(...liveDocs(path))
         continue
       }

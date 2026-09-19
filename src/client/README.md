@@ -22,6 +22,7 @@
 
 - `SETTINGS_NAMESPACE`：必须与宿主半边逐字一致，它是两半的配对键，也是左下角条目的 `id`；配置卡片的 `key` 是包名，与它无关。
 - `apply(ctx)`：向 `plugins.bundle.config`（key = 包名）与 `sidebar.footer.action` 各注册一次；两半都能拿到同一个作用域对象（`apply` 期建一次，引用稳定）。
+  - 左下角那条**显式写 `order: 0`**：宿主对 list 槽的排序是 `order` → `priority` → 注册先后，写 0 就是「与官方 cordis-panel 同序」——**改位置用 `order`，遮蔽别人用 `priority`，两者别混**（机制与证据：宿主 `packages/client/ui-slots/src/index.ts` 的 `order` 声明与 `ui-renderer/.../scoped-slots.tsx` 的渲染层二次排序，行号以当前检出为准）。
   同时建一个配置槽探测并随插件 fiber 释放：**它只喂浮层那行提示，不参与注册** —— 槽真的在时注册语义与探测无关。
 
 ## 依赖面
