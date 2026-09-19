@@ -13,6 +13,8 @@
 - `git diff --name-only <上个 tag>..HEAD | node scripts/release-guard.mjs` —— 产物到底变没变。
 - 按下面的判定链定档，然后 `npm version <patch|minor|major> --no-git-tag-version`。
   这一步会同时改 `package.json` 与 `package-lock.json`；只手工改前者会被 CI 拦下。
+  **版本号其实写在三处**：还有 [src/version.ts](../src/version.ts) 的 `PLUGIN_VERSION`（响应里逐条回传的线上版本常量）。
+  `npm version` **不会碰它** —— 忘了改会被 `test/version.test.ts` 拦下；本机 `npm test` 能提前发现，别等 CI 红。
 
 ## 发版流程
 
