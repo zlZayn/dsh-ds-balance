@@ -7,6 +7,11 @@
 - `npm run check:release` 当前 0 失败。
 - 装法只有一条：`dsh plugin --profile <profile> add dsh-ds-balance`（或源码路径）—— 包内声明了 bundle 层，安装器自己会写进 `dsh.profile.bundles`。**不要再手写 patch 行**，见下面的活跃坑。
 - 运行形态：装进某个 dsh profile 的 `node_modules`，由该 profile 的 `dsh.profile.bundles` 装载（bundle 层来自包内的 `cordis.patch.yml`）。
+- **本次发版决策**：8 条 UI 修缺里 **7 条完整**发出；**#5「浮层右上角 Plugins 图标」的落点只到 Plugins 面板**，到不了本插件的 bundle 详情页 —— 该条**搁置**（现状与证据见 [sidebar 手册](src/client/sidebar/README.md)）。
+  为什么现在发：币种那条是**真 bug** —— 浮层「改用 X」写的是本地偏好、设置页不跟着变，组件重挂就丢，使用者正在用有问题的版本，**等不起**；其余几条一并随这个版本出去。
+  发的是哪条线：**alpha 线的 `2.0.0-alpha.N`**（版本号带预发布段 → 发到同名 dist-tag，**`latest` 不动**）；实际版本号与 dist-tag 现查 npm，机制见 [release.yml](.github/workflows/release.yml) 顶部注释与 [PUBLISHING.md](docs/PUBLISHING.md)。
+  触发条件：等宿主给出面板深链入口（`selectPanel` 带参数，或 ui-plugin-manager 暴露 `openBundle(name)` 一类客户端服务）后，**再发一个 patch 把图标落点改成直达**。
+  **这是有意的取舍，不是遗漏** —— 记在这里免得后人当成漏做的活。
 
 ## 全局规则
 
