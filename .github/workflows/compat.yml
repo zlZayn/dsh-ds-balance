@@ -8,11 +8,14 @@
 #   swap        —— 真的换线、真的装、真的跑测试。
 #   两者混在一起会互相遮蔽：声明面过期与代码真的跑不起来是两回事。
 #
-# 两条线**暂时都只记录**（continue-on-error: true），不阻断。
-# 原因是实测出来的错位：next 比 alpha 还旧，而我们声明的是 alpha ——
-# 「声明面罩住的线」与「语义上的承诺线」对不上。
+# 主次（2026-09-20 定）：**alpha 是承诺线，红了就红** —— `engines.dsh` 声明的就是它、
+# 宿主在跑的也是它，当日实测 swap / typecheck / test 全绿。
+# **next 已停**：它每周把声明换到 rc.2 —— 低于我们 `engines.dsh` 的下限，测的是
+# 我们已经不支持的宿主。停它是因为**语义错位**，不是因为它红（实测它装得上、
+# 代码只差一个图标；将来若要「旧宿主降级运行」的能力，修掉图标即可恢复）。
+# 历史决策：.agents/notes/2026-09-17-compat-lines-advisory.md（已被本次取代）
+# 本次决策：.agents/notes/2026-09-20-compat-mainline.md
 # **版本号不写在这里**（会漂），要现查跑：node scripts/compat-swap.mjs check
-# 判据与恢复条件见 .agents/notes/2026-09-17-compat-lines-advisory.md。
 #
 # 「只记录」不等于「没人看」：任何一个作业红了都会开或更新**一条固定标题的跟踪 issue**
 # （scripts/report-compat-failure.mjs，同一处失败不重复刷评论）—— 这就是
@@ -61,13 +64,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
-      # 一条线红了不遮住另一条线的结果。
       fail-fast: false
       matrix:
-        line: [alpha, next]
-    # 主次未定，两条都只记录（见文件头的决策记录）。
-    # 这不是取消守卫：swap 内部的 verify 在任何一条线上都会拦「装到旧版本还报绿」。
-    continue-on-error: true
+        # next 已停：语义错位（见文件头）。只剩承诺线 alpha，它红了就红、就修。
+        line: [alpha]
     steps:
       - uses: actions/checkout@v7
 

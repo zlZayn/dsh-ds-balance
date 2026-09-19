@@ -1,5 +1,8 @@
 # 决策：compat 两条线暂时都只记录（2026-09-17）
 
+> **状态（2026-09-20）：已被 [2026-09-20-compat-mainline.md](2026-09-20-compat-mainline.md) 取代** ——
+> alpha 升为承诺线（红了就修），next 停测（语义错位，不是因为红）。下文保留作历史。
+
 已实施：`compat.yml` 的 alpha 与 next 两个 job 都是 `continue-on-error: true`，红了不发通知、不阻断。
 
 ## 问题
