@@ -30,8 +30,9 @@ export const CONFIG_SLOT_TIMEOUT_MS = 15000
  * 缺槽时的提示。
  *
  * **英文、`[WARN]` 前缀、无 emoji** —— 兼容性硬约束规定提示文案一律英文，
- * 所以它刻意不进 [locales.ts](locales.ts) 的双语词典：那里放的是产品文案，
- * 中文用户也应该看到中文；这一条是诊断信息，两种语言下都照原文给。
+ * 所以它**有意不走** [locales.ts](locales.ts) 的双语词典：那里放的是产品文案，
+ * 中文用户也应该看到中文；而这一条是**跨版本诊断信息**，**只在探测到旧宿主（槽缺席）
+ * 时才会出现**，两种语言下一律照原文给。SPEC §5 把这记作一处有意的例外。
  */
 export const CONFIG_SLOT_WARNING =
   '[WARN] This dsh host does not declare the plugins.bundle.config slot, so this plugin cannot show '

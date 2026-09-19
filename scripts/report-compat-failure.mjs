@@ -28,8 +28,14 @@ import { TRACKED_LINE } from './check-declaration.mjs'
 /** 跟踪 issue 的固定标题：判重就靠它逐字相等。 */
 const ISSUE_TITLE = '[compat] the weekly compatibility patrol is red'
 
-/** 固定标签。仓库里没有就现建（--force 是幂等的）。 */
-const ISSUE_LABEL = 'compat-patrol'
+/**
+ * 固定标签。仓库里没有就现建（--force 是幂等的）。
+ *
+ * 与 dsh-zhihu-search 的 compat.yml **用同一个标签名**：两个仓的巡检是同一件事，
+ * 跨仓按标签查（`gh issue list --label compat`）必须一次查全 —— 本轮复核就因为在
+ * zhihu 用 `compat`、这里用 `compat-patrol`，按前者查 balance 得到空、一度误判「没建出 issue」。
+ */
+const ISSUE_LABEL = 'compat'
 
 const LABEL_COLOR = 'B60205'
 const LABEL_DESCRIPTION = 'compat.yml patrol is red; closed automatically is not supported, close by hand when green'
