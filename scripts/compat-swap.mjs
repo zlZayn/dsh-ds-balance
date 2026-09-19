@@ -18,7 +18,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
@@ -151,6 +151,21 @@ async function swap(line) {
   }
 
   console.log(`\n跑裸 npm install（shell: true 只是为了在 Windows 上找到 npm.cmd，没有用 shell 特性）……`)
+  // 换线 = **从零装**。实测两道障碍，全是"旧线残留"：
+  //   1. 锁文件记着换线前的解析 —— alpha 锁 + rc.2 manifest 直接 ERESOLVE。
+  //   2. 已装的 node_modules 也是旧线的树 —— npm 拿已装的 dsh-brand@alpha 对抗要装的
+  //      peer dsh-brand@^0.1.5-rc.2，同样 ERESOLVE。只有"无锁 + 空树"装得出来
+  //      （探针 3 实测通过：verify 11/11 全落在目标线）。
+  // 删掉两者，让 npm 只按新 manifest 解。回滚不变：git checkout 取回两个文件，
+  // node_modules 由 install 重建。
+  if (existsSync('package-lock.json')) {
+    rmSync('package-lock.json')
+    console.log('已删 package-lock.json（它记着换线前的解析）。')
+  }
+  if (existsSync('node_modules')) {
+    rmSync('node_modules', { recursive: true, force: true })
+    console.log('已删 node_modules（它装的是换线前那条线的树）。')
+  }
   const result = spawnSync('npm', ['install'], { stdio: 'inherit', shell: true })
   if (result.status !== 0) {
     console.error(`npm install 退出码 ${result.status}`)
