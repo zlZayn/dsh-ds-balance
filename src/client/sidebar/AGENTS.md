@@ -32,6 +32,20 @@ sidebar/ 特有约束：
   - 高程表面写 `border: 0` + `box-shadow: var(--dsw-elevation-*)`，两者不同时用。
 - 组件拿不到 `ctx`，数据只走 props。
 - 相对导入保留 `.ts` / `.tsx` 后缀。
+- 跨插件**只走 Cordis 服务**，不许运行时 import 别的 feature plugin 的值导出。
+  - 理由：仓库红线，`bundle-purity gate` 会拒；`ui-plugin-manager` 的 `PANEL_ID` 正是值导出。
+  - 替代：面板 id 用本目录的字面量常量（`'plugins'`），注释里带宿主 `路径:行号` 引用 —— 见 `../index.tsx` 的 `PLUGINS_PANEL_ID`，对照 `ui-plugin-manager/src/client/index.ts:47`。
+- 消费宿主的跨插件服务一律**鸭子类型收窄**，不 import 宿主包的类型、不为它新增 npm 依赖。
+  - 理由：那些包不在本仓的 `node_modules` 与 `package-lock.json` 里，`import type` 也会给声明面添一条边。
+  - 先例：`../index.tsx` 的 `RawScope` 与 `LayoutFace`（公开面见宿主 `ui-layout/src/client/service.ts:28-52` 的 `ILayout`）。
+- 可选服务**不许塞顶层 `inject`**（缺服务会让整个插件不装载），必须 `ctx.inject([...], …)` 把门并留降级路径。
+  - 降级的表现是**不留死入口**，而不是「假装能用」：服务缺席时那枚图标整块不渲染，只留一句可撤销的说明。
+- 调宿主**会抛**的接口要**具名 catch**：注释写清抛因与后果，并留一行记录（`console.warn`）。
+  - 理由：宿主拒绝不是错误信号，不写清楚下一个人只看到「点了没反应」。
+  - 先例：`../index.tsx` 的 `selectPanel` 那处 —— 面板 id 未注册时会抛（宿主 `ui-layout/src/client/service.ts:69-71`），profile 里没装 plugin-manager 时那个面板不存在。
+  - 例外：纯粹降级的分支可用带注释的 `catch {}`，但注释要写清退化成什么（`BalancePopover.tsx` 的 `Intl` 退化）。
+- 状态值**本身是函数**时，必须走 setter 的 updater 形式（`setX(() => fn)`），不能 `setX(fn)`。
+  - 理由：React 见到函数就当更新器，状态恒为它的返回值 —— 本目录踩过一次，图标因此永不渲染 → [决策记录](../../../.agents/notes/2026-09-19-setstate-function-value-updater.md)。
 - `footer-stack.module.css` 的选择器不许加类名，改动它必须知道它依赖 `:has()` 与 `data-slot` 锚点属性。
   - 宿主类名是 CSS Modules 哈希、写不出来；锚点是 `display: contents`，所以父元素唯一。
 - 浮层向上展开，**打开时会盖住上方邻居那一格**：footer 条目纵向堆叠，`side: 'top'` 的浮层底边正落在邻居底边。

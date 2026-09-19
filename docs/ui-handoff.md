@@ -80,7 +80,9 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 | 账户完全没有余额 | 显示 `--` 并加标记 |
 
 - 浮层里给说明与两个动作：**改用实际币种** / **去设置**。
+  （已推翻：「去设置」已删除，只剩「改用实际币种」一个动作；去插件页的入口改由标题行右端的 Plugins 图标按钮承担，经宿主 `ctx.layout.selectPanel('plugins')` 跳转，**服务缺席时整个图标不渲染** → [记录](../.agents/notes/2026-09-19-setstate-function-value-updater.md)）
 - **设置页保留用户的选择，不自动改**；当前卡片内不渲染这条提示，币种不匹配的说明只出现在浮层里。
+  （已推翻：「改用实际币种」现在直接写 `ds-balance` 作用域的 `displayCurrency`，与设置卡片同一条写路径、按读回快照判落盘；宿主不可写时按钮置灰 → [决策记录](../.agents/notes/2026-09-19-currency-single-source.md)）
 - 该币种后续到账后，提示自动消失并切回用户选定的币种。
 
 **后端需要保证的**：`balances` 里出现的 `currency` 是稳定的代码（如 `CNY` / `USD`），UI 用它与用户选择做不区分大小写的比对。
@@ -91,7 +93,7 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 
 - 命名空间：`ds-balance`（宿主 schema 与浏览器半边用同一字符串配对）。
 - 落点：`$DSH_HOME/settings.yaml` 的顶层键 `ds-balance`。
-- 设置界面挂在「设置 → 插件 → DeepSeek 余额」。
+- 设置界面挂在 Plugins 页里该 bundle 的详情页：宿主按包名 `dsh-ds-balance` 取 `plugins.bundle.config` 这一格（原「设置 → 插件」入口已不存在）。
 
 | 字段 | 类型 | 默认 | 范围 |
 |---|---|---|---|

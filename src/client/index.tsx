@@ -10,7 +10,7 @@
  * @module dsh-ds-balance/client
  */
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -19,8 +19,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { BalanceSettingsCard } from './settings/BalanceSettingsCard.tsx'
+import { writeFieldValue } from './settings/use-config-form.ts'
 import type { SettingsScope, SettingsScopeSnapshotLike } from './settings/use-config-form.ts'
-import { SidebarBalance } from './sidebar/SidebarBalance.tsx'
+import { SidebarBalance, type PluginsNavigation } from './sidebar/SidebarBalance.tsx'
 // 副作用导入：修正宿主 .footerActions 的排版遗漏，见 .agents/notes/2026-09-17-footer-stack-override.md。
 import './sidebar/footer-stack.module.css'
 import { NS, en, zh, type LocaleKey } from './locales.ts'
@@ -98,6 +99,23 @@ function useScopeValue(scope: SettingsScope): Record<string, unknown> {
   return value
 }
 
+/**
+ * 订阅设置作用域的可写位。
+ *
+ * 宿主存储只读（`writable === false`）时它是 false：界面据此禁用写入入口，
+ * 而不是让用户点完发现什么都没发生。
+ * @param scope - 设置作用域。
+ * @returns 当前是否接受写入。
+ */
+function useScopeWritable(scope: SettingsScope): boolean {
+  const [writable, setWritable] = useState(() => scope.getSnapshot().writable)
+  useEffect(() => {
+    setWritable(scope.getSnapshot().writable)
+    return scope.subscribe(() => { setWritable(scope.getSnapshot().writable) })
+  }, [scope])
+  return writable
+}
+
 /** 从快照里取展示币种。 */
 function readDisplayCurrency(value: Record<string, unknown>): string {
   const raw = value.displayCurrency
@@ -162,20 +180,34 @@ interface SidebarSeat {
  * 「启用左下角」开关已删除：左下角是本插件唯一的展示位，关掉它等于关掉全部功能。
  */
 function SidebarSeatComponent(
-  props: { seat: SidebarSeat; scope: SettingsScope; configSlotProbe: ConfigSlotProbe },
+  props: {
+    seat: SidebarSeat
+    scope: SettingsScope
+    configSlotProbe: ConfigSlotProbe
+    pluginsNavigation: PluginsNavigation
+  },
 ): ReactNode {
   const value = useScopeValue(props.scope)
+  const writable = useScopeWritable(props.scope)
+  // 与设置卡片共用同一条写路径：写进 ds-balance 作用域，并读回 user 层确认落盘。
+  const selectCurrency = useCallback(
+    (currency: string): Promise<boolean> => writeFieldValue(props.scope, 'displayCurrency', currency),
+    [props.scope],
+  )
   return (
     <SidebarBalance
       wide={props.seat.wide}
       t={props.seat.t as Translate}
       configSlotProbe={props.configSlotProbe}
+      pluginsNavigation={props.pluginsNavigation}
+      onSelectCurrency={selectCurrency}
       config={{
         displayCurrency: readDisplayCurrency(value),
         manualRefreshCooldownSeconds: readCooldown(value),
         clientPollSeconds: readPollSeconds(value),
         configSignature: readSignature(value),
         warnThresholdOf: (currency) => readWarnThreshold(value, currency),
+        writable,
       }}
     />
   )
@@ -203,6 +235,63 @@ function SettingsSeatComponent(props: { seat: SettingsSeat; scope: SettingsScope
   }
 }
 
+/**
+ * Plugins 面板的 id，逐字等于宿主 `ui-plugin-manager/src/client/index.ts:47` 的 `PANEL_ID`。
+ *
+ * 这里写字面量而**不 import** 那个常量：它是另一个 feature plugin 的值导出，
+ * 跨插件值导入是本仓红线。
+ */
+const PLUGINS_PANEL_ID = 'plugins'
+
+/**
+ * 宿主 layout 服务里我们真正会碰到的成员。
+ *
+ * 鸭子类型收窄：本仓不装 `@deepseek-ai/dsh-client-ui-layout`，不 import 它的类型 ——
+ * 与下面 `RawScope` 同一套做法。公开面见宿主 `ui-layout/src/client/service.ts:28-52` 的 `ILayout`。
+ */
+interface LayoutFace {
+  /** @param panelId - 已注册的 main 面板 key；未注册时**会抛**。 */
+  selectPanel?: (panelId: string) => void
+}
+
+/** apply 期的入口句柄：比座位拿到的 {@link PluginsNavigation} 多一个挂载点。 */
+interface PluginsNavigationHandle extends PluginsNavigation {
+  /**
+   * 服务到位时挂上导航回调。
+   * @param open - 切到 Plugins 页的动作。
+   * @returns 反注册；服务被卸载时图标跟着消失。
+   */
+  attach: (open: () => void) => () => void
+}
+
+/**
+ * 建一个可订阅的「切到 Plugins 页」入口。
+ *
+ * 为什么要订阅而不是直接给个 prop：`ctx.inject(['layout'])` 的回调可能在座位注册之后才跑
+ * （服务晚到），那时 prop 已经绑好了。订阅让图标随服务出现、也随它消失。
+ * @returns 入口句柄。
+ */
+function createPluginsNavigation(): PluginsNavigationHandle {
+  let open: (() => void) | undefined
+  const listeners = new Set<() => void>()
+  const publish = (next: (() => void) | undefined): void => {
+    if (next === open) return
+    open = next
+    for (const listener of [...listeners]) listener()
+  }
+  return {
+    getSnapshot: () => open,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => { listeners.delete(listener) }
+    },
+    attach: (callback) => {
+      publish(callback)
+      return () => { if (open === callback) publish(undefined) }
+    },
+  }
+}
+
 /** 挂载两半。 */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ds-balance: dictionaries')
@@ -213,6 +302,30 @@ export function apply(ctx: ClientContext): void {
   // 旧宿主永不声明。三种态都可逆，所以晚到的声明会把已经出现的提示撤掉。
   const configSlotProbe = createConfigSlotProbe()
   ctx.effect(() => () => configSlotProbe.dispose(), 'ds-balance: config slot probe')
+
+  // 「切到 Plugins 页」的入口：宿主把它放在跨插件服务 `ctx.layout` 上
+  // （宿主 `ui-layout/src/client/service.ts:28-52`：cross-plugin panel-action face behind ctx.layout）。
+  // 服务不在 —— 例如 profile 里没装 plugin-manager —— 时整条链不建立，
+  // 浮层右上角那个图标就不渲染：不留按不动的死按钮。
+  // layout 刻意**不进顶层 inject**：缺服务会让整个插件不装载。
+  const pluginsNavigation = createPluginsNavigation()
+  ctx.inject(['layout'], (layoutCtx) => {
+    const face = (layoutCtx as unknown as { layout?: LayoutFace }).layout
+    // 服务在但长得不对（宿主换了实现）时同样什么都不做 —— 没图标，好过点了会炸。
+    if (face === undefined || typeof face.selectPanel !== 'function') return
+    // 绑回服务对象：宿主的 selectPanel 内部要用 this（LayoutController 的 panels 与 navigation）。
+    const selectPanel = face.selectPanel.bind(face)
+    layoutCtx.effect(() => pluginsNavigation.attach(() => {
+      try {
+        selectPanel(PLUGINS_PANEL_ID)
+      } catch (error) {
+        // 面板 id 未注册时 selectPanel 会抛（宿主 `ui-layout/src/client/service.ts:69-71`）：
+        // profile 里没装 plugin-manager 时那个 main 面板不存在，点了图标就没地方可去。
+        // 只记一笔，不做别的：浮层已经关了，圆环与后端照常。
+        console.warn('[WARN] ds-balance: cannot switch to the plugins panel', error)
+      }
+    }), 'ds-balance: plugins panel navigation')
+  })
 
   // 配置卡片的 key 逐字等于 package.json 的 name：bundle 详情页按包名取这一格，
   // 写错就整块不出现，也不会报错。设置命名空间只用来绑作用域，与它无关。
@@ -228,7 +341,12 @@ export function apply(ctx: ClientContext): void {
     ctx.slots.register(
       { name: 'sidebar.footer.action', id: SETTINGS_NAMESPACE, order: 0, locale: NS },
       (seat: SidebarSeat) => (
-        <SidebarSeatComponent seat={seat} scope={scope} configSlotProbe={configSlotProbe} />
+        <SidebarSeatComponent
+          seat={seat}
+          scope={scope}
+          configSlotProbe={configSlotProbe}
+          pluginsNavigation={pluginsNavigation}
+        />
       ),
     ))
 }

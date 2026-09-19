@@ -8,7 +8,9 @@
  */
 
 import type { CSSProperties, RefObject } from 'react'
-import { Button, FishLogo, IconRefreshOutline16, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  Button, FishLogo, IconPluginPinwheelOutline16, IconRefreshOutline16, Tooltip,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import { interpolate, type LocaleKey } from '../locales.ts'
 import { ageBucket, formatMoney, type AgeBucket, type CurrencySelection } from '../model.ts'
 import css from './BalancePopover.module.css'
@@ -89,8 +91,16 @@ export interface BalancePopoverProps {
   onRefresh: () => void
   /** 「改用 X」回调。 */
   onUseShown: () => void
-  /** 「去设置」回调；本阶段只做占位。 */
-  onOpenSettings: () => void
+  /**
+   * 「改用 X」按钮是否置灰；缺省 false。
+   * 设置不可写时置灰 —— 不假装写入成功：点下去什么都不会发生，比留一个按得动却没反应的按钮诚实。
+   */
+  useShownDisabled?: boolean
+  /**
+   * 「切到 Plugins 页」回调。宿主没提供 layout 服务时给 undefined ——
+   * 这时右上角那个图标按钮**不渲染**：不留按不动的死按钮。
+   */
+  onOpenPlugins?: () => void
 }
 
 /**
@@ -101,7 +111,7 @@ export interface BalancePopoverProps {
 export function BalancePopover(props: BalancePopoverProps): JSX.Element {
   const {
     t, selection, displayCurrency, ageMs, refreshing, cooldownSeconds,
-    configSlotWarning, panelRef, style, onRefresh, onUseShown, onOpenSettings,
+    configSlotWarning, panelRef, style, onRefresh, onUseShown, useShownDisabled, onOpenPlugins,
   } = props
 
   const shown = selection.shown
@@ -134,10 +144,32 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
       aria-label={t('popover.title')}
     >
       <div className={css.title}>
-        <span className={css.titleLabel}>
+        {/* 标题就是这个账户在官网的用量页入口：图标与文字本身不变，只有文字带下划线且不变色
+            （宿主没有「链接色」这种语义 token，硬套会破配色纪律）。 */}
+        <a
+          className={css.titleLabel}
+          href="https://platform.deepseek.com/usage"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <FishLogo size={14} />
           {t('popover.title')}
-        </span>
+        </a>
+
+        {/* 右上角：无可见文字的图标按钮，点了把主区切到 Plugins 页（我们的配置卡片就在那一页）。
+            名字只能靠 aria-label 与 tooltip；回调缺席（宿主没有 layout 服务）时整块不渲染。 */}
+        {onOpenPlugins === undefined ? null : (
+          <Tooltip label={t('popover.action.openPlugins')} side="top" delayMs={500}>
+            <button
+              type="button"
+              className={css.iconButton}
+              aria-label={t('popover.action.openPlugins')}
+              onClick={onOpenPlugins}
+            >
+              <IconPluginPinwheelOutline16 size={16} />
+            </button>
+          </Tooltip>
+        )}
       </div>
 
       {/* 标题与明细之间唯一的一条分隔线；只靠边框成线，所以标 aria-hidden。 */}
@@ -158,11 +190,8 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
             {interpolate(t('popover.mismatch'), { wanted: displayCurrency, shown: shown.currency })}
           </p>
           <div className={css.noticeActions}>
-            <Button size="sm" variant="outline" onClick={onUseShown}>
+            <Button size="sm" variant="outline" disabled={useShownDisabled === true} onClick={onUseShown}>
               {interpolate(t('popover.action.useShown'), { shown: shown.currency })}
-            </Button>
-            <Button size="sm" variant="outline" onClick={onOpenSettings}>
-              {t('popover.action.openSettings')}
             </Button>
           </div>
         </div>

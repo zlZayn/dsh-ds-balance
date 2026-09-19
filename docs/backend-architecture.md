@@ -45,7 +45,7 @@
 
 **`selected` 的权威性**：前端把 `displayCurrency` 作为查询参数传给后端，后端按它挑，前端只负责显示。
 
-**币种不匹配的判定**在 UI 侧用 `selected.currency` 与配置的 `displayCurrency` 比较得出，UX 不变（浮层说明 + 两个动作）。
+**币种不匹配的判定**在 UI 侧用 `selected.currency` 与配置的 `displayCurrency` 比较得出（浮层一段说明 + **一个动作**「改用 X」，它直接写设置作用域的 `displayCurrency`；去插件页的入口在浮层标题行右端）。
 
 ### 1.2 UI 不消费什么
 

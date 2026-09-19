@@ -19,8 +19,9 @@
 - **`settings-cards-position*.png` 那张（Plugins 列表视图）另有判据**：宿主 Plugins 页的列表结构 —— Official / Installed 两组及其分组文案、`ds-balance` 在已安装里的可见性、左侧栏收起态。
   已装插件列表变了（多装了一个）**不算过期**：那正是这张图要交代的上下文（「与其他插件并排、长在哪」）。
   配置表单自身的判据（页面画的插件标题 / 描述 / 版本、四组组名、字段与保存按钮）归 `settings-card*.png`。
-- **左边栏那张另有判据**：[SidebarBalance.tsx](../src/client/sidebar/SidebarBalance.tsx) 的行结构、
-  [BalancePopover.tsx](../src/client/sidebar/BalancePopover.tsx) 的三行与状态行，
+- **左边栏那张另有判据**：[SidebarBalance.tsx](../src/client/sidebar/SidebarBalance.tsx) 的行结构（含**展开态悬浮出的余额气泡**）、
+  [BalancePopover.tsx](../src/client/sidebar/BalancePopover.tsx) 的三行与状态行、**标题行右端的 Plugins 图标按钮**、
+  币种不匹配那段**只剩一个**「改用 X」按钮（「去设置」已删），
   以及 [PercentRing.tsx](../src/client/sidebar/PercentRing.tsx) 的**弧长与中心符号** ——
   弧长现在表达比例，余额一变图就变，这是它的正常状态。
 
@@ -54,8 +55,8 @@
      **隐私优先**：顶端一律压到浮层 / 底部条目那一叠的上沿（第 4 步的例外规则），因此这张很可能不带输入框 —— 那是**接受的代价**，不是缺陷。
 3. 进侧边栏 **Plugins → Installed → `ds-balance`**（详情页里的短名是 `ds-balance`，不是全包名；**这一步只服务 `settings-card*.png`** —— 列表视图那张不用点进详情页，见第 6 步），
    滚到配置区完整可见（底部**唯一的保存按钮**必须在图内）。
-   四组（连接 / 展示 / 阈值 / 刷新）**默认全展开**，不用手动展开、也不要手动折叠 ——
-   原生配置表单不可折叠，卡片折叠头与「放弃」按钮都不存在了。
+   四组（连接 / 展示 / 阈值 / 刷新）**默认全部收起** —— **拍摄前依次点开四个组头**，让四组字段行都进画面；
+   分组头是 `div[role="button"][aria-expanded]`（默认 `false`），原生的卡片级折叠头与「放弃」按钮都不存在。
    连接组里的二级「自定义设置」**保持收起** —— 那是高级用户的路径，展开它会让图里出现一屏凭据字段。
 4. **按快门前收起左侧栏**（隐私硬规则，独立一步）：展开的左侧栏列的是维护者真实的**会话标题与工作区名** —— 那是别人的工作内容，不是装饰，门面图是给外人看的，不能带出去。
    收起**是带动画的**，等固定时长不算保证（本次重拍踩过：zhihu 的 `settings-card_en.png` 一度就是收到一半的中间帧）。
@@ -87,16 +88,16 @@
   先把配置区到 `body` 之间的祖先逐个解除裁剪（`overflow: visible` + `max-height: none`），
   再把 viewport **高度**临时调够（**宽度不要动**），重新量一次 `boundingBox()` 确认整体落在视口内，最后才截 —— **截完把高度还原**。
   解除裁剪只发生在自己那个标签页里，拍完关掉即可。
-- **切语言会让当前标签页重载**，切完要重新走一遍 **Plugins → Installed → `ds-balance`**（四组默认展开，不用再点）。
-- 四组**默认全展开**（[BalanceSettingsCard.tsx](../src/client/settings/BalanceSettingsCard.tsx) 的 `DEFAULT_GROUP_OPEN`），这是本次 UI 改动的结果：
-  进页面就该看见字段，不用手动展开；也别照旧文去找「展开卡片」那一步 —— 卡片折叠头已经取消。
+- **切语言会让当前标签页重载**，切完要重新走一遍 **Plugins → Installed → `ds-balance`**，并**重新点开四个组头**（默认收起）。
+- 四组**默认全部收起**（[BalanceSettingsCard.tsx](../src/client/settings/BalanceSettingsCard.tsx) 的 `DEFAULT_GROUP_OPEN` 全 `false`，本次 UI 改动的结果）：
+  进页面只有四个组名，**要拍就得逐个点开组头**；卡片级折叠头已经取消，别去找「展开卡片」那一步。
 - 凭据行的徽标只有两态：「已配置密钥。/ 未配置密钥。」（官方「网页搜索」卡片同款）。
 - **接口地址那一格默认是空的**：留空就是官方端点，填了才覆盖。图里出现 `https://api.deepseek.com` 说明截的是旧版默认值。
 - 凭据输入框**应当是空的、且不置灰**（常态空框）：只读行不写占位符、不降透明度。图里若看到框内有灰字或整格发灰，说明截的是旧产物。
 - **Plugins 列表那张同样自己拍**：它拍的是 Plugins 页的**列表视图**（左侧栏**收起态** + Official / Installed 两组列表），**不用点进详情页**；同样要确认图里没有凭据、对话内容、会话标题与工作区名。
 - **截图落盘一律给绝对路径**：tabbit 的 nodejs 运行器里 `process.env.TEMP` 是 `undefined`，相对路径会写进浏览器安装目录，事后很难找回来。
 - **切完语言要重新走一遍 Plugins → Installed → `ds-balance`**：页面重载会退回插件列表。
-  现在只剩**分组头** `div[role="button"][aria-expanded]`（且默认展开）；卡片级折叠头已经取消，不用再点。
+  现在只剩**分组头** `div[role="button"][aria-expanded]`（**默认 `false`，要拍就得点开**）；卡片级折叠头已经取消。
 - **截图前确认整块配置区落在视口内**：`boundingBox()` 的 `top + height` 必须小于窗口高度，否则下半截是白的（元素框量得到、画不出来）。不够高就迭代加高 viewport，**拍完还原**。
 - **`page.screenshot()` 会被浏览器运行时接管**：传了 `path` 也不写你指定的位置，而是落到它的 artifacts 目录，
   并在返回值里给你真实路径。**`locator.screenshot({ path })` 是原生 Playwright，照写不误** ——
@@ -108,10 +109,11 @@
 
 ## 验收
 
-- 配置区完整：**插件标题与描述**（由插件页自己画）、四组字段行（默认全展开）、状态徽标、说明行、**唯一的保存按钮**，一样不缺
+- 配置区完整：**插件标题与描述**（由插件页自己画）、**四个组名 + 拍摄时点开的四组字段行**、状态徽标、说明行、**唯一的保存按钮**，一样不缺
 - 出现折叠头、「放弃」按钮或卡片外框，说明拍的是旧界面
 - **整屏 / 宽幅图里左侧栏是收起态**（`sidebar-popover*.png` 两张例外，那里改为裁掉标题段）：看不到会话标题、工作区名或对话内容
 - **侧栏是动画中间帧 / 宽度不固定 → 判废重拍**；浮层、折叠区也要等几何稳定，别拿弹出中途的帧凑数（判据见第 4 步的轮询）
+- 左边栏那两张：浮层标题行右端有 Plugins 图标（**宿主缺 `layout` 服务时它本就不渲染**，缺席是正常的）、币种不匹配那段只有一个按钮、悬浮气泡不与该浮层同框
 - 说明文案与当前 [locales.ts](../src/client/locales.ts) **逐字一致**
 - 图里没有真实凭据、真实余额、真实 Base URL
 - 文件确实被 [README.md](../README.md) 与 [README_en.md](../README_en.md) 引用（覆盖后跑一次链接校验）

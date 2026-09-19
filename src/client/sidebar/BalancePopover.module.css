@@ -25,9 +25,9 @@
   cursor: default;
 }
 
-/* 标题行：左边是图标 + 标题。官方在右侧还放一个 tabular-nums 的汇总值，
-   我们用不到（余额本身就在明细里，放这里会重复显示），所以这一行只有一个子元素 ——
-   space-between 仍按官方保留，将来要加右侧值时不用改结构。 */
+/* 标题行：左端是图标 + 标题（链到官网用量页），右端是切到 Plugins 页的图标按钮。
+   官方在这一行的右侧放 tabular-nums 的汇总值，我们用不到（余额本身就在明细里，放这里会重复显示），
+   右端改由那个按钮占用；space-between 照官方留着，两端各一个子元素。 */
 .title {
   display: flex;
   justify-content: space-between;
@@ -42,6 +42,17 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
+  /* 标题是官网用量页的入口：只给下划线、不变色。面板自己写了 cursor: default，
+     这里要显式要回手型，否则链接看着不能点。 */
+  cursor: pointer;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.titleLabel:hover,
+.titleLabel:visited {
+  color: inherit;
 }
 
 /* 官方这里把图标写死 14×14。鲸鱼标志的比例是 23.16:17.04，
@@ -50,6 +61,37 @@
   flex: none;
   width: 14px;
   height: auto;
+}
+
+/* 标题行右端的 Plugins 图标按钮：逐值照抄宿主侧栏的 .iconButton
+   （packages/client/ui-sidebar/src/client/SidebarRoot.module.css:295-321），
+   所以它看起来与侧栏里那些图标按钮同族。全圆角按本仓红线成对写 corner-shape。 */
+.iconButton {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  corner-shape: round;
+  padding: 0;
+  background: transparent;
+  /* 面板自己写了 cursor: default，按钮要显式要回手型。 */
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.iconButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* 无焦点指示的交互控件在本仓算缺陷：焦点环照既有的触发按钮。 */
+.iconButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
 }
 
 /* 标题与明细之间唯一的一条分隔线；用法见 BalancePopover.tsx 里的空 div。 */

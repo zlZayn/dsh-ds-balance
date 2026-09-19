@@ -16,31 +16,38 @@
 
 ### SidebarBalance.tsx
 
-- 职责：条目全部行为 —— 场景订阅、币种选择、点击开关浮层、刷新模拟与冷却、Escape 与外部点击关闭。
+- 职责：条目全部行为 —— 场景订阅、**币种选择**（浮层的「改用 X」直接写设置作用域的 `displayCurrency`，与设置卡片共用同一条写路径，见 [决策记录](../../../.agents/notes/2026-09-19-currency-single-source.md)）、点击开关浮层、**展开态悬浮条目报出余额金额**、刷新模拟与冷却、Escape 与外部点击关闭。
 - 关键导出：`SidebarBalance`（本目录唯一对外组件）、`SidebarBalanceProps`（`wide` / `t` / `config` / `configSlotProbe`）。
 - `configSlotProbe` 由 [../index.tsx](../index.tsx) 建好后经 props 传进来，本目录只订阅它的三态（`useConfigSlotState`）；**提示必须可撤销**，所以订阅而不是读一次。
+- **悬浮气泡只挂展开态**：整条按钮包一层官方 `Tooltip`，内容是「Balance 那一条」的金额（`formatMoney`，与浮层第一行同源），标题 / 赠送充值拆分 / 状态解释都不加；底色用原语自带的 `--dsw-alias-tooltip-bg`，**不许自绘黑底**（字面色值红线，自绘也会跟主题脱节）。没有金额时回落到状态文案，两者都没有就不挂 —— 不留空气泡。
+  折叠态（rail）**不挂**：那里已经由 `PercentRing` 的原生 `title` 承担同一件事，再叠一层就是两层提示。
+- **同一时刻只允许一个气泡**：标记（感叹号）那层 `Tooltip` 嵌在外层里，原语用 `TooltipSuppression` 上下文让内层可见时压掉祖先；**浮层已打开时外层 `disabled`**（面板里就有这份数据，且指针通常还停在条目上）。动这两层包装要实机复核。
 - 被谁依赖：[../index.tsx](../index.tsx) 的 `SidebarSeatComponent`。
-- 改后必测什么：展开态（圆环 + 标签）与折叠态（36×36 圆环）都可见；点条目开浮层、Escape 与外部点击关；`aria-expanded` 跟随开合；**点上方邻居条目要落到邻居身上**。
+- 改后必测什么：展开态（圆环 + 标签）与折叠态（36×36 圆环）都可见；**折叠态的悬浮背景与上方官方条目同为 12px 圆角（不是正圆）**；点条目开浮层、Escape 与外部点击关；`aria-expanded` 跟随开合；**点上方邻居条目要落到邻居身上**；展开态悬浮出气泡且只报金额、**指针停在感叹号上只有一个气泡**、浮层打开时不出气泡、折叠态不挂 Tooltip。
 
 ### SidebarBalance.module.css
 
-- 职责：条目几何 —— 展开态是整行 42px 条目，折叠态是 36×36 圆形命中区，两者各自的上外边距。
+- 职责：条目几何 —— 展开态是整行 42px 条目；折叠态是 36×36 命中区，**悬浮背景是 12px 圆角矩形**（与官方 `.collapsed .iconButton` 同款；圆角形状由全局 `--dsw-corner-shape` 的 `superellipse(1.5)` 决定，本处**不写** `corner-shape: round`），两者各自的上外边距。
 - 关键导出：CSS Module 类 `root` / `trigger` / `icon` / `label` / `marker`。
+- **`.marker` 的 1.5px 相对位移是墨迹对齐，不是布局修正**：三个盒子（按钮 42 / 标签 22 / 标记 12）的中心逐值相同，偏的是**墨迹** —— 图标墨迹就在它自己的盒中心，文字墨迹比 22px 行盒中心低（实测中文标签 +1.25px、英文 +2.00px），所以图标看着**偏高**。补偿只写这一格（`position: relative; top: 1.5px`，两种标签的残差 0.25 / 0.50px），**不动 `.label`、不动行高** —— 那会改到整行几何与邻居。
 - 被谁依赖：`SidebarBalance.tsx`。
-- 改后必测什么：展开态在侧栏 264~420px 全区间都不塌；折叠态与上方条目保持 8px 间距；根节点在纵向堆叠容器里仍占满一行。
+- 改后必测什么：展开态在侧栏 264~420px 全区间都不塌；折叠态与上方条目保持 8px 间距；根节点在纵向堆叠容器里仍占满一行；**`.marker` 的 1.5px 还在**（删掉它就回到「图标偏高」）。
 
 ### BalancePopover.tsx
 
-- 职责：浮层表面 —— 标题行、余额/赠送/充值三行、币种不匹配的说明与两个动作、缺配置槽的诊断行、底部刷新时间与刷新按钮。
-- 关键导出：`BalancePopover`、`BalancePopoverProps`（多一个 `configSlotWarning`）、`BALANCE_PLACEHOLDER`。
+- 职责：浮层表面 —— 标题行（**左端图标与文字是一个外链**、**右端一个无文字的 Plugins 图标按钮**，见下）、余额/赠送/充值三行、币种不匹配的说明与**只剩一个**的动作（「改用 X」）、缺配置槽的诊断行、底部刷新时间与刷新按钮。
+- 关键导出：`BalancePopover`、`BalancePopoverProps`（除 `configSlotWarning` 外，还有 `useShownDisabled` 与 `onOpenPlugins`；`onOpenSettings` 已随「去设置」一起删除）、`BALANCE_PLACEHOLDER`。
 - `configSlotWarning` 非 null 时复用既有的 `notice` / `noticeText` 渲染一行英文 `[WARN]`（无动作按钮、无新增样式）。
+- 标题行是外链：`https://platform.deepseek.com/usage`，`target="_blank"` + `rel="noopener noreferrer"`，新标签页打开官网用量页；文字带下划线但**颜色 `inherit`**（宿主没有「链接色」这类语义 token，硬套会破配色纪律），图标是 svg、不吃 `text-decoration`。
+- **标题行右端的 Plugins 图标按钮**：无可见文字，`aria-label` 走词典；图标 `IconPluginPinwheelOutline16` 与宿主侧栏 Plugins 条目同字形，样式逐值照抄宿主 `.iconButton`（28×28、全圆角**成对写** `corner-shape: round`、hover 用 `--dsw-alias-interactive-bg-hover`），并显式 `cursor: pointer`（浮层面板自己写了 `cursor: default`）。点它把主区切到 Plugins 面板并**关闭浮层**。
+  导航入口是宿主的跨插件服务 `ctx.layout.selectPanel('plugins')`（**用字面量 `'plugins'`，不 import 别的 feature plugin 的值导出**）；**服务缺席时整块不渲染**（不留死按钮），`selectPanel` 抛错有具名 catch（profile 未装 plugin-manager 时那个面板不存在）。
 - 被谁依赖：`SidebarBalance.tsx`，经 `createPortal` 挂到 `document.body`。
-- 改后必测什么：面板 `role="dialog"` 与 `aria-label` 仍在；三行金额与时间文案随场景变化；刷新按钮的进行中与冷却两态；点浮层内部不关闭浮层。
+- 改后必测什么：面板 `role="dialog"` 与 `aria-label` 仍在；三行金额与时间文案随场景变化；刷新按钮的进行中与冷却两态；点浮层内部不关闭浮层；点标题确认新标签页打开官网用量页、当前页不跳转、浮层不关、文字颜色与改动前一致；点右上角图标确认切到 Plugins 面板且浮层关闭、宿主无 `layout` 服务时该图标不出现、币种不匹配那段只有一个按钮。
 
 ### BalancePopover.module.css
 
 - 职责：浮层皮肤，逐条对齐官方 `ui-chat` 的 `stat-dialog.module.css`（StatsPills 与 TurnUsagePanel 共用那套）。
-- 关键导出：CSS Module 类 `panel` / `title` / `titleLabel` / `titleRule` / `details` / `notice` / `noticeText` / `noticeActions` / `footer` / `updated` / `status` / `refresh`。
+- 关键导出：CSS Module 类 `panel` / `title` / `titleLabel` / `titleRule` / `iconButton` / `details` / `notice` / `noticeText` / `noticeActions` / `footer` / `updated` / `status` / `refresh`。
 - 被谁依赖：`BalancePopover.tsx`。
 - 改后必测什么：宽度三行（`max-content` + 上下界都随视口收缩）在窄窗口下不溢出；标题与明细之间只有一条分隔线；亮暗两色下文字仍可读。
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Config, THRESHOLD_PAIRS as HOST_PAIRS, validateThresholds, type Config as ConfigShape } from '../src/config.ts'
 import {
-  THRESHOLD_PAIRS, orderPairWrites, thresholdsOk, type FieldState,
+  THRESHOLD_PAIRS, orderPairWrites, thresholdsOk, writeFieldValue, type FieldState,
 } from '../src/client/settings/use-config-form.ts'
 
 /**
@@ -169,5 +169,64 @@ describe('成对写入的排序', () => {
       }
     }
     expect(checked).toBeGreaterThan(200)
+  })
+})
+
+/**
+ * 「改用 X」（浮层）与设置卡片写的是同一个字段、同一条路径，落盘判定也只有一份：
+ * 宿主拒绝写入时不抛错，成败从读回的 user 层看。
+ */
+describe('写回落盘判定', () => {
+  /**
+   * 记账用的假作用域。`accept` 为 false 时模拟宿主静默拒绝：
+   * 快照不变、也不抛错 —— 真实作用域就是这个行为。
+   * `deferred` 模拟真实宿主返回 Promise 的那条路。
+   */
+  function scopeOf(accept: boolean, deferred = false) {
+    const snapshot = {
+      value: { displayCurrency: 'USD' } as Record<string, unknown>,
+      user: {} as Record<string, unknown>,
+      writable: true,
+    }
+    const writes: Array<{ field: string; value: unknown }> = []
+    const apply = (field: string, value: unknown): void => {
+      writes.push({ field, value })
+      if (accept) snapshot.user[field] = value
+    }
+    return {
+      writes,
+      scope: {
+        getSnapshot: () => snapshot,
+        subscribe: () => () => {},
+        set: (field: string, value: unknown) => {
+          if (!deferred) {
+            apply(field, value)
+            return
+          }
+          return new Promise<void>((resolve) => {
+            queueMicrotask(() => { apply(field, value); resolve() })
+          })
+        },
+        unset: (field: string) => { delete snapshot.user[field] },
+      },
+    }
+  }
+
+  it('写入落进 user 层才算落盘', async () => {
+    const { scope, writes } = scopeOf(true)
+    await expect(writeFieldValue(scope, 'displayCurrency', 'CNY')).resolves.toBe(true)
+    expect(writes).toEqual([{ field: 'displayCurrency', value: 'CNY' }])
+    expect(scope.getSnapshot().user.displayCurrency).toBe('CNY')
+  })
+
+  it('宿主静默拒绝时判失败，不假装成功', async () => {
+    const { scope } = scopeOf(false)
+    await expect(writeFieldValue(scope, 'displayCurrency', 'CNY')).resolves.toBe(false)
+  })
+
+  it('set 返回 Promise 时先等它落定再读回', async () => {
+    // 不等落定就读回，会把「写成功了」判成失败。
+    const { scope } = scopeOf(true, true)
+    await expect(writeFieldValue(scope, 'displayCurrency', 'CNY')).resolves.toBe(true)
   })
 })

@@ -72,15 +72,16 @@
   border-radius: 12px;
 }
 
-/* 折叠：36×36 圆形命中区，圆环居中。 */
+/* 折叠：36×36 的命中区，圆环居中；悬浮背景是圆边矩形，与官方 `.collapsed .iconButton` 同为 12px。
+   这里不写 corner-shape：它不继承，宿主 ui-theme 在 `@supports (corner-shape: superellipse(1.5))`
+   里给所有元素写了全局的 `var(--dsw-corner-shape)`，写 round 只会把它掰回 superellipse(1)、与官方不一致。 */
 .root[data-mode='rail'] .trigger {
   flex: none;
   justify-content: center;
   width: 36px;
   height: 36px;
   padding: 0;
-  border-radius: 50%;
-  corner-shape: round;
+  border-radius: 12px;
 }
 
 /* 展开态圆环的固定窝：16×16，保证金额起点不随环径（16 vs 折叠态 18）变化。 */
@@ -111,4 +112,13 @@
   align-items: center;
   justify-content: center;
   color: var(--dsw-alias-label-tertiary);
+  /* 墨迹对齐：盒子中心早就对齐了（三者的中心逐值相同），偏的是**墨迹**。
+     实测（canvas 逐行扫 alpha>16，DPR 4，12px 图形 / 14px 文字 / 22px 行盒）：
+       · 图标墨迹中心 = 它盒子的几何中心（0.000px 偏差，该字形的图形在它 viewBox 里本来就是居中的）；
+       · 文字墨迹中心比它 22px 行盒的中心低：中文标签 +1.25px、英文标签 +2.00px
+         （两个标签都带 'p' 的下伸部，中文多一个上伸到位的字头，所以中文那侧反而更高一点）。
+     于是「图标看着偏高」。只补这一格 1.5px：两种标签的残差分别是 0.25px 与 0.50px，都在 0.5px 判据内；
+     不动 .label、不动行高 —— 那会改到整行几何与邻居。 */
+  position: relative;
+  top: 1.5px;
 }

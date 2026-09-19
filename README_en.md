@@ -39,25 +39,25 @@ The balance needs somewhere to live that does not take up room. A permanent stat
 
 | Surface | One line | Use it for |
 |---|---|---|
-| Sidebar ring | A status ring plus label at the bottom of the sidebar; **how full it is = how far the balance is from that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
-| Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown) | Checking the exact figures, and how many minutes old they are |
-| Settings card | Connection / Display / Thresholds / Refresh, all expanded by default, each collapsible | Changing the endpoint, the currency, the warning lines, the cadence |
+| Sidebar ring | A status ring plus label at the bottom of the sidebar; **in the expanded state, hovering the entry reports the balance amount**, and **how full it is = how far the balance is from that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
+| Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown); **an icon at its top right jumps straight to the Plugins page** | Checking the exact figures, and how many minutes old they are |
+| Settings card | Connection / Display / Thresholds / Refresh, **all collapsed by default**, expand a group from its header | Changing the endpoint, the currency, the warning lines, the cadence |
 
 The division of labour is fixed: **the ring answers "roughly how much is left", the popover answers "exactly how much", and the card answers "how is that computed".**
 
 <p align="center">
   <img src="assets/settings-card_en.png" alt="The DeepSeek balance card on the Plugins page" width="360">
   <br>
-  <em>The card is those four groups: all expanded by default, each collapsible; a group holding a bad value opens itself.</em>
+  <em>The card is those four groups: all collapsed by default, expanded one header at a time; a group holding a bad value opens itself.</em>
 </p>
 
 ## Capabilities
 
 - A permanent status ring plus label at the bottom of the sidebar; click it for the breakdown. The collapsed and expanded states share the same ring, in the same place.
 - The balance refreshes on its own schedule and the UI reads a cache — leaving the interface open does not hammer the upstream.
-- The popover shows the total, the granted / topped-up split, how old the data is, and a manual refresh with a cooldown.
-- Multiple currencies: the account decides which currency is shown; when the one chosen in settings is absent, the popover explains and offers a one-click switch.
-- The settings card has four groups, all expanded by default and each collapsible; a group holding a bad value opens itself.
+- The popover shows the total, the granted / topped-up split, how old the data is, and a manual refresh with a cooldown; its title line (whale icon + "DeepSeek balance") is itself a link that opens the [official usage page](https://platform.deepseek.com/usage) in a new tab.
+- Multiple currencies: the account decides which currency is shown; when the one chosen in settings is absent, the popover explains and offers "switch to the shown currency" — **that writes straight into settings**, and the settings field follows; the button is disabled when the Host is not writable.
+- The settings card has four groups, **all collapsed by default**, expanded one header at a time; a group holding a bad value opens itself.
 - The credential is inherited from the official model settings by default, so there is nothing to re-enter; where it comes from is on a badge
   (a key is configured / no key is configured, exactly the official card's wording), and a read-only field explains itself instead of offering an edit.
 - Colour carries state only (normal / low / critical), never an amount; see "[Reading the ring](#reading-the-ring)".
@@ -113,7 +113,7 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 ## Configuration
 
-Open **Plugins → Installed** and step into the **dsh-ds-balance** details page. The form runs straight down that page, four groups all expanded by default and each collapsible:
+Open **Plugins → Installed** and step into the **dsh-ds-balance** details page. The form runs straight down that page with four groups **all collapsed by default** — expand them from their headers:
 
 <p align="center">
   <img src="assets/settings-cards-position_en.png" alt="Where the DeepSeek balance entry sits in the Plugins list" width="480">

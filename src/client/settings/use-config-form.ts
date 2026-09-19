@@ -344,6 +344,30 @@ function landedWrite(snapshot: NormalizedSnapshot, field: string, write: FieldWr
   return Object.hasOwn(snapshot.user, field) && snapshot.user[field] === write.value
 }
 
+/**
+ * 写一个字段，并读回 user 层确认它落定。
+ *
+ * 设置卡片与侧栏条目共用这一条写路径：宿主拒绝写入时**不抛错**，只让快照保持不变，
+ * 所以成败只能从读回的快照判定 —— 判据与 `save()` 用的是同一个 `landedWrite`。
+ * @param scope - 设置作用域。
+ * @param field - 字段名。
+ * @param value - 要写进该字段的值。
+ * @returns 这次写入是否落进 user 层。
+ */
+export async function writeFieldValue(
+  scope: SettingsScope,
+  field: string,
+  value: unknown,
+): Promise<boolean> {
+  await settle(scope.set(field, value))
+  const snapshot = scope.getSnapshot()
+  return landedWrite(
+    { value: asRecord(snapshot.value), user: asRecord(snapshot.user), writable: snapshot.writable },
+    field,
+    { kind: 'set', value },
+  )
+}
+
 /** 计划中的一次写入；write 为 undefined 表示草稿非法。 */
 interface PlannedWrite {
   readonly field: string

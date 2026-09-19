@@ -16,7 +16,7 @@
 - 分组：连接 → 展示 → 阈值 → 刷新。这是 UI 的排列顺序（按使用频率）；宿主 `Config` 的字段顺序是 连接 → 刷新 → 展示 → 阈值，**两者有意不同**，见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md) 的关键决策。
 - 连接组是**两段式**：外面是只读的凭据状态（`ReadOnlyControl`，继承官方、不可改）与可编辑的 Base URL；二级「自定义设置」折叠里只有**凭据引用名**（`apiKeyRef`，默认收起）。
   **界面上唯一的 API Key 就是那个只读框** —— 卡片不再提供填 Key 的入口；Key 仍可由配置文件给出，所以 schema 与写入面没动。
-- 默认展开：四组全展开（`DEFAULT_GROUP_OPEN` 全 `true`）—— 这是 bundle 的专属配置页，进页面就该看见字段；折叠能力保留，收起态只活在当前挂载期。
+- 默认收起：四组全收起（`DEFAULT_GROUP_OPEN` 全 `false`）—— 进页面先看到四个组名，需要哪组点开哪组；展开状态不持久化，重挂载即回到全收起。
 - 组内有非法草稿时该组强制展开（`groupOpenNow`），否则 footer 的「请检查标红的字段」会指向一个收起来的组。
 - 被谁依赖：`src/client/index.tsx` 的 `SettingsSeatComponent`。
 - 改后必测：四组各自展开与收起；暂存与保存；非法数字禁用保存；测试连接的三种结果。

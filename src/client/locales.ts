@@ -24,7 +24,7 @@ export const zh = {
   'popover.cooldown': '{value} 秒后可再次刷新',
   'popover.mismatch': '未找到 {wanted} 余额，当前显示 {shown}',
   'popover.action.useShown': '改用 {shown}',
-  'popover.action.openSettings': '去设置',
+  'popover.action.openPlugins': '打开插件页',
 
   'state.unavailable': '账户不可用',
   'state.stale': '数据已过期',
@@ -118,7 +118,7 @@ export const en: Record<LocaleKey, string> = {
   'popover.cooldown': 'Refresh available in {value}s',
   'popover.mismatch': 'No {wanted} balance found; showing {shown}',
   'popover.action.useShown': 'Use {shown}',
-  'popover.action.openSettings': 'Open settings',
+  'popover.action.openPlugins': 'Open the Plugins page',
 
   'state.unavailable': 'Account unavailable',
   'state.stale': 'Data is stale',

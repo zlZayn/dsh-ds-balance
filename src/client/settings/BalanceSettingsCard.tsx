@@ -52,12 +52,15 @@ const CREDENTIAL_BADGE: Readonly<Record<CredentialView, LocaleKey>> = {
 /** 四个配置分组的键。 */
 type GroupKey = 'connection' | 'display' | 'thresholds' | 'refresh'
 
-/** 分组的默认展开状态：四组全展开 —— 这是 bundle 的专属配置页，进页面就该看见字段。 */
+/**
+ * 分组的默认展开状态：四组默认**收起** —— 进页面先看到四行提纲，展开与否由用户点。
+ * 组内有非法草稿时仍由 `groupOpenNow` 强制展开，不受这里影响。
+ */
 const DEFAULT_GROUP_OPEN: Readonly<Record<GroupKey, boolean>> = {
-  connection: true,
-  display: true,
-  thresholds: true,
-  refresh: true,
+  connection: false,
+  display: false,
+  thresholds: false,
+  refresh: false,
 }
 
 /** 每组包含哪些字段；用来判断「这一组里有没有需要用户看见的非法草稿」。 */

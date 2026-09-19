@@ -122,6 +122,7 @@ namespace 必须匹配 `/^[a-z][a-z0-9-]*$/` → `ds-balance` 合法。
 1. `src/client/model.ts`：删掉 `selectCurrency` 的挑选逻辑，改为直接读 `response.selected`。
 2. 前端把 `displayCurrency` 作为查询参数传给后端。
 3. 「币种不匹配」的判定改为 **`selected.currency` vs 配置的 `displayCurrency`**（UX 不变：浮层说明 + 两个动作）。
+  （已推翻：「去设置」已删除，只剩「改用 X」一个动作、且它直接写设置作用域的 `displayCurrency`；去插件页的入口改由浮层标题行右端的图标按钮承担 → [币种收敛](../.agents/notes/2026-09-19-currency-single-source.md) · [跳转入口](../.agents/notes/2026-09-19-setstate-function-value-updater.md)）
 4. mock 层要让 `selected` 与 `displayCurrency` 自洽（现有 `currencyMismatch` 场景正好覆盖）。
 5. `api-types.ts` 的 `thresholds` / `isAvailable` **已经是对的**，不用改。
 
