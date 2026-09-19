@@ -102,3 +102,4 @@
 ## 阶段边界
 
 - 不做：Estimation（账本 / 投影 / 手工校正）、诊断层、独立页面、图表、多厂商模板、SSE。
+- **不做（宿主还没给这条缝）**：到某个 bundle 详情页的深链。浮层右上角图标只落在 Plugins 面板（列表页）—— 宿主没有公开的面板深链入口，等它给出（`selectPanel` 带参数或 `openBundle(name)` 一类的客户端服务）再补深；不在插件侧另造页面。现状与证据 → [../src/client/sidebar/README.md](../src/client/sidebar/README.md)。

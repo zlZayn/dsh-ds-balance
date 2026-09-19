@@ -73,6 +73,7 @@
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
 - [x] 首次发布的手动配置：npm Trusted Publisher 已配、仓库 secret `DSH_CI_API_KEY` 已在、`v1.0.0` tag 与 Release 已建
 - [x] `release` environment 已由 release.yml 首次运行自动创建；想挂人工审批再加规则 → [发布手册](docs/PUBLISHING.md)
+- [ ] **等宿主给出面板深链入口**（`selectPanel` 带参数，或 ui-plugin-manager 暴露 `openBundle(name)` 之类的客户端服务）后，把浮层右上角图标的落点从 Plugins 列表补到本插件的 bundle 详情页 —— 现状、证据与触发条件见 [sidebar 手册](src/client/sidebar/README.md)，在此之前不在插件侧另造页面
 
 ## 活跃坑
 

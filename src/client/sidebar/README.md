@@ -39,8 +39,9 @@
 - 关键导出：`BalancePopover`、`BalancePopoverProps`（除 `configSlotWarning` 外，还有 `useShownDisabled` 与 `onOpenPlugins`；`onOpenSettings` 已随「去设置」一起删除）、`BALANCE_PLACEHOLDER`。
 - `configSlotWarning` 非 null 时复用既有的 `notice` / `noticeText` 渲染一行英文 `[WARN]`（无动作按钮、无新增样式）。
 - 标题行是外链：`https://platform.deepseek.com/usage`，`target="_blank"` + `rel="noopener noreferrer"`，新标签页打开官网用量页；文字带下划线但**颜色 `inherit`**（宿主没有「链接色」这类语义 token，硬套会破配色纪律），图标是 svg、不吃 `text-decoration`。
-- **标题行右端的 Plugins 图标按钮**：无可见文字，`aria-label` 走词典；图标 `IconPluginPinwheelOutline16` 与宿主侧栏 Plugins 条目同字形，样式逐值照抄宿主 `.iconButton`（28×28、全圆角**成对写** `corner-shape: round`、hover 用 `--dsw-alias-interactive-bg-hover`），并显式 `cursor: pointer`（浮层面板自己写了 `cursor: default`）。点它把主区切到 Plugins 面板并**关闭浮层**。
+- **标题行右端的 Plugins 图标按钮**：无可见文字，`aria-label` 走词典；图标 `IconPluginPinwheelOutline16` 与宿主侧栏 Plugins 条目同字形，样式逐值照抄宿主 `.iconButton`（28×28、全圆角**成对写** `corner-shape: round`、hover 用 `--dsw-alias-interactive-bg-hover`），并显式 `cursor: pointer`（浮层面板自己写了 `cursor: default`）。点它把主区切到 Plugins **面板（列表页）**并**关闭浮层**。
   导航入口是宿主的跨插件服务 `ctx.layout.selectPanel('plugins')`（**用字面量 `'plugins'`，不 import 别的 feature plugin 的值导出**）；**服务缺席时整块不渲染**（不留死按钮），`selectPanel` 抛错有具名 catch（profile 未装 plugin-manager 时那个面板不存在）。
+  落点到此为止：**只能到 Plugins 面板（列表页），到不了本插件的 bundle 详情页** —— 宿主当前没有任何公开深链入口：`ILayout.selectPanel(panelId)` 不带参数（`ui-layout/src/client/service.ts:28-52`）、layout store 只有 `activePanelId`、插件页视图是 ui-plugin-manager 组件内部的 `useState({ kind: 'list' })`、全仓没有 URL 路由。**这是宿主的缺口，不是本插件的缺陷，也不在插件侧另造页面**；宿主将来给出入口（`selectPanel` 带参数，或 ui-plugin-manager 暴露 `openBundle(name)` 之类的客户端服务）再把落点补深。
 - 被谁依赖：`SidebarBalance.tsx`，经 `createPortal` 挂到 `document.body`。
 - 改后必测什么：面板 `role="dialog"` 与 `aria-label` 仍在；三行金额与时间文案随场景变化；刷新按钮的进行中与冷却两态；点浮层内部不关闭浮层；点标题确认新标签页打开官网用量页、当前页不跳转、浮层不关、文字颜色与改动前一致；点右上角图标确认切到 Plugins 面板且浮层关闭、宿主无 `layout` 服务时该图标不出现、币种不匹配那段只有一个按钮。
 
