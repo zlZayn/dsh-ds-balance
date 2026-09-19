@@ -3,6 +3,10 @@
  *
  * 这两半各占一个 slot，互不依赖；配置卡片挂在 `plugins.bundle.config` 上，
  * 宿主按**包名**取这一格，设置命名空间只用来绑作用域。
+ *
+ * 配置那一格另有一层**能力探测**（不查版本号）：旧宿主根本没有这一格，
+ * 注册会一直等下去、也不报错。探测只决定要不要在浮层里提示，不参与注册 ——
+ * 槽真的在时，下面那次 `inject` 照旧正常注册。见 [config-slot.ts](config-slot.ts)。
  * @module dsh-ds-balance/client
  */
 
@@ -20,6 +24,7 @@ import { SidebarBalance } from './sidebar/SidebarBalance.tsx'
 // 副作用导入：修正宿主 .footerActions 的排版遗漏，见 .agents/notes/2026-09-17-footer-stack-override.md。
 import './sidebar/footer-stack.module.css'
 import { NS, en, zh, type LocaleKey } from './locales.ts'
+import { CONFIG_SLOT, createConfigSlotProbe, type ConfigSlotProbe } from './config-slot.ts'
 
 /** 设置命名空间：与宿主 `SETTINGS_NAMESPACE` 逐字一致。 */
 export const SETTINGS_NAMESPACE = 'ds-balance'
@@ -156,12 +161,15 @@ interface SidebarSeat {
  * 注册常驻，不做动态注销：重新注册会换掉 React key，导致整棵子树重挂、局部状态丢失。
  * 「启用左下角」开关已删除：左下角是本插件唯一的展示位，关掉它等于关掉全部功能。
  */
-function SidebarSeatComponent(props: { seat: SidebarSeat; scope: SettingsScope }): ReactNode {
+function SidebarSeatComponent(
+  props: { seat: SidebarSeat; scope: SettingsScope; configSlotProbe: ConfigSlotProbe },
+): ReactNode {
   const value = useScopeValue(props.scope)
   return (
     <SidebarBalance
       wide={props.seat.wide}
       t={props.seat.t as Translate}
+      configSlotProbe={props.configSlotProbe}
       config={{
         displayCurrency: readDisplayCurrency(value),
         manualRefreshCooldownSeconds: readCooldown(value),
@@ -201,17 +209,26 @@ export function apply(ctx: ClientContext): void {
 
   const scope = adaptScope(ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE }))
 
+  // 探测配置那一格在不在：新宿主由 ui-plugin-manager 的浏览器半边在 apply 期声明它，
+  // 旧宿主永不声明。三种态都可逆，所以晚到的声明会把已经出现的提示撤掉。
+  const configSlotProbe = createConfigSlotProbe()
+  ctx.effect(() => () => configSlotProbe.dispose(), 'ds-balance: config slot probe')
+
   // 配置卡片的 key 逐字等于 package.json 的 name：bundle 详情页按包名取这一格，
   // 写错就整块不出现，也不会报错。设置命名空间只用来绑作用域，与它无关。
-  ctx.slots.inject('plugins.bundle.config', () =>
-    ctx.slots.register(
-      { name: 'plugins.bundle.config', key: 'dsh-ds-balance', locale: NS },
+  ctx.slots.inject(CONFIG_SLOT, () => {
+    configSlotProbe.markDeclared()
+    return ctx.slots.register(
+      { name: CONFIG_SLOT, key: 'dsh-ds-balance', locale: NS },
       (seat: SettingsSeat) => <SettingsSeatComponent seat={seat} scope={scope} />,
-    ))
+    )
+  })
 
   ctx.slots.inject('sidebar.footer.action', () =>
     ctx.slots.register(
       { name: 'sidebar.footer.action', id: SETTINGS_NAMESPACE, order: 0, locale: NS },
-      (seat: SidebarSeat) => <SidebarSeatComponent seat={seat} scope={scope} />,
+      (seat: SidebarSeat) => (
+        <SidebarSeatComponent seat={seat} scope={scope} configSlotProbe={configSlotProbe} />
+      ),
     ))
 }

@@ -14,6 +14,9 @@
 - 新增脚本 → 在下面「文件」节补一条，并在 [package.json](../package.json) 的 `scripts` 里给出入口。
 - 改 `release-guard.mjs` 的分类常量 → 同步 [发版前确认](../docs/PUBLISHING.md#发版前确认)。
 - 改 `compat-swap.mjs` 的受管前缀 → 同步 [compat.yml](../.github/workflows/compat.yml) 的矩阵。
+- 改 `check-declaration.mjs` 的 `TRACKED_LINE` → 同步 [README.md](../README.md) 的「版本兼容」一节与 [AGENTS.md](../AGENTS.md) 的判据。
+- 改 `report-compat-failure.mjs` 的固定标题或标签 → 同步 [docs/PUBLISHING.md](../docs/PUBLISHING.md) 的「兼容性」一节。
+- 改 [compat.yml](../.github/workflows/compat.yml) 的作业集合 → 同步 [docs/PUBLISHING.md](../docs/PUBLISHING.md) 的「CI 说明」表。
 
 ## 文件
 
@@ -37,6 +40,16 @@
   - 只换 `@deepseek-ai/dsh-` 前缀；`@deepseek-ai/cordis` 与 `@deepseek-ai/schemastery` 不带这个前缀，天然在替换面之外（它们的 `next` 比 `latest` 旧）。
   - 查 dist-tags 用 HTTP 打 registry，不调 `npm view` —— 少一层 shell 依赖。
   - 由 [compat.yml](../.github/workflows/compat.yml) 调用。
+- `check-declaration.mjs`：声明面检查。只读 `package.json` 的声明区间（`engines.dsh` 与三个依赖段里的 `@deepseek-ai/dsh-*`）+ 问 npm 被跟的那条线指向什么版本，判「罩不罩得住」。
+  - 判据：声明区间必须能覆盖**我们告诉用户去装的那条线**（`TRACKED_LINE`，与 [README.md](../README.md) 的「版本兼容」一节对齐）；覆盖不到退出 1。
+  - **不装任何依赖**，所以能单独成一个几十秒的作业；与「换线之后还跑不跑得起来」是两件事，混在一起会互相遮蔽。
+  - 区间是否成立**问 npm 自己**，不自己算：预发布段的规则很绕（一个 caret 区间罩得住**同一个** `major.minor.patch` 里的预发布版本，罩不住下一个补丁位的预发布版本），手写一套等于制造假绿。`npm view <pkg>@<range> version --json` 回的是区间内**全部**匹配版本，于是「那条线的版本在不在列表里」就是精确判定。
+  - **不走 shell**：区间里的 `^` 是 shell 元字符（Windows 上还是转义符），所以用 `process.execPath` 直接跑 npm 的 CLI 入口。只监控区间的包，`@deepseek-ai/cordis` 等不带前缀的天然在外面。
+  - 退出码：0 = 罩得住 / 1 = 有罩不住的 / 2 = 用法或前置条件缺失（registry、npm 入口）。由 [compat.yml](../.github/workflows/compat.yml) 的 `declaration` 作业调用，**不阻断**任何 PR。
+- `report-compat-failure.mjs`：失败可见。把巡检的红变成**一条固定标题**的跟踪 issue：没有就开、有就追一条评论、关了就先重开、同一处失败不重复刷。
+  - 正文里**不放时间戳**：同一处失败每次长一样，正文一致判重才成立。
+  - 由 [compat.yml](../.github/workflows/compat.yml) 的两个作业在 `if: failure()` 里调用；需要 `issues: write`（已写在该 workflow 的 permissions 里）。
+  - 退出码：0 = 已记录（含「已经记过」）/ 1 = 记录失败 / 2 = 用法或前置条件缺失。
 
 ## 使用约束与工作偏好
 

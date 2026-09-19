@@ -2,11 +2,21 @@
 #
 # 为什么是每周而不是每次推送：它要重装整棵依赖树，跑一次几分钟，而宿主版本线一周也动不了几次。
 #
-# 两条线**暂时都只记录**（continue-on-error: true），红了不发通知、不阻断。
+# 两个作业，两件事，刻意分开：
+#   declaration —— 只读 package.json 的声明区间 + 问 npm 该线实际指向的版本，
+#                  判「我们声明的范围还罩不罩得住」。不装任何依赖，几十秒出结果。
+#   swap        —— 真的换线、真的装、真的跑测试。
+#   两者混在一起会互相遮蔽：声明面过期与代码真的跑不起来是两回事。
+#
+# 两条线**暂时都只记录**（continue-on-error: true），不阻断。
 # 原因是实测出来的错位：next 比 alpha 还旧，而我们声明的是 alpha ——
 # 「声明面罩住的线」与「语义上的承诺线」对不上。
 # **版本号不写在这里**（会漂），要现查跑：node scripts/compat-swap.mjs check
 # 判据与恢复条件见 .agents/notes/2026-09-17-compat-lines-advisory.md。
+#
+# 「只记录」不等于「没人看」：任何一个作业红了都会开或更新**一条固定标题的跟踪 issue**
+# （scripts/report-compat-failure.mjs，同一处失败不重复刷评论）—— 这就是
+# 「不阻断」与「失败可见」并存。定时任务的失败邮件只发给最后改过 cron 的人，不能当主通知。
 #
 # 与 contract.yml 错开一小时，避免两个定时任务在同一分钟抢 runner。
 name: compat
@@ -18,8 +28,35 @@ on:
 
 permissions:
   contents: read
+  # 失败可见要开 / 更新跟踪 issue。
+  issues: write
 
 jobs:
+  # 声明面：只看 package.json 与 registry。**不装任何依赖**，所以也不挂 cache。
+  declaration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+
+      # 判据：声明的区间必须能覆盖我们告诉用户去装的那条线（README 的「版本兼容」一节指名的那条）。
+      - name: Check that the declaration covers the tracked line
+        id: declaration
+        run: node scripts/check-declaration.mjs
+
+      - name: Record the failure on the tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/report-compat-failure.mjs \
+            --check declaration \
+            --step "Check that the declaration covers the tracked line"
+
   swap:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -45,11 +82,29 @@ jobs:
       # swap 内部先改写 package.json 的声明区间、跑裸 npm install，再跑 verify。
       # verify 不是陪衬：npm install 会假绿（失败但 node_modules 停在旧版本上），
       # 不回头确认实际装到了什么，后面的测试就跑在旧依赖上、给出与事实相反的信号。
-      - name: 换到 ${{ matrix.line }} 线并确认真的装到了
+      - name: Swap onto the ${{ matrix.line }} line and confirm what got installed
+        id: swap
         run: node scripts/compat-swap.mjs swap --line ${{ matrix.line }}
 
       - name: Typecheck
+        id: typecheck
         run: npm run typecheck
 
       - name: Test
+        id: test
         run: npm test
+
+      # 作业级 continue-on-error 免掉的是「阻断」，不是「可见」：
+      # 哪条线、红在哪一步都进跟踪 issue。
+      - name: Record the failure on the tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SWAP_OUTCOME: ${{ steps.swap.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          node scripts/report-compat-failure.mjs \
+            --check swap \
+            --line "${{ matrix.line }}" \
+            --step "swap=$SWAP_OUTCOME typecheck=$TYPECHECK_OUTCOME test=$TEST_OUTCOME"

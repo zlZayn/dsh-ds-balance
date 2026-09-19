@@ -63,7 +63,8 @@
     "test": "npm run build && vitest run",
     "test:watch": "vitest",
     "test:contract": "vitest run --config vitest.contract.config.ts",
-    "check:release": "node scripts/check-release.mjs"
+    "check:release": "node scripts/check-release.mjs",
+    "check:declaration": "node scripts/check-declaration.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",

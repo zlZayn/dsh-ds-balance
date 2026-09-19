@@ -75,7 +75,7 @@
 npm install -g @deepseek-ai/dsh@alpha     # 本插件承诺支持的线
 ```
 
-兼容性不是推断出来的：每周由 [compat.yml](.github/workflows/compat.yml) 在 `alpha` 与 `next` 两条线上换包实跑一遍现有测试。当前结论与红了怎么办见 [兼容性](docs/PUBLISHING.md#兼容性)。配置界面注册在宿主的 `plugins.bundle.config` 槽，**该槽由 DSH 0.1.6 引入**（下限的真源是 [package.json](package.json) 的 `engines.dsh`，现查 `node scripts/compat-swap.mjs check`）：更早的宿主上圆环与浮层照常工作，但**插件页里不会出现配置区**（静默，不报错）—— 这就是分水岭。
+兼容性不是推断出来的：每周由 [compat.yml](.github/workflows/compat.yml) 在 `alpha` 与 `next` 两条线上换包实跑一遍现有测试，另有一步单独判声明面罩不罩得住；红了会开或更新一条固定标题的跟踪 issue。当前结论与红了怎么办见 [兼容性](docs/PUBLISHING.md#兼容性)，宿主版本的分水岭见[版本兼容](#版本兼容)。
 
 ### 从 npm 安装
 
@@ -103,6 +103,13 @@ dsh plugin --profile web add "$PWD"
 - **GitHub**：[`zlZayn/dsh-ds-balance`](https://github.com/zlZayn/dsh-ds-balance)
 
 仓库带有 GitHub topic [`dsh-plugin`](https://github.com/topics/dsh-plugin)，插件市场据此自动发现插件。
+
+## 版本兼容
+
+- 配置界面注册在宿主的 `plugins.bundle.config` 槽，**该槽由 DSH 0.1.6-alpha.2 引入**（下限的真源是 [package.json](package.json) 的 `engines.dsh`，现状现查 `node scripts/compat-swap.mjs check`）。
+- 更早的宿主上圆环与浮层照常工作，只是**插件页里不会出现配置区**（不报错）—— 这就是分水岭。插件不查宿主版本号，只探测这一格在不在：探测不到时**浮层里会多一行英文 `[WARN]`**，说明配置界面为什么不可用、该往哪儿升级。
+- 需要配置界面，就把宿主升到 `engines.dsh` 声明的那一版或更高：`npm install -g @deepseek-ai/dsh@alpha`。
+- 声明是**窄**的：下限是引入该槽的那一版，上限排掉下一个可能不兼容的大版本 —— 不是「以后都兼容」，也不把更早的版本算进来。可它罩不住新的预发布段，所以宿主推新的 alpha 之后仍可能过期；每周的 `declaration` 巡检专门盯这件事，红了怎么办见[兼容性](docs/PUBLISHING.md#兼容性)。
 
 ## 配置
 

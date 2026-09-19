@@ -74,6 +74,13 @@ export interface BalancePopoverProps {
   refreshing: boolean
   /** 冷却剩余秒数；0 表示可以刷新。 */
   cooldownSeconds: number
+  /**
+   * 「本宿主没有配置槽」的提示行；null 表示不提示。
+   *
+   * 文案由 [config-slot.ts](../config-slot.ts) 给：它是英文 `[WARN]` 诊断行，
+   * 按兼容性硬约束两种语言下都照原文给，所以刻意不进双语词典。
+   */
+  configSlotWarning: string | null
   /** 面板自身的引用：useAnchoredPosition 用它量尺寸，外部点击判定用它算「内部」。 */
   panelRef: RefObject<HTMLElement>
   /** 由 useAnchoredPosition 给出的 fixed 坐标；首帧是 MEASURE_STYLE（隐藏待测）。 */
@@ -94,7 +101,7 @@ export interface BalancePopoverProps {
 export function BalancePopover(props: BalancePopoverProps): JSX.Element {
   const {
     t, selection, displayCurrency, ageMs, refreshing, cooldownSeconds,
-    panelRef, style, onRefresh, onUseShown, onOpenSettings,
+    configSlotWarning, panelRef, style, onRefresh, onUseShown, onOpenSettings,
   } = props
 
   const shown = selection.shown
@@ -160,6 +167,14 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
           </div>
         </div>
       ) : null}
+
+      {/* 缺配置槽的诊断行：只解释「为什么这里没有配置入口」并给升级指引，
+          不提供任何动作按钮 —— 升级宿主不是这个浮层能做的事。 */}
+      {configSlotWarning === null ? null : (
+        <div className={css.notice}>
+          <p className={css.noticeText}>{configSlotWarning}</p>
+        </div>
+      )}
 
       <div className={css.footer}>
         <span className={css.updated}>{updatedText}</span>

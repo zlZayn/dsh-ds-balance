@@ -17,7 +17,8 @@
 ### SidebarBalance.tsx
 
 - 职责：条目全部行为 —— 场景订阅、币种选择、点击开关浮层、刷新模拟与冷却、Escape 与外部点击关闭。
-- 关键导出：`SidebarBalance`（本目录唯一对外组件）、`SidebarBalanceProps`（`wide` / `t` / `config`）。
+- 关键导出：`SidebarBalance`（本目录唯一对外组件）、`SidebarBalanceProps`（`wide` / `t` / `config` / `configSlotProbe`）。
+- `configSlotProbe` 由 [../index.tsx](../index.tsx) 建好后经 props 传进来，本目录只订阅它的三态（`useConfigSlotState`）；**提示必须可撤销**，所以订阅而不是读一次。
 - 被谁依赖：[../index.tsx](../index.tsx) 的 `SidebarSeatComponent`。
 - 改后必测什么：展开态（圆环 + 标签）与折叠态（36×36 圆环）都可见；点条目开浮层、Escape 与外部点击关；`aria-expanded` 跟随开合；**点上方邻居条目要落到邻居身上**。
 
@@ -30,8 +31,9 @@
 
 ### BalancePopover.tsx
 
-- 职责：浮层表面 —— 标题行、余额/赠送/充值三行、币种不匹配的说明与两个动作、底部刷新时间与刷新按钮。
-- 关键导出：`BalancePopover`、`BalancePopoverProps`、`BALANCE_PLACEHOLDER`。
+- 职责：浮层表面 —— 标题行、余额/赠送/充值三行、币种不匹配的说明与两个动作、缺配置槽的诊断行、底部刷新时间与刷新按钮。
+- 关键导出：`BalancePopover`、`BalancePopoverProps`（多一个 `configSlotWarning`）、`BALANCE_PLACEHOLDER`。
+- `configSlotWarning` 非 null 时复用既有的 `notice` / `noticeText` 渲染一行英文 `[WARN]`（无动作按钮、无新增样式）。
 - 被谁依赖：`SidebarBalance.tsx`，经 `createPortal` 挂到 `document.body`。
 - 改后必测什么：面板 `role="dialog"` 与 `aria-label` 仍在；三行金额与时间文案随场景变化；刷新按钮的进行中与冷却两态；点浮层内部不关闭浮层。
 

@@ -27,6 +27,7 @@ import {
 } from '../model.ts'
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
+import { CONFIG_SLOT_WARNING, type ConfigSlotProbe, type ConfigSlotState } from '../config-slot.ts'
 import { BalancePopover } from './BalancePopover.tsx'
 import { PercentRing, type RingState } from './PercentRing.tsx'
 import css from './SidebarBalance.module.css'
@@ -52,12 +53,34 @@ const MS_PER_SECOND = 1000
 /** 浮层打开时相对时间的刷新间隔。 */
 const TICK_MS = MS_PER_SECOND
 
+/**
+ * 订阅配置槽的探测结果。
+ *
+ * 为什么要订阅而不是读一次：提示**必须可撤销** —— 槽若在提示出现之后才声明
+ * （宿主将来改成延迟声明就是这种情形），提示要自己消失。三态见 [config-slot.ts](../config-slot.ts)。
+ * @param probe - 探测结果。
+ * @returns 当前态。
+ */
+function useConfigSlotState(probe: ConfigSlotProbe): ConfigSlotState {
+  const [state, setState] = useState(() => probe.getSnapshot())
+  useEffect(() => {
+    setState(probe.getSnapshot())
+    return probe.subscribe(() => { setState(probe.getSnapshot()) })
+  }, [probe])
+  return state
+}
+
 /** 条目属性。 */
 export interface SidebarBalanceProps {
   /** 侧栏是否展开（false = 56px 轨道）。 */
   wide: boolean
   /** 词典函数。 */
   t: (key: LocaleKey) => string
+  /**
+   * 配置槽的探测结果。旧宿主上 `plugins.bundle.config` 不存在，
+   * 浮层据此给一条英文 `[WARN]` 提示；探测本身不影响余额与刷新。
+   */
+  configSlotProbe: ConfigSlotProbe
   /** 本组件消费的配置切片。 */
   config: {
     displayCurrency: string
@@ -113,7 +136,9 @@ function ringSpecFor(severity: Severity): { state: RingState; marker: RingMarker
  * @param props - 展开态、词典与配置切片。
  * @returns 条目元素。
  */
-export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.Element | null {
+export function SidebarBalance({
+  wide, t, config, configSlotProbe,
+}: SidebarBalanceProps): JSX.Element | null {
   /**
    * 余额视图与它的**年龄基准**。
    *
@@ -305,6 +330,9 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
   // 本阶段只做占位；父代理接上真实入口后替换这里。
   const handleOpenSettings = useCallback((): void => {}, [])
 
+  // 缺槽才提示；pending 与 available 都不提示（pending 期间不下结论）。
+  const configSlotState = useConfigSlotState(configSlotProbe)
+
   const shown = selection.shown
   const ring = ringSpecFor(response.severity)
   // 弧长：余额占该币种 warn 阈值的几分之几。阈值只当刻度，颜色仍只由 severity 决定。
@@ -398,6 +426,7 @@ export function SidebarBalance({ wide, t, config }: SidebarBalanceProps): JSX.El
           ageMs={ageMs}
           refreshing={refreshing}
           cooldownSeconds={cooldownSeconds}
+          configSlotWarning={configSlotState === 'missing' ? CONFIG_SLOT_WARNING : null}
           panelRef={panelRef}
           style={pos ?? MEASURE_STYLE}
           onRefresh={handleRefresh}

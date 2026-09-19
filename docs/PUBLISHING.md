@@ -66,6 +66,11 @@
 只有「发布后 72 小时内、且确认无人依赖」才考虑 unpublish；
 走这条例外要在提交信息里写明依据，备查。
 
+**deprecate 只留给真实缺陷。** 宿主侧的搬家（比如配置界面的槽换了一格、旧版本因此在当前宿主上不再显示配置区）
+不算插件缺陷，不给那些旧版本加 deprecate：喊狼来了会稀释真正的那几条警告。
+代价是明确的取舍 —— 停在旧宿主（或装着旧版本）的用户在安装时**收不到任何提示**，
+分水岭只由 [README.md](../README.md) 的「版本兼容」一节传达。
+
 ## 版本号判定链
 
 按顺序问，第一个答「是」的档位就是它。
@@ -150,12 +155,16 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 | 工作流 | 触发 | 跑什么 |
 |---|---|---|
 | [ci.yml](../.github/workflows/ci.yml) | 每次推 main 与每个 PR | 锁文件版本校验、typecheck、测试 |
-| [compat.yml](../.github/workflows/compat.yml) | 每周一 02:00 UTC | 把 `@deepseek-ai/dsh-*` 换到 alpha / next 线后重跑 |
+| [compat.yml](../.github/workflows/compat.yml) | 每周一 02:00 UTC | 声明面先单独判一次（`declaration`，不装任何依赖），再把 `@deepseek-ai/dsh-*` 换到 alpha / next 线后重跑 |
 | [contract.yml](../.github/workflows/contract.yml) | 每周一 01:00 UTC | 打真实上游，核对响应指纹 |
 | [release.yml](../.github/workflows/release.yml) | 手动 | 上面那条发版流程 |
 
 契约巡检要仓库 secret `DSH_CI_API_KEY`（专用 key，与插件继承的 `DEEPSEEK_API_KEY` 是两把）；没配会红，并直说是缺 secret。
 `release.yml` 的 OIDC 认证不需要任何 secret。
+
+compat 巡检**不阻断任何 PR**（它根本不在 PR 上跑），但**失败必须可见**：两个作业各自在 `if: failure()` 里开或更新
+**一条固定标题的跟踪 issue**（打固定标签，同一处失败只追一条评论，已关闭的先重开）。这需要 workflow 上的
+`issues: write`。定时任务的失败邮件只发给最后改过 cron 的人，不能当主通知。
 
 ## 兼容性
 
@@ -188,3 +197,16 @@ compat 巡检红了怎么办：
 - 只记录的那条红了 → 记录，不改声明。
 
 换线前先跑 `compat-swap check`。`verify` 报「假绿」时，那一轮的测试结果不能信。
+
+### 声明面单独判
+
+`declaration` 作业只读 `package.json` 的声明区间（`engines.dsh` 与三个依赖段里的 `@deepseek-ai/dsh-*`）
++ 问 npm 被跟的那条线指向什么版本，判**声明还罩不罩得住那条线**。它不装任何依赖，几十秒出结果 ——
+与「换到那条线上还构不构得出来」是两件事，混在一起会互相遮蔽（见 [scripts/README.md](../scripts/README.md)）。
+判据：覆盖不到就是红；被跟的那条线由 [README.md](../README.md) 的「版本兼容」一节点名。
+
+声明是**窄**的：下限是引入 `plugins.bundle.config` 的那一版，上限排掉下一个可能不兼容的大版本
+（0.x 线上就是下一个 minor）—— 既不留「以后都兼容」，也不把更早的版本算进来。
+预发布段仍可能把声明甩在后面（同一个 `major.minor.patch` 之外的新 alpha 就罩不住），
+于是宿主每推一个新的 alpha，声明都可能过期 —— 这不是缺陷，是刻意的：**声明过期得由人确认后再改**，
+`declaration` 作业就是那个提醒。两件事是耦合的：把范围写宽能省掉红，但会让「声明」变成一句没人验证过的话。

@@ -75,7 +75,7 @@ Install the host by **naming the version line explicitly**: the `latest` tag of 
 npm install -g @deepseek-ai/dsh@alpha     # the line this plugin promises to support
 ```
 
-Compatibility is measured, not inferred: every week [compat.yml](.github/workflows/compat.yml) swaps packages onto the `alpha` and `next` lines and reruns the existing tests. The current verdict, and what to do when it goes red, are in [Compatibility](docs/PUBLISHING.md#兼容性). The configuration UI registers into the Host's `plugins.bundle.config` slot, which **arrives with DSH 0.1.6** (the floor's single source is `engines.dsh` in [package.json](package.json); check it live with `node scripts/compat-swap.mjs check`): on an earlier Host the ring and the popover keep working, but the configuration area never appears on the Plugins page (silently, with no error) — that is the watershed.
+Compatibility is measured, not inferred: every week [compat.yml](.github/workflows/compat.yml) swaps packages onto the `alpha` and `next` lines and reruns the existing tests, and one separate job judges whether the declared ranges still cover the line; a red patrol opens or updates a tracking issue with a fixed title. The current verdict, and what to do when it goes red, are in [Compatibility](docs/PUBLISHING.md#兼容性); the Host-version watershed is in [Version compatibility](#version-compatibility).
 
 ### From npm
 
@@ -103,6 +103,13 @@ Same as the npm route: it takes effect after a restart.
 - **GitHub**: [`zlZayn/dsh-ds-balance`](https://github.com/zlZayn/dsh-ds-balance)
 
 The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics/dsh-plugin), which is how the plugin marketplace discovers plugins.
+
+## Version compatibility
+
+- The configuration UI registers into the Host's `plugins.bundle.config` slot, which **arrives with DSH 0.1.6-alpha.2** (the floor's single source is `engines.dsh` in [package.json](package.json); check the current lines with `node scripts/compat-swap.mjs check`).
+- On an earlier Host the ring and the popover keep working, but the configuration area never appears on the Plugins page (with no error) — that is the watershed. The plugin never reads a Host version: it probes whether that slot exists, and when it does not, **the popover carries one extra English `[WARN]` line** saying why the configuration page is unavailable and where to upgrade.
+- To get the configuration page, upgrade the Host to the version `engines.dsh` declares or higher: `npm install -g @deepseek-ai/dsh@alpha`.
+- The declaration is **narrow**: the floor is the version that introduced the slot and the ceiling excludes the next possibly-incompatible version — not "everything in the future counts", and nothing earlier is claimed either. It still cannot cover a new prerelease segment, so a new Host alpha can outdate it; the weekly `declaration` patrol watches exactly that, and what to do when it goes red is in [Compatibility](docs/PUBLISHING.md#兼容性).
 
 ## Configuration
 
