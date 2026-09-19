@@ -448,6 +448,10 @@ export function SidebarBalance({
   // 于是点它反而打开了我们的浮层。
   // aria-expanded 表达的是同一个事实（这里会展开一个弹层），且不会被那个启发式命中。
   // 浮层面板自己的 role="dialog" 保留不变。
+  // 存史（2026-09-20）：上面写的成因是**当时**邻居插件自己的 DOM 遍历实现 —— 它不是我们的
+  // 依赖，也不属本工作区。官方设置触发按钮本身也带该属性（apps/web/tests/settings-chrome.e2e.ts），
+  // 所以按属性找并非无据，"假设整条只有一个"才是问题。留这段是为了解释这行代码为什么长这样；
+  // 完整事故见 docs/postmortem/2026-09-17-aria-haspopup-neighbour-collision.md。
   const trigger = (
     <button
       type="button"

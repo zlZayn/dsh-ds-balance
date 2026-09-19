@@ -94,3 +94,4 @@
 - 已装第三方插件 `dsh-usage-statistics-panel` 用 `button[aria-haspopup="dialog"]` 从它自己的按钮往上逐层查找设置触发按钮，所以我们的触发按钮不带这个属性。
 - 同一个插件还扫 `[role="dialog"] nav button` 并按文字匹配注入图标，所以本目录的浮层里不放 `<nav>` 包着的按钮。
 - 详情与后果见 [AGENTS.md](AGENTS.md)。
+- **存史**：上面两条的依据是**当时**邻居插件自己的实现 —— 它不是我们的依赖；记下来是为了解释这两个"不做"为什么存在，完整事故见 [postmortem](../../../docs/postmortem/2026-09-17-aria-haspopup-neighbour-collision.md)。
