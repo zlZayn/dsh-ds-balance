@@ -26,7 +26,17 @@
 - 颜色只由后端 `severity` 决定；前端读阈值的唯一去处是圆环弧长，且只读 `warn`、只当刻度
 - 样式只用 CSS Modules + `--dsw-alias-*`；禁 Tailwind、禁组件库、禁字面色值
 - **所有 `@deepseek-ai/dsh-*` 声明的下限不得低于 `engines.dsh` 的下限**，且**形状也要一致**（本仓统一写 `>=<下限>`，不设上限）。两份声明自相矛盾时，使用者按我们给的区间装不出可用的宿主。抬过两批：2026-09-20（peer 8 条 + 仅 dev 的 2 条）与本次接缝迁移（12 条受管包 + `engines.dsh` 一起改），分别见[决策记录](.agents/notes/2026-09-20-declaration-floor-alignment.md)与[本轮记录](.agents/notes/2026-09-22-settings-seam-migration.md)。红线在 [test/redlines.test.ts](test/redlines.test.ts)。
-- **只做类型面（module augmentation）、运行时由宿主提供或 `dsh.client.inject` 送的官方包，只写 `devDependencies`，不写 `peerDependencies`** —— 目前是 `@deepseek-ai/dsh-client-ui-plugin-manager`（模块增强）与 `@deepseek-ai/cordis-plugin-loader`（`loader/volatile-update` 的事件键声明），理由与查证见[决策记录](.agents/notes/2026-09-20-plugin-manager-dependency-kind.md)。
+- **依赖写在 peer 还是 dev，判据是「我们与它的关系」，不是它住在哪一侧** —— 两类，缺一类就会出事：
+  - **只做类型面（module augmentation）、我们不消费它提供的服务** → 只写 `devDependencies`。目前是
+    `@deepseek-ai/dsh-client-ui-plugin-manager`（模块增强）与 `@deepseek-ai/cordis-plugin-loader`（`loader/volatile-update` 的事件键声明）。
+  - **我们消费它提供的服务（运行时真的要用）** → 必须 `peerDependencies`（外加同一版本的 `devDependencies`，红线钉着版本相等）：
+    装载器得把它与我们装在同一棵树里，否则 `ctx.<服务>` 在运行期就是 undefined。
+    `@deepseek-ai/dsh-client-ui-settings` 属于这一类 —— 它是 `configForms` 的**提供方**
+    （宿主 `packages/client/ui-settings/src/client/config-form.ts:241` 的 `class ConfigForms extends Service`、
+    `:266` 的 `super(ctx, 'configForms')`，行号以当前检出为准），而我们在属性访问 `ctx.configForms`
+    （[config-slot.ts](src/client/config-slot.ts) 用它判服务到没到位、[use-config-form.ts](src/client/settings/use-config-form.ts) 真的 `get(ENTRY_ID)`）。
+    **它同时也有类型面（我们 `import type`）—— 那不构成「只能写 dev」的理由，两种关系同时成立就该两边都写。**
+  理由、机制出处与替代方案见[决策记录](.agents/notes/2026-09-20-plugin-manager-dependency-kind.md)。
 
 ## 常用命令
 
