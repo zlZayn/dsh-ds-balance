@@ -140,6 +140,55 @@ describe('发布流程', () => {
     expect(bumpCalls('run: npm run build && npm test')).toEqual([])
     expect(bumpCalls('echo "bump with: npm version <patch|minor|major> --no-git-tag-version"')).toEqual([])
   })
+
+  /**
+   * 发布面 **git 侧产物**的形状：三件事各自可判，也各自可反向控制。
+   * 为什么连形状都要断言：tag 名不是给人看的 —— 守卫靠 `git describe --match 'v[0-9]*'` 读它
+   * （zhihu 那边就因为版本号换了来源、`v` 前缀丢了，让守卫**看不见**新 tag）；
+   * 而 Release 漏建过一次（1.0.0 / 1.1.0 是手工补的），靠的是**人记得**。
+   */
+  const releaseShape = (text: string) => {
+    const tagAssignments = [...text.matchAll(/\btag="([^"]*)"/g)].map((m) => m[1])
+    return {
+      createsRelease: /(?:^|\s)gh release create\s/.test(text),
+      tagAssignments,
+      oddPrefix: tagAssignments.filter((value) => !value.startsWith('v')),
+      // 预发布段（`*-*`）与 `--prerelease` 必须成对：只写后者 = 正式版也会被标成预发布。
+      prereleaseGuarded: /\*-\*/.test(text) && text.includes('--prerelease'),
+    }
+  }
+
+  it('git 侧两样产物都由流程产出：v 前缀的 tag + 预发布标 --prerelease 的 Release', () => {
+    const workflow = readFileSync('.github/workflows/release.yml', 'utf8')
+    const shape = releaseShape(workflow)
+    expect(shape.createsRelease, 'release.yml 里没有建 Release 的步骤：那样每发一次版都要靠人记得补').toBe(true)
+    expect(shape.tagAssignments.length, 'release.yml 里找不到 tag 赋值').toBeGreaterThan(0)
+    expect(shape.oddPrefix, `tag 名必须是 v 前缀，出现：${shape.oddPrefix.join('、')}`).toEqual([])
+    expect(shape.prereleaseGuarded, '版本带预发布段时没有走 --prerelease').toBe(true)
+  })
+
+  it('上面那条形状判据有牙齿（反向控制）', () => {
+    // 少 v：换了版本号来源、前缀丢了 —— 守卫看不见这种 tag。
+    expect(releaseShape('          tag="${{ steps.probe.outputs.version }}"\n').oddPrefix)
+      .toEqual(['${{ steps.probe.outputs.version }}'])
+    // 有 --prerelease，却没有「按版本预发布段判定」那一步 → 正式版也会被标成预发布。
+    expect(releaseShape('run: gh release create "$tag" --prerelease\n').prereleaseGuarded).toBe(false)
+    // 只打 tag、不建 Release（这就是 2026-09-22 之前的样子）。
+    expect(releaseShape('run: git tag "$tag" && git push origin "$tag"\n').createsRelease).toBe(false)
+    // 正面样本：真东西那个形状三样都得true。
+    expect(releaseShape([
+      '          tag="v${{ steps.probe.outputs.version }}"',
+      '          case "${{ steps.probe.outputs.version }}" in',
+      '            *-*) flags="--prerelease" ;;',
+      '          esac',
+      '          gh release create "$tag" --title "$tag" $flags --generate-notes',
+    ].join('\n'))).toEqual({
+      createsRelease: true,
+      tagAssignments: ['v${{ steps.probe.outputs.version }}'],
+      oddPrefix: [],
+      prereleaseGuarded: true,
+    })
+  })
 })
 
 /**

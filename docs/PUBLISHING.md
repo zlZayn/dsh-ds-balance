@@ -50,11 +50,14 @@
 6. 探该版本在不在 npm 上。在就跳过发布，补跑一条流水线不会撞 403。
 7. `npm publish --provenance`。认证走 OIDC，仓库里没有任何长期凭据。
 8. 打 `v<version>` tag 并推送；tag 已存在则跳过。
+9. 建 GitHub Release：tag 名与标题都是 `v<version>`（**`v` 前缀是形状，不是审美** —— 守卫靠
+   `git describe --match 'v[0-9]*'` 看它）；**版本号带预发布段就加 `--prerelease`**，正式版不加；Release 已存在则跳过。
 
-**它不建 GitHub Release。** 跑完 workflow 只得到 npm 上那个版本 + 一个 tag ——
-1.0.0 与 1.1.0 那两个 Release 是发完之后**手工补建**的：
-`gh release create v<version> --title v<version> --prerelease --notes …`（正式版去掉 `--prerelease`）。
-别以为跑完流水线门面上就齐了。
+**git 侧的两样产物（tag 与 Release）都由流程产出 —— 不靠人记得去补。**
+2026-09-22 之前第 9 步不存在：1.0.0 与 1.1.0 的 Release 都是发完之后**手工补建**的，
+于是「每发一次版都要有人想起这件事」。**同一个动作每轮都要人提醒 = 该把它并进流程** ——
+现在那条只作为**兜底**（例如手动发布，或某次 Release 建漏了）：
+`gh release create v<version> --title v<version> --prerelease --generate-notes`（正式版去掉 `--prerelease`）。
 
 **「发布成功」以 registry 为准，而且它有几分钟延迟。** CLI 打出 `+ <包名>@<号>`、provenance 也进了
 透明度日志之后，registry 那一刻**可能还查不到这个号** —— 日志里会明写
@@ -72,10 +75,11 @@
 代价与必须补的动作写在下面。**1.0.0 就是这么发的**：当时 Trusted Publisher 刚配好，
 本机发布走通之后，tag 与 GitHub Release 是补建的。
 
-它比流水线少三件事：
+它比流水线少四件事：
 
 - **没有 provenance 证明**。`--provenance` 要 CI 的 OIDC 身份，本机拿不到。
 - **不会打 tag**。tag 由 workflow 打；手动发完要自己补，否则 `release-guard` 永远没有「上个 tag」这个基准。
+- **不会建 GitHub Release**。同上，按上面第 9 步的判据（`v` 前缀 + 预发布标 `--prerelease`）手工补一个。
 - **不会自动跑前置检查**。上面 1~4 步要自己逐条跑。
 
 手动发的顺序：
