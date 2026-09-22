@@ -61,6 +61,8 @@
 - 凭据默认继承官方模型页配好的那一份，不必重填；徽标只报「已配置密钥。/ 未配置密钥。」（官方卡片同款），
   只读时不给编辑，并说明原因。
 - 颜色只表达状态（正常 / 偏低 / 告急），与金额大小无关；读法与理由见「[圆环怎么读](#圆环怎么读)」。
+- 插件页里以**本地化名字**出现：中文界面是「DeepSeek 余额」，英文界面是「DeepSeek Balance」——
+  卡片与详情页的标题、那句话说明都跟随界面语言；详情页仍会把包名 `dsh-ds-balance` 单独写出来。
 
 ## 安装
 
@@ -113,12 +115,12 @@ dsh plugin --profile web add "$PWD"
 
 ## 配置
 
-打开侧边栏 **插件（Plugins）** →「已安装（Installed）」组 → 点进 **dsh-ds-balance** 的详情页 —— **配置区就在描述下面，直接可改**（那一行上没有第二个 Configure 步骤）；四组**默认全收起**，点组头逐组展开：
+打开侧边栏 **插件（Plugins）** →「已安装（Installed）」组 → 点进 **DeepSeek 余额**（英文界面下是 **DeepSeek Balance**）的详情页 —— **配置区就在描述下面，直接可改**（那一行上没有第二个 Configure 步骤）；四组**默认全收起**，点组头逐组展开：
 
 <p align="center">
   <img src="assets/settings-cards-position.png" alt="Plugins 页列表里「DeepSeek 余额」的位置" width="480">
   <br>
-  <em>Plugins 页列表里的位置：<code>dsh-ds-balance</code> 与其他已安装插件并排；点它的插件名进详情页，上面那张配置表单就在描述下面。</em>
+  <em>Plugins 页列表里的位置：「DeepSeek 余额」与其他已安装插件并排；点它的插件名进详情页，上面那张配置表单就在描述下面。</em>
 </p>
 
 - **连接**：API 地址与凭据，两项都默认留空 —— 地址留空即用 DeepSeek 官方端点，凭据继承官方模型页那一份、只读不可改；

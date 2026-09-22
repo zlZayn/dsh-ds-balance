@@ -61,6 +61,8 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
 - The credential is inherited from the official model settings by default, so there is nothing to re-enter; where it comes from is on a badge
   (a key is configured / no key is configured, exactly the official card's wording), and a read-only field explains itself instead of offering an edit.
 - Colour carries state only (normal / low / critical), never an amount; see "[Reading the ring](#reading-the-ring)".
+- It appears on the Plugins page under a **localized name**: "DeepSeek Balance" in English, "DeepSeek 余额" in Chinese —
+  the card and the details page both follow the interface language, and the details page still spells out the package name `dsh-ds-balance`.
 
 ## Installation
 
@@ -113,12 +115,12 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 ## Configuration
 
-Open **Plugins → Installed** and step into the **dsh-ds-balance** details page — **the configuration sits right below the description, ready to edit** (there is no second Configure step on that row). Four groups are **all collapsed by default** — expand them from their headers:
+Open **Plugins → Installed** and step into the **DeepSeek Balance** (shown as **DeepSeek 余额** in Chinese) details page — **the configuration sits right below the description, ready to edit** (there is no second Configure step on that row). Four groups are **all collapsed by default** — expand them from their headers:
 
 <p align="center">
   <img src="assets/settings-cards-position_en.png" alt="Where the DeepSeek balance entry sits in the Plugins list" width="480">
   <br>
-  <em>Where it sits: the Plugins page's list view, with <code>dsh-ds-balance</code> alongside the other installed plugins; open its details page and the form shown above sits right below the description.</em>
+  <em>Where it sits: the Plugins page's list view, with "DeepSeek Balance" alongside the other installed plugins; open its details page and the form shown above sits right below the description.</em>
 </p>
 
 - **Connection**: the API base URL and the credential, both blank by default — a blank URL means the official DeepSeek endpoint, and the credential is inherited from the official model page and is read-only.

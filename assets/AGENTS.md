@@ -4,18 +4,23 @@
 
 只讲**在这里要怎么干**；目录里有什么、被谁引用、图长什么样 → [README.md](README.md)。
 
-## 入口是 bundle 详情页（两张设置图待重截）
+## 入口是 bundle 详情页（四张设置图待重截）
 
 配置卡片落在 **bundle 详情页里**：点插件名进详情页，**配置区就在描述下面、直接可改**，
 那一行上**没有**第二个 Configure 步骤。落点往返过一次（bundle 页 → 行子页 → bundle 页），
 理由见 [决策记录](../.agents/notes/2026-09-22-config-entry-back-to-bundle-config.md)。
 
-- 待重截的是 `settings-card.png` / `settings-card_en.png` 两张（入口与版本 tag 都变了）。
-- `settings-cards-position*.png` 两张判据不变，**不用动**：它们拍的是 Plugins 页的**列表**结构。
-  根 README 的图注文字已按新入口改过（那段文字不在这两张图里）。
+- 待重截的是 `settings-card*.png` 两张（入口与版本 tag 都变了），
+  **外加** `settings-cards-position*.png` 两张 —— 列表卡片上的标题与描述也换了（见下一节的重截判据）。
+- **进入路径按显示名走**：列表卡片与详情页标题画的是**展示元数据**里的名字（中文「DeepSeek 余额」、
+  英文「DeepSeek Balance」），详情页标题下面另有一行代码体写着**完整包名** `dsh-ds-balance`。
+
+  （旧文写的「详情页里的短名是 `ds-balance`」不准确：**没有展示元数据时** Plugins 页回落到的是**完整包名**
+  `dsh-ds-balance`；缩掉 `dsh-` 前缀的短名只出现在**设置页**的插件清单里，而且只作用于「回落到包名」那种情况 ——
+  有展示元数据时两处显示的都是它。）
 - **不需要重启宿主**：本轮改动全在浏览器半边（`src/client/**`），`npm run build` 之后由 `dsh-client-hmr` 换新；
   换不到就刷新一次页面。上一轮那句「重拍要重启一次宿主」是那一轮改宿主半边时的要求，**对本轮不成立**。
-- 下面「怎么截」的第 3 步照旧：**Plugins → Installed → `ds-balance`**，滚到配置区完整可见 —— 只是不再有 Configure 那一步。
+- 下面「怎么截」的第 3 步照旧：**Plugins → Installed → 本插件**，滚到配置区完整可见 —— 只是不再有 Configure 那一步（标题改按显示名找）。
 - **文件名不许改**：根 README 与 README_en 按名引用，重拍后同名覆盖。
 
 ## 什么时候必须重截
@@ -30,9 +35,13 @@
 - [fields.tsx](../src/client/settings/fields.tsx) 的**控件形态**：只读行、分组折叠头（`DisclosureRow`）、二级 details
 - 三个 `*.module.css` 的**样式值**：字号、行高、间距、令牌、布局
 - 卡片**可见状态**的语义：未保存标记、凭据徽标（两态）、只读行留空、失败诊断
-- **`settings-cards-position*.png` 那张（Plugins 列表视图）另有判据**：宿主 Plugins 页的列表结构 —— Official / Installed 两组及其分组文案、`ds-balance` 在已安装里的可见性、左侧栏收起态。
+- 插件页上的**标题与描述**：真源是包根的 [locale/](../locale/AGENTS.md)（宿主直读，不经我们的代码）。
+  它们画在**列表卡片与详情页两处**，所以改那两份 JSON 要重截 `settings-card*.png` 与
+  `settings-cards-position*.png` **四张**
+- **`settings-cards-position*.png` 那张（Plugins 列表视图）另有判据**：宿主 Plugins 页的列表结构 —— Official / Installed 两组及其分组文案、本插件在已安装里的可见性（卡片写显示名）、左侧栏收起态。
   已装插件列表变了（多装了一个）**不算过期**：那正是这张图要交代的上下文（「与其他插件并排、长在哪」）。
-  配置表单自身的判据（页面画的插件标题 / 描述 / 版本、四组组名、字段与保存按钮）归 `settings-card*.png`。
+  **卡片的标题与描述也算它的判据**（列表卡片画的就是这两样，与详情页同源）；
+  版本 tag、四组组名、字段与保存按钮归 `settings-card*.png`。
 - **左边栏那张另有判据**：[SidebarBalance.tsx](../src/client/sidebar/SidebarBalance.tsx) 的行结构（含**展开态悬浮出的余额气泡**）、
   [BalancePopover.tsx](../src/client/sidebar/BalancePopover.tsx) 的三行与状态行、**标题行右端的 Plugins 图标按钮**、
   以及 [PercentRing.tsx](../src/client/sidebar/PercentRing.tsx) 的**弧长与中心符号** ——
@@ -68,7 +77,7 @@
      连工具调用一起进图。拍左边栏那张时尤其致命 —— 它必然带一条聊天区。
    - 新会话的输入框停在**屏幕中央**（不是底部）；为了把它收进画面，取景就得往上延，而上延就会带进侧栏的工作区名与会话标题。
      **隐私优先**：顶端一律压到浮层 / 底部条目那一叠的上沿（第 4 步的例外规则），因此这张很可能不带输入框 —— 那是**接受的代价**，不是缺陷。
-3. 进侧边栏 **Plugins → Installed → `ds-balance`**（详情页里的短名是 `ds-balance`，不是全包名；**这一步只服务 `settings-card*.png`** —— 列表视图那张不用点进详情页，见第 6 步），
+3. 进侧边栏 **Plugins → Installed → 本插件那张卡片**（卡片与详情页的标题是**显示名**：中文「DeepSeek 余额」、英文「DeepSeek Balance」；详情页标题下面那行代码体是完整包名 `dsh-ds-balance`。**这一步只服务 `settings-card*.png`** —— 列表视图那张不用点进详情页，见第 6 步），
    滚到配置区完整可见（底部**唯一的保存按钮**必须在图内）。
    四组（连接 / 展示 / 阈值 / 刷新）**默认全部收起** —— **拍摄前依次点开四个组头**，让四组字段行都进画面；
    分组头是 `div[role="button"][aria-expanded]`（默认 `false`），原生的卡片级折叠头与「放弃」按钮都不存在。
@@ -84,7 +93,7 @@
 5. **开关状态照现状拍**：拨它会带出「未保存」标记，真保存又改了维护者的真实配置。
 6. 界面语言**当前是 English**：先拍英文版（`settings-card_en.png`），再临时切成中文拍 `settings-card.png`，最后**把语言切回 English**。
    切语言会让页面重载，切完重新走一遍第 3、4 步。
-   Plugins 列表那张顺手同拍：**留在列表视图**（不必点进详情页）+ 左侧栏收起态 —— Official / Installed 两组列表，`ds-balance` 在已安装里可见；
+   Plugins 列表那张顺手同拍：**留在列表视图**（不必点进详情页）+ 左侧栏收起态 —— Official / Installed 两组列表，本插件在已安装里可见（卡片上写的是显示名，不是包名）；
    英文 `settings-cards-position_en.png` / 中文 `settings-cards-position.png`。**列表与详情是同一页互斥的两个视图**，配置表单本体不在这张里（它归第 3 步的 `settings-card*.png`）。
    左边栏那张同理：`sidebar-popover.png` / `sidebar-popover_en.png`，**同一次会话里一起拍**，
    两张取景完全一致，否则并排看会发现构图不同（拍它之前把临时加高的 viewport 还原，整屏图用自然视口）。
@@ -106,7 +115,7 @@
   先把配置区到 `body` 之间的祖先逐个解除裁剪（`overflow: visible` + `max-height: none`），
   再把 viewport **高度**临时调够（**宽度不要动**），重新量一次 `boundingBox()` 确认整体落在视口内，最后才截 —— **截完把高度还原**。
   解除裁剪只发生在自己那个标签页里，拍完关掉即可。
-- **切语言会让当前标签页重载**，切完要重新走一遍 **Plugins → Installed → `ds-balance`**，并**重新点开四个组头**（默认收起）。
+- **切语言会让当前标签页重载**，切完要重新走一遍 **Plugins → Installed → 本插件**（标题跟着语言变，见第 3 步），并**重新点开四个组头**（默认收起）。
 - 四组**默认全部收起**（[BalanceSettingsCard.tsx](../src/client/settings/BalanceSettingsCard.tsx) 的 `DEFAULT_GROUP_OPEN` 全 `false`，本次 UI 改动的结果）：
   进页面只有四个组名，**要拍就得逐个点开组头**；卡片级折叠头已经取消，别去找「展开卡片」那一步。
 - 凭据行的徽标只有两态：「已配置密钥。/ 未配置密钥。」（官方「网页搜索」卡片同款）。
@@ -114,7 +123,7 @@
 - 凭据输入框**应当是空的、且不置灰**（常态空框）：只读行不写占位符、不降透明度。图里若看到框内有灰字或整格发灰，说明截的是旧产物。
 - **Plugins 列表那张同样自己拍**：它拍的是 Plugins 页的**列表视图**（左侧栏**收起态** + Official / Installed 两组列表），**不用点进详情页**；同样要确认图里没有凭据、对话内容、会话标题与工作区名。
 - **截图落盘一律给绝对路径**：tabbit 的 nodejs 运行器里 `process.env.TEMP` 是 `undefined`，相对路径会写进浏览器安装目录，事后很难找回来。
-- **切完语言要重新走一遍 Plugins → Installed → `ds-balance`**：页面重载会退回插件列表。
+- **切完语言要重新走一遍 Plugins → Installed → 本插件**（标题跟着语言变，见第 3 步）：页面重载会退回插件列表。
   现在只剩**分组头** `div[role="button"][aria-expanded]`（**默认 `false`，要拍就得点开**）；卡片级折叠头已经取消。
 - **截图前确认整块配置区落在视口内**：`boundingBox()` 的 `top + height` 必须小于窗口高度，否则下半截是白的（元素框量得到、画不出来）。不够高就迭代加高 viewport，**拍完还原**。
 - **`page.screenshot()` 会被浏览器运行时接管**：传了 `path` 也不写你指定的位置，而是落到它的 artifacts 目录，
@@ -127,7 +136,7 @@
 
 ## 验收
 
-- 配置区完整：**插件标题与描述**（由插件页自己画）、**四个组名 + 拍摄时点开的四组字段行**、状态徽标、说明行、**唯一的保存按钮**，一样不缺
+- 配置区完整：**插件标题与描述**（插件页按包根 `locale/` 的展示元数据画）、**四个组名 + 拍摄时点开的四组字段行**、状态徽标、说明行、**唯一的保存按钮**，一样不缺
 - 出现折叠头、「放弃」按钮或卡片外框，说明拍的是旧界面
 - **整屏 / 宽幅图里左侧栏是收起态**（`sidebar-popover*.png` 两张例外，那里改为裁掉标题段）：看不到会话标题、工作区名或对话内容
 - **侧栏是动画中间帧 / 宽度不固定 → 判废重拍**；浮层、折叠区也要等几何稳定，别拿弹出中途的帧凑数（判据见第 4 步的轮询）

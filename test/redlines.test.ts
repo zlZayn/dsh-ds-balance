@@ -96,6 +96,48 @@ describe('插件清单', () => {
   })
 })
 
+/**
+ * 插件展示元数据（插件页上的标题与描述）。
+ *
+ * 宿主**直读**包内的 `locale/*.json` 与 `package.json`，我们的代码一个字节都不读它 ——
+ * 所以这两份文件坏了不会有任何编译期或运行期信号，宿主只会**静默回落**成包名与
+ * `package.json` 的 `description`。发布面的覆盖（`exports` / `files`）由
+ * `scripts/check-release.mjs` 守；这里守两份语言文件之间、以及门面与它们之间的一致性。
+ * 规则与回落链见 locale/AGENTS.md。
+ */
+describe('插件展示元数据', () => {
+  /** 一份语言文件的 `meta`。断言失败要好读，所以这里不吞异常。 */
+  const meta = (file: string): { title?: unknown; description?: unknown } =>
+    (JSON.parse(readFileSync(file, 'utf8')) as { meta: { title?: unknown; description?: unknown } }).meta
+
+  it('中英两份的键集逐字相同，且只有 title / description', () => {
+    // 少一个字段只会在那种语言下露出另一种语言（宿主逐字段回落），界面上不报错；
+    // 字段名拼错（titel）等于没写，同样只在界面上静默降级。
+    const en = meta('locale/en.json')
+    const zh = meta('locale/zh.json')
+    expect(Object.keys(en).sort()).toEqual(['description', 'title'])
+    expect(Object.keys(zh).sort()).toEqual(Object.keys(en).sort())
+    for (const [file, fields] of [['locale/en.json', en], ['locale/zh.json', zh]] as const) {
+      for (const [field, value] of Object.entries(fields)) {
+        expect(typeof value, `${file} 的 meta.${field} 必须是字符串`).toBe('string')
+        expect((value as string).trim(), `${file} 的 meta.${field} 不允许为空`).not.toBe('')
+      }
+    }
+  })
+
+  it('门面点名的插件显示名与 locale 的标题逐字一致', () => {
+    // 门面按名字喊这个插件（「点进 DeepSeek 余额 的详情页」），而那个名字的真源在这两份 JSON 里。
+    // 改名要同批改门面，否则安装者照 README 找不到那一格 —— 与「含版本的那一行必须与
+    // package.json 同行」是同一类判据。
+    const zh = meta('locale/zh.json').title
+    const en = meta('locale/en.json').title
+    expect(typeof zh === 'string' && zh !== '', 'locale/zh.json 的 meta.title 不是非空字符串').toBe(true)
+    expect(typeof en === 'string' && en !== '', 'locale/en.json 的 meta.title 不是非空字符串').toBe(true)
+    expect(readFileSync('README.md', 'utf8')).toContain(zh as string)
+    expect(readFileSync('README_en.md', 'utf8')).toContain(en as string)
+  })
+})
+
 describe('构建链守卫', () => {
   it('不存在与 lib/client.js 抢路径的源码', () => {
     expect(existsSync('src/client.ts')).toBe(false)

@@ -10,17 +10,19 @@
 - `sidebar-popover_en.png`：同一画面的英文版，被 [README_en.md](../README_en.md) 引用。
 - `settings-card.png`：配置表单的中文实拍（插件详情页里从插件标题下方到保存按钮），被根 [README.md](../README.md) 引用。
 - `settings-card_en.png`：同一画面的英文版，被 [README_en.md](../README_en.md) 引用。
-- `settings-cards-position.png`：**Plugins 页列表视图**的中文实拍（左侧栏收起态 + Official / Installed 两组列表，`ds-balance` 在已安装里可见），被根 [README.md](../README.md) 引用。
+- `settings-cards-position.png`：**Plugins 页列表视图**的中文实拍（左侧栏收起态 + Official / Installed 两组列表，本插件在已安装里可见，卡片上写的是显示名「DeepSeek 余额」），被根 [README.md](../README.md) 引用。
 - `settings-cards-position_en.png`：同一画面的英文版，被 [README_en.md](../README_en.md) 引用。
 
 六张都是**从真实界面实拍**的：界面语言当前是 English，所以先拍全部 `_en` 图，再切成中文拍中文版，最后切回 English。
 重截流程、判据与验收标准见 [AGENTS.md](AGENTS.md)。
 
-> **待重截（本轮刻意未拍）**：两张 `settings-card*.png` 与现界面不符 —— 配置入口已回到 bundle 详情页
-> （点插件名进去就是配置区，行上没有 Configure 步骤），浮层材质与圆环几何也变了，
-> 所以两张 `sidebar-popover*.png` 同样待重拍。**共四张**：
-> `settings-card*.png`（入口 + 版本 tag）与 `sidebar-popover*.png`（磨砂 + 细环）。
-> `settings-cards-position*.png` 两张**不用动**：它们拍的是 Plugins 列表结构，本轮没碰。
+> **六张全部待重截**：三处改动叠在一起，每一张的画面都与现在的界面对不上 ——
+>
+> - `settings-card*.png` 两张：配置入口回到 bundle 详情页（点插件名进去就是配置区，行上没有 Configure 步骤）+ 版本 tag；
+> - `settings-cards-position*.png` 两张：列表卡片上的**标题与描述**换成了包根 [locale/](../locale/AGENTS.md) 的展示元数据
+>   （标题从包名变成「DeepSeek 余额」/「DeepSeek Balance」，描述第一次出现）—— 上一轮判它「不用动」，**本轮起不再成立**；
+> - `sidebar-popover*.png` 两张：浮层材质从「半透明无模糊」变成磨砂，圆环换了几何。
+>
 > 图先留着，根 README 的引用也先不动 —— 重拍之后按同名覆盖即可；
 > 路径与判据见 [AGENTS.md](AGENTS.md)，**不需要重启宿主**（改动全在浏览器半边）。
 

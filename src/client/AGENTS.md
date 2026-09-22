@@ -17,5 +17,8 @@ src/client/ 特有约束：
   配方抄同槽邻居的官方 cordis 面板：容器 `isolation: isolate`，填充与滤镜画在 `::before`。
 - **槽 key 与 `configForms.get()` 的实参是两个 id**：前者取**包名**，后者取**本插件那一行的 Loader 条目 id**。
   它们今天同串，却不是一个概念 —— 传错的表现是「卡片在、表单永远只读」，不报错。断言在 `test/redlines.test.ts`。
+- **界面文案在 [locales.ts](locales.ts)，包根的 [locale/](../../locale/AGENTS.md) 是另一件事**：
+  后者是插件页上的标题与描述（宿主直读的展示元数据），不进本半边、也不许 import 进来 ——
+  同一句话写两处，两边会各自漂。
 - 相对导入保留 `.ts` / `.tsx` 后缀。
 - 左下角条目在 `sidebar.footer.action` 里与别的插件共存：根节点不许声明整行宽度（见根 [AGENTS.md](../../AGENTS.md) 活跃坑）。

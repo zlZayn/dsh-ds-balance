@@ -4,6 +4,8 @@
 - 运行方式：`npm test`（**自带 `npm run build`** —— 产物级测试要读 `lib/`）。只想跑用例时用 `npx --no-install vitest run`，但那要求 `lib/` 已是最新。
 - 契约测试单独一条入口：`npm run test:contract`（要 `DSH_CI_API_KEY`，缺了回落 `DEEPSEEK_API_KEY`；打真实上游，**不进 ci.yml**）。
 - 变更影响路由：改 `src/domain/` 的判定规则 → 必须同步对应测试；改契约形状 → 同步 [docs/backend-architecture.md](../docs/backend-architecture.md) §13 的测试表。
+- 变更影响路由：改包的**展示面**（`locale/*.json`、`package.json` 的 `exports` / `files`）→ 同步 [scripts/check-release.mjs](../scripts/check-release.mjs)
+  的覆盖断言与 `redlines.test.ts` 的「插件展示元数据」一组，以及门面 [README.md](../README.md) / [README_en.md](../README_en.md)。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 
 ## 文件规则
@@ -24,6 +26,8 @@
 - 配置的跨字段约束：阈值成对（告急严格低于预警）—— 判据本身的边界、消费侧回落的取值、
   `POST /api/v1/config` 的写入侧先验（违反回 422），以及两个半体的默认值表对账。
 - 产物级：`artifacts.test.ts` 只读 `lib/`，断言宿主入口可求值、信封 id、样式内联、`exports` 指向真实产物、设置接缝（槽名 / key / 不再出现旧服务）。
+- 插件展示元数据：两份语言文件的键集一致性、字段非空，以及**门面点名的显示名与 `locale/` 逐字一致**（宿主直读那两份 JSON，
+  坏了不报错，只能靠断言）。发布面的覆盖在 [scripts/check-release.mjs](../scripts/check-release.mjs)。
 - 约定守卫：`redlines.test.ts`；**脚本自检**：`compat-swap.test.ts` 跑 `scripts/compat-swap.mjs selftest`，
   守「换版保形」那条不变量（形状表在生产脚本里，测试不重写规则）。
 - 契约层：`contract-live-*.test.ts` 打真实上游核对响应指纹，由 [vitest.contract.config.ts](../vitest.contract.config.ts) 单独收集；

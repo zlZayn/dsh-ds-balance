@@ -120,6 +120,7 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 | `1120892` | 去掉卡片里可填的 API Key | minor | Q2：界面不再暴露覆盖入口；老配置与 schema 都没动 |
 | `b2f3e57` | 只读凭据框不再响应悬停 / 指针 / 焦点 | patch | Q3：把「只读格看着像静态文本」修回它承诺的样子 |
 | 配置入口回退那一次（2.0.0-alpha.2 的内容） | 配置入口回 `plugins.bundle.config`（不再多一次 Configure）+ 浮层磨砂 + 圆环同官方网格 | patch 档，发到 `2.0.0-alpha.2` | Q0 答「是」（界面变了）；Q1 答「否」——**入口是回到 1.1.0 那条直接页面**，配置值与键名一字未改，没有谁的配置或数据因此失效；Q2 答「否」——能力一条没加；Q3 答「是」。**已发布的 `2.0.0-alpha.1` 不可覆盖**，所以台阶加在预发布位上（见[「预发布线」](#预发布线alpha上的定档)） |
+| 插件展示元数据那一次（同属 `2.0.0-alpha.2` 的内容） | 加 `locale/en.json` + `locale/zh.json`（插件页上的标题与描述），并把 `exports` / `files` 的覆盖补上 | patch 档，台阶落在**已就位**的 `2.0.0-alpha.2` 上，不再加一位 | Q0 答「是」（插件页的卡片与详情页都画它，标题从包名换成显示名，描述第一次出现）；Q1 答「否」——配置值与键名一字未改，包名、槽 key、Loader 条目 id 都没动；Q2 答「否」——能力一条没加，动的是**既有的展示面**换文案；Q3 答「是」——把插件在插件页上的显示名修回它**已经用着的**那个名字（左边栏条目本来就叫「DeepSeek 余额」）。没占新计数位是因为 `2.0.0-alpha.2` **尚未发布**（现查 `npm view dsh-ds-balance versions`） |
 
 倒数第二条最微妙：**打包内容变化确实可被观察到**，但「包里多一个 README」
 不是使用者会为之升级的东西 —— 它跟着下一个有实质内容的版本一起发就够。
@@ -130,10 +131,15 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 ## 打包内容
 
 [package.json](../package.json) 的 `files` 是唯一来源，别处不再抄一份清单。
-当前打包：`lib/`（去掉 sourcemap）、`cordis.patch.yml`、`README.md`、`README_en.md`、`LICENSE`。
-`package.json` 由 npm 强制包含。
+当前打包：`lib/`（去掉 sourcemap）、`cordis.patch.yml`、`locale/*.json`（插件展示元数据的中英两份）、
+`README.md`、`README_en.md`、`LICENSE`。`package.json` 由 npm 强制包含。
 
-`assets/`、`docs/`、`test/`、`scripts/`、`.github/`、`.agents/` 都不进包。
+`assets/`、`docs/`、`test/`、`scripts/`、`.github/`、`.agents/` 都不进包；`locale/AGENTS.md` 也不进 ——
+那是有意的：宿主只枚举 `locale/` 下的 `*.json`，规则文档留在仓库里，不跟着包出去。
+
+**展示元数据的三面**（`files` 覆盖到每个语言文件、`exports` 暴露 `./locale/*.json` 与 `./package.json`、
+字段是非空字符串）由 [check-release.mjs](../scripts/check-release.mjs) 断言 —— 覆盖不全会**静默**回落成
+包名与 `package.json` 的 `description`，见 [locale 规则层](../locale/AGENTS.md)。
 
 要确认实际打进去的是什么，跑 `npm pack --dry-run` 看清单，不要靠读 `files` 推断。
 

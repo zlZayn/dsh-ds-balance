@@ -26,7 +26,7 @@
 | 可执行红线 | [test/redlines.test.ts](../../test/redlines.test.ts) —— 依赖分层、四开关、发布态、锁文件、文档不抄实测值 |
 | 每周兼容性信号 | [.github/workflows/compat.yml](../../.github/workflows/compat.yml) + [scripts/compat-swap.mjs](../../scripts/compat-swap.mjs) |
 | 文档只留指针 | 根 [AGENTS.md](../../AGENTS.md) 的「文档网络与自更新」一节（含「事实 → home」登记表） |
-| 配套四项 | [tsconfig.test.json](../../tsconfig.test.json) · [ci.yml](../../.github/workflows/ci.yml) · [docs/postmortem/](../postmortem/)（6 份） · CONTRIBUTING 与 PUBLISHING |
+| 配套四项 | [tsconfig.test.json](../../tsconfig.test.json) · [ci.yml](../../.github/workflows/ci.yml) · [docs/postmortem/](../../docs/postmortem/)（6 份） · CONTRIBUTING 与 PUBLISHING |
 
 ## 替代方案
 

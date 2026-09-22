@@ -11,6 +11,8 @@
   [src/client/README.md](../src/client/README.md)。
 - 改 `check-release.mjs` 的断言集合 → 同步 [常用命令](../AGENTS.md#常用命令) 与
   [事实来源](../AGENTS.md#事实来源只查不抄) 里「发布态该有什么」那一行。
+- 改包的**打包面**（`package.json` 的 `files` / `exports`）→ 同步 [check-release.mjs](check-release.mjs) 的覆盖断言
+  与 [docs/PUBLISHING.md](../docs/PUBLISHING.md) 的「打包内容」一节；展示元数据那三面见 [locale 规则层](../locale/AGENTS.md)。
 - 新增脚本 → 在下面「文件」节补一条，并在 [package.json](../package.json) 的 `scripts` 里给出入口。
 - 改 `release-guard.mjs` 的分类常量 → 同步 [发版前确认](../docs/PUBLISHING.md#发版前确认)。
 - 改 `compat-swap.mjs` 的受管前缀 → 同步 [compat.yml](../.github/workflows/compat.yml) 的矩阵。

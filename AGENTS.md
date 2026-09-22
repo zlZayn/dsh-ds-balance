@@ -19,6 +19,9 @@
 - 原生集成勘察结论（阶段 0）→ [docs/recon-native-integration.md](docs/recon-native-integration.md)
 - 决策理由与替代方案 → [.agents/notes/](.agents/notes/)
 - 对外可见行为变化，同一次改动内同步 [README.md](README.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **插件展示元数据（插件页上的标题与描述）住在包根的 [locale/](locale/AGENTS.md)**：宿主**直读**它，
+  我们的代码一个字节都不读 —— 所以它坏了**没有信号**，只会静默回落成包名与 `package.json` 的 `description`。
+  发布面的覆盖在 [check:release](scripts/check-release.mjs)，两份文件的键集与门面引用在 [test/redlines.test.ts](test/redlines.test.ts)。
 - 颜色只由后端 `severity` 决定；前端读阈值的唯一去处是圆环弧长，且只读 `warn`、只当刻度
 - 样式只用 CSS Modules + `--dsw-alias-*`；禁 Tailwind、禁组件库、禁字面色值
 - **所有 `@deepseek-ai/dsh-*` 声明的下限不得低于 `engines.dsh` 的下限**，且**形状也要一致**（本仓统一写 `>=<下限>`，不设上限）。两份声明自相矛盾时，使用者按我们给的区间装不出可用的宿主。抬过两批：2026-09-20（peer 8 条 + 仅 dev 的 2 条）与本次接缝迁移（12 条受管包 + `engines.dsh` 一起改），分别见[决策记录](.agents/notes/2026-09-20-declaration-floor-alignment.md)与[本轮记录](.agents/notes/2026-09-22-settings-seam-migration.md)。红线在 [test/redlines.test.ts](test/redlines.test.ts)。
@@ -29,7 +32,7 @@
 - `npm run build`：宿主 tsc + 客户端 tsc + esbuild 打包，三步缺一不可
 - `npm run typecheck`、`npm test`
 - `npm run test:contract`：打真实上游的契约测试，要环境里有 `DSH_CI_API_KEY`（专用），缺了回落 `DEEPSEEK_API_KEY`；不进 ci.yml
-- `npm run check:release`：发布态不变量；当前 **0 失败**（`dsh.bundle.patch` 与 `private` 都已就位）
+- `npm run check:release`：发布态不变量；当前 **0 失败**（`dsh.bundle.patch`、`private`、展示元数据的 `exports` / `files` 覆盖都已就位）
 - `npm run check:declaration`：声明面 —— 只读 `package.json` 的区间 + 问 npm，判「声明的范围还罩不罩得住被跟的那条线」；**不装依赖**，几十秒出结果
 - `node scripts/acceptance.mjs`（端到端验收）、`node scripts/compat-swap.mjs check`（现查三条 dist-tag 线）
 - 挂载：`dsh plugin --profile <profile> add <包名或仓库路径>`，然后**重启宿主**。包内声明了 `dsh.bundle.patch`，安装器会把它写进该 profile 的 `dsh.profile.bundles` —— bundle 层只在启动时读。
@@ -75,11 +78,14 @@
 - [x] 本轮 UI 改动的收尾：文档同步、报告回填、提交
 - [x] 卡片的折叠头已按原生形态取消：不再有要持久化的折叠状态
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
-- [ ] **两张设置卡片图待重拍**：配置入口已回到 bundle 详情页（点插件名进去就是配置区，行上没有 Configure 步骤），
-  而图里的入口/版本仍是旧的那一版 —— 受影响的是 `settings-card*.png` 两张；
-  `settings-cards-position*.png` 两张按判据**不用动**（列表结构没变）。
+- [ ] **两张设置卡片图待重拍**：两个原因叠在一起 —— ① 配置入口已回到 bundle 详情页（点插件名进去就是配置区，
+  行上没有 Configure 步骤），图里的入口/版本是旧的那一版；② 插件页的标题与描述现在来自**展示元数据**
+  （标题从包名换成「DeepSeek 余额」，描述第一次出现），而这张图正拍着标题与描述。受影响的是 `settings-card*.png` 两张。
   判据与拍摄步骤见 [assets/AGENTS.md](assets/AGENTS.md)；**不需要重启宿主**（改动全在浏览器半边，
   `npm run build` + HMR 即换），只需要维护者的浏览器与一次语言切换。
+- [ ] **两张 Plugins 列表图待重拍**：列表卡片的标题与描述同样来自展示元数据 —— 上一轮判它「不用动」
+  （那时只改了入口，列表结构没变），**本轮起不再成立**：`settings-cards-position*.png` 两张拍的就是那张卡片。
+  判据同见 [assets/AGENTS.md](assets/AGENTS.md)。
 - [ ] **两张侧栏图待重拍**：浮层材质从「半透明无模糊」变成磨砂（`.panel::before` + `backdrop-filter`），
   圆环几何也换了（同网格细环）。受影响的是 `sidebar-popover*.png` 两张，判据见 [assets/README.md](assets/README.md)。
 - [x] 发布前：加回 `dsh.bundle`、去掉 `private` → `npm run check:release` 0 失败
@@ -139,6 +145,7 @@
   | dsh 运行时行为 | 宿主源码 `packages/` | 带行号引用，行号以当前检出为准 |
   | 发布状态（版本 / tag） | npm 与 GitHub 现查 | 只留一行指针 |
   | 宿主兼容下限与分水岭 | [package.json](package.json) 的 `engines.dsh` | 门面「版本兼容」一节只写分水岭、升级指引与指针，不重抄下限 |
+  | 插件在插件页上的标题与描述 | [locale/en.json](locale/en.json) · [locale/zh.json](locale/zh.json)（规则见 [locale/AGENTS.md](locale/AGENTS.md)） | 门面点名时逐字一致（红线钉着）；不重抄 |
 - **门面「版本兼容」一节的判据**：`package.json` 的 `engines.dsh` 或任一 `@deepseek-ai/dsh-*` 范围变了、或声明罩不住被跟的那条 dist-tag 线（`check:declaration` 变红）→ 同一次改动内更新 [README.md](README.md) 与 [README_en.md](README_en.md) 的那一节。
   「该槽由哪一版 dsh 引入」是**历史事实**，不随下限改；会漂的下限只写 [package.json](package.json) 指针，含版本的那一行必须与 `package.json` 同行（红线在 [test/redlines.test.ts](test/redlines.test.ts)）。过期判据就是这条命令本身。
 - **能落成校验的不写散文**：红线 → [test/redlines.test.ts](test/redlines.test.ts)；发布态不变量 → [scripts/check-release.mjs](scripts/check-release.mjs)；**锁文件的 `resolved` 必须指向官方源 → 红线的「锁文件」组**（此前这条只写在另一仓的发布手册里，所以没人执行）；文档链接与换行 → **本仓暂无独立脚本**（`check-links.py` / `check-line-endings.py` 在本仓并不存在，此前是过期指针），改动后自做一次相对链接与锚点检查，再加 `git diff --check`；把它们做成脚本是待办。
@@ -154,3 +161,4 @@
 - 源码手册 → [src/README.md](src/README.md)；浏览器半边 → [src/client/README.md](src/client/README.md)；领域模型 → [src/domain/README.md](src/domain/README.md)
 - 测试手册 → [test/README.md](test/README.md)；构建脚本 → [scripts/README.md](scripts/README.md)
 - 门面截图与判据 → [assets/README.md](assets/README.md) · [assets/AGENTS.md](assets/AGENTS.md)
+- 插件展示元数据（插件页上的标题与描述）与改它的规则 → [locale/AGENTS.md](locale/AGENTS.md)

@@ -9,6 +9,8 @@
 - `index.tsx`：入口。注册词典、向两个 slot 注册组件。`inject` 是运行时门禁，**只有 `slots` / `locale` 两项**（永远在的服务），删任一项都会让 `apply` 静默不跑；配置表单服务 `configForms` 由 `apply` 内的嵌套 `ctx.inject` 把门 —— **缺它整个浏览器半边都不渲染**（圆环与浮层一起消失），因为左下角条目也要读 `displayCurrency`。
 - `config-slot.ts`：配置表单的**能力探测**（不查版本号）：卡片拿不拿得到 form。三态 `pending` / `available` / `missing`，**可逆**：服务晚到会把 `missing` 拨回 `available`，已经出现的提示自己撤掉。**探测盯的是 `configForms` 服务本身，不是槽名** —— `plugins.bundle.config` 在宿主两条线上都存在且都不传 `form`，盯槽名等于盯一条恒为真的信号。纯逻辑 + 可注入时钟，所以能脱离浏览器测；提示文案也在这里，且**刻意不点名任何槽**。理由见 [决策记录](../../.agents/notes/2026-09-19-capability-probe-for-config-slot.md) 与[落点回退记录](../../.agents/notes/2026-09-22-config-entry-back-to-bundle-config.md)。
 - `locales.ts`：中英词典。`zh` 是键集真源，`en` 用 `Record<LocaleKey, string>` 做编译期完整性检查。同时把命名空间并进 `LocaleNamespaceMap`。
+  **与包根的 [locale/](../../locale/AGENTS.md) 不是一回事**：那是插件的**展示元数据**（插件页上的标题与描述），
+  由宿主直接读那两份 JSON —— 它不进本半边、也不参与渲染，别把两处文案互相抄。
 - `model.ts`：纯函数视图模型。`severity` → 状态点与环色、**余额占 `warn` 阈值的弧长比例**（`ringRatioOf`，整数比较不走浮点）、金额字符串格式化、**从后端 `selected` 读出展示币种**、相对时间分档。**没有 React，不自己挑币种，也不用阈值配色。**
 - `data.ts`：数据层。向后端要余额（`GET /api/v1/balance` 带 `currency` 查询参数）、触发手动刷新、读一次配置里的 `credential` 只读事实，并把「端点不可达」翻成可展示的错误态。**不缓存、不排程** —— 节奏归 `sidebar/`。可注入 `fetchImpl`，因此能脱离浏览器测。
   - 读宿主的**新增字段一律先过形状守卫**（如 `readCredential`）：客户端半边由 HMR 立刻换新、宿主半边要重启才换，新客户端会读到旧宿主的响应。
