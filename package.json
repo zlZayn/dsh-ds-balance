@@ -1,6 +1,7 @@
 {
   "name": "dsh-ds-balance",
   "version": "2.0.0-alpha.2",
+  "icon": "./icon.svg",
   "description": "DSH plugin: shows the DeepSeek account balance at the bottom of the sidebar, with a configuration card on the Plugins page.",
   "keywords": [
     "dsh",
@@ -37,6 +38,7 @@
   },
   "files": [
     "locale/*.json",
+    "icon.svg",
     "lib",
     "!lib/**/*.map",
     "cordis.patch.yml",

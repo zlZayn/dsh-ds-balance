@@ -22,7 +22,8 @@
  * 退出码：0 = 全过 / 1 = 有未过 / 2 = 前置条件缺失（读不到 `package.json`）。
  */
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { extname } from 'node:path'
 
 const failures = []
 let pkg
@@ -125,10 +126,35 @@ for (const name of localeFiles) {
   require_(`${file} 的 meta.description`, isText(meta?.description), '描述同上。')
 }
 
+/** 取一个普通文件的信息；读不到或不是普通文件返回 undefined。 */
+function fileOf(file) {
+  try {
+    const stat = statSync(file)
+    return stat.isFile() ? stat : undefined
+  } catch {
+    return undefined
+  }
+}
+
+// 图标那一组照宿主 `iconOf()` 的判据：相对路径、四种扩展名、留在清单目录内、普通文件、<= 256 KiB。
+// 任何一条不满足都只是「插件页回落到默认图」加一条诊断 —— 界面上不报错，所以在这里拦。
+// （宿主用 realpath 拦符号链接逃逸；本仓不用符号链接，所以这里只挡绝对路径、scheme 与 ..）
+const ICON_TYPES = ['.svg', '.png', '.jpg', '.jpeg', '.webp']
+const MAX_ICON_BYTES = 256 * 1024
 if (pkg.icon !== undefined) {
+  const icon = typeof pkg.icon === 'string' ? pkg.icon : ''
+  const relative = icon.replace(/^\.\//, '')
+  const inside = relative !== '' && !relative.startsWith('/')
+    && !/^[A-Za-z][A-Za-z\d+.-]*:/.test(relative)
+    && !relative.split(/[\\/]/).includes('..')
+  require_('icon 是清单目录内的相对路径', inside, '绝对路径、URL 或越出清单目录的路径都会被宿主拒绝。')
+  require_('icon 的扩展名可用', ICON_TYPES.includes(extname(relative).toLowerCase()), '宿主只认 SVG / PNG / JPEG / WebP。')
+  const iconFile = inside ? fileOf(relative) : undefined
+  require_('icon 存在且是普通文件', iconFile !== undefined, '声明了却读不到，插件页只会用默认图（不报错）。')
+  require_('icon 不超过 256 KiB', (iconFile?.size ?? 0) <= MAX_ICON_BYTES, '超过 256 KiB 会被宿主拒绝。')
   require_(
     'files 收录声明的图标',
-    typeof pkg.icon === 'string' && Array.isArray(pkg.files) && published(pkg.icon.replace(/^\.\//, ''), pkg.files),
+    inside && Array.isArray(pkg.files) && published(relative, pkg.files),
     '图标必须自包含并且进包，否则插件页只剩默认图。',
   )
 }

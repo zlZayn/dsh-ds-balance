@@ -62,7 +62,8 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
   (a key is configured / no key is configured, exactly the official card's wording), and a read-only field explains itself instead of offering an edit.
 - Colour carries state only (normal / low / critical), never an amount; see "[Reading the ring](#reading-the-ring)".
 - It appears on the Plugins page under a **localized name**: "DeepSeek Balance" in English, "DeepSeek 余额" in Chinese —
-  the card and the details page both follow the interface language, and the details page still spells out the package name `dsh-ds-balance`.
+  the card and the details page follow the interface language, and the icon is the same ring as the sidebar one
+  (an orange arc reading "seven tenths used"); the details page still spells out the package name `dsh-ds-balance`.
 
 ## Installation
 

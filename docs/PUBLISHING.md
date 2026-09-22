@@ -132,14 +132,15 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 
 [package.json](../package.json) 的 `files` 是唯一来源，别处不再抄一份清单。
 当前打包：`lib/`（去掉 sourcemap）、`cordis.patch.yml`、`locale/*.json`（插件展示元数据的中英两份）、
-`README.md`、`README_en.md`、`LICENSE`。`package.json` 由 npm 强制包含。
+`icon.svg`（插件图标）、`README.md`、`README_en.md`、`LICENSE`。`package.json` 由 npm 强制包含。
 
 `assets/`、`docs/`、`test/`、`scripts/`、`.github/`、`.agents/` 都不进包；`locale/AGENTS.md` 也不进 ——
 那是有意的：宿主只枚举 `locale/` 下的 `*.json`，规则文档留在仓库里，不跟着包出去。
 
-**展示元数据的三面**（`files` 覆盖到每个语言文件、`exports` 暴露 `./locale/*.json` 与 `./package.json`、
-字段是非空字符串）由 [check-release.mjs](../scripts/check-release.mjs) 断言 —— 覆盖不全会**静默**回落成
-包名与 `package.json` 的 `description`，见 [locale 规则层](../locale/AGENTS.md)。
+**展示面**（`files` 覆盖到每个语言文件、`exports` 暴露 `./locale/*.json` 与 `./package.json`、字段是非空字符串，
+以及图标那条：相对路径 / 扩展名 / 留在清单目录内 / 普通文件 / ≤256 KiB / 进包）由
+[check-release.mjs](../scripts/check-release.mjs) 断言 —— 任何一条不满足都只会**静默**回落成包名、
+`package.json` 的 `description` 或宿主的默认图形，界面上不报错。规则见 [locale 规则层](../locale/AGENTS.md)。
 
 要确认实际打进去的是什么，跑 `npm pack --dry-run` 看清单，不要靠读 `files` 推断。
 

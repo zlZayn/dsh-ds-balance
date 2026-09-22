@@ -506,6 +506,111 @@ describe('圆环几何', () => {
   })
 })
 
+/**
+ * 插件图标（插件页卡片、详情页与行上那个环）。
+ *
+ * 宿主按**图片**渲染它（读过 `package.json` 的 `icon` 之后编成 base64 data URL），所以
+ * `currentColor` 不起作用、颜色只能写死 —— 那正是它最容易悄悄漂开的地方：环改了半径或笔画、
+ * 或者换了那一档的颜色，图标不会有任何编译期或运行期信号，只会在插件页上继续长着旧样子。
+ */
+describe('插件图标', () => {
+  /** 说明文字里也写着几何，剥掉注释再解析，免得匹配到注释。 */
+  const icon = readFileSync('icon.svg', 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+  const ring = readFileSync('src/client/sidebar/PercentRing.tsx', 'utf8')
+  /** 读 `const <name> = <字面量>` 的数字值。 */
+  const numberOf = (name: string): number => {
+    const match = new RegExp(`const ${name} = ([0-9.]+)\\b`).exec(ring)
+    expect(match, `PercentRing.tsx 里找不到 const ${name} = <数字>`).not.toBeNull()
+    return Number(match?.[1])
+  }
+  /** 一个属性在整份文件里的全部数字值（图标有两个圆：轨道与弧，几何要逐值相同）。 */
+  const attributes = (name: string): number[] =>
+    [...icon.matchAll(new RegExp(`\\s${name}="([0-9.]+)"`, 'g'))].map(match => Number(match[1]))
+
+  /**
+   * 极简 XML 良构检查 —— 够拦住「浏览器把 SVG 当图片解析时直接失败」那一类。
+   * 真源是 XML 规范；这里只实现这种文件会踩到的三条：**注释里不许出现连续两个连字符**、
+   * 标签必须成对、属性值必须带引号。
+   */
+  function xmlProblems(source: string): string[] {
+    const problems: string[] = []
+    const body = source.replace(/<!--([\s\S]*?)-->/g, (comment, inner: string) => {
+      if (inner.includes('--') || inner.endsWith('-')) problems.push(`注释里有连续连字符：${comment.slice(0, 40)}…`)
+      return ''
+    })
+    const stack: string[] = []
+    let cursor = 0
+    for (const match of body.matchAll(/<(\/?)([A-Za-z][\w:.-]*)((?:"[^"]*"|[^>"])*?)(\/?)>/g)) {
+      if (body.slice(cursor, match.index).includes('<')) problems.push('标签外还有裸的 <')
+      cursor = (match.index ?? 0) + match[0].length
+      const [, closing, name, attributes, selfClosing] = match
+      if (/(?:^|\s)[A-Za-z][\w:.-]*=(?!")/.test(attributes)) problems.push(`${name} 有没带引号的属性`)
+      if (closing === '/') {
+        if (stack.pop() !== name) problems.push(`</${name}> 与开标签不对应`)
+      } else if (selfClosing !== '/') {
+        stack.push(name)
+      }
+    }
+    if (body.slice(cursor).includes('<')) problems.push('末尾还有裸的 <')
+    if (stack.length > 0) problems.push(`没有闭合的标签：${stack.join(', ')}`)
+    return problems
+  }
+
+  it('是良构 XML —— 解析失败等于浏览器直接不画，插件页静默回落成默认图', () => {
+    // 这条是**踩出来的**：第一版把宿主那几条 token 的原名（以两个连字符开头）写进了 XML 注释，
+    // 而规范不许注释里出现连续连字符 —— 浏览器当图片解析直接失败，界面上一声不响地用回默认图形。
+    // 宿主不校验它（`iconOf()` 只把字节编成 data URL、按图片交给浏览器），所以只能我们自己守。
+    const source = readFileSync('icon.svg', 'utf8')
+    expect(xmlProblems(source)).toEqual([])
+    // 反向控制：判据本身要有牙齿。
+    expect(xmlProblems('<svg><!-- a -- b --></svg>')).not.toEqual([])
+    expect(xmlProblems('<svg><circle r="1"></svg>')).not.toEqual([])
+    expect(xmlProblems('<svg><circle r=1 /></svg>')).not.toEqual([])
+  })
+
+  it('就是那个环的等比放大：墨迹外径 18，四周各留 9', () => {
+    // 官方配方的量：36 画布 + 四周留 8–9（agent-team-profile/icon.svg 的图形正好 18.0 见方）。
+    const view = numberOf('VIEW')
+    const stroke = numberOf('STROKE')
+    const radius = view / 2 - numberOf('RING_INSET') - stroke / 2
+    // 两个圆（轨道 + 弧）几何逐值相同：图标是那条环，不是另画的一圈。
+    expect((icon.match(/<circle/g) ?? []).length, 'icon.svg 里的圆数（轨道 + 弧）').toBe(2)
+    expect(attributes('r'), '两个圆的半径都必须等于环的半径').toEqual([radius, radius])
+    expect(attributes('stroke-width'), '两个圆的笔画都必须等于环的笔画').toEqual([stroke, stroke])
+    expect(icon, '接缝必须在 12 点（照环的 rotate(-90 <center> <center>)）')
+      .toContain(`rotate(-90 ${view / 2} ${view / 2})`)
+    const scale = Number(/scale\(([0-9.]+)\)/.exec(icon)?.[1])
+    expect(Number.isFinite(scale), 'icon.svg 里找不到 scale(<数字>)').toBe(true)
+    const ink = (radius + stroke / 2) * scale
+    expect(ink, '放大后的墨迹外半径（36 画布上四周留的就是它）').toBeCloseTo(9, 6)
+    expect(36 - 2 * ink, '图形本体').toBeCloseTo(18, 6)
+  })
+
+  it('弧长 70%，写的就是组件在 ratio=0.7 时算出来的那两个数', () => {
+    const radius = numberOf('VIEW') / 2 - numberOf('RING_INSET') - numberOf('STROKE') / 2
+    const circumference = 2 * Math.PI * radius
+    const round3 = (value: number): number => Math.round(value * 1000) / 1000
+    expect(icon).toContain(`stroke-dasharray="${round3(circumference * 0.7)} ${round3(circumference)}"`)
+    expect(icon, '线帽与环一致（圆头）').toContain('stroke-linecap="round"')
+  })
+
+  it('轨道圈在：底色是中性灰加四成半不透明度（跟随主题的那条 token 烘不进来）', () => {
+    // 环的轨道用的是「跟随主题的半透明色」——亮 12% 黑、暗 16% 白；静态资源烘不了主题，
+    // 所以这里取中性的 neutral-500（亮暗同值）加 45%：落在白底上 ≈ rgb(197,199,201)、
+    // 落在深色底上 ≈ rgb(86,88,92)，与两种主题各自的轨道观感同一档，又明显比弧轻。
+    expect(icon, '轨道那一圈没有 dasharray（整圈），弧才有').toMatch(/<circle[^>]*stroke="#7F8287"[^>]*\/>/)
+    expect(icon).toContain('stroke-opacity="0.45"')
+    expect((icon.match(/stroke-dasharray/g) ?? []).length, '只有弧带 dasharray').toBe(1)
+  })
+
+  it('颜色写死的是环在 warning 档用的那个值', () => {
+    // --dsw-alias-state-warn-primary = --dsw-static-amber-500 = rgb(245, 158, 11)，宿主
+    // design-platform.css 的亮、暗两块表里逐字相同 —— 所以「亮暗都成立」是官方定的，不是我们挑的。
+    expect(icon).toContain('stroke="#F59E0B"')
+    expect(icon).not.toContain('currentColor')
+  })
+})
+
 describe('菜单材质成对', () => {
   /** 本仓的全部 CSS Module 源文件。 */
   function moduleStylesheets(dir = 'src/client'): string[] {

@@ -18,9 +18,11 @@
 
 > **六张全部待重截**：三处改动叠在一起，每一张的画面都与现在的界面对不上 ——
 >
-> - `settings-card*.png` 两张：配置入口回到 bundle 详情页（点插件名进去就是配置区，行上没有 Configure 步骤）+ 版本 tag；
-> - `settings-cards-position*.png` 两张：列表卡片上的**标题与描述**换成了包根 [locale/](../locale/AGENTS.md) 的展示元数据
->   （标题从包名变成「DeepSeek 余额」/「DeepSeek Balance」，描述第一次出现）—— 上一轮判它「不用动」，**本轮起不再成立**；
+> - 四张设置图（`settings-card*.png` + `settings-cards-position*.png`）：配置入口回到 bundle 详情页
+>   （点插件名进去就是配置区，行上没有 Configure 步骤）+ 版本 tag，**外加**插件页上的**标题、描述与图标**
+>   换成了包根的展示元数据（标题从包名变成「DeepSeek 余额」/「DeepSeek Balance」，描述第一次出现，
+>   图标从宿主默认图变成那个橙色弧环）—— 列表卡片与详情页都画这三样，见 [icon.svg](../icon.svg)；
+>   `settings-cards-position*.png` 上一轮判它「不用动」，**本轮起不再成立**；
 > - `sidebar-popover*.png` 两张：浮层材质从「半透明无模糊」变成磨砂，圆环换了几何。
 >
 > 图先留着，根 README 的引用也先不动 —— 重拍之后按同名覆盖即可；
