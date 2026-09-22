@@ -206,7 +206,109 @@ describe('文档不抄实测值', () => {
   })
 
   it('守卫跟着宿主线走：宿主换主版本号时这条会红，来改 HOST_VERSION', () => {
-    expect(pkg.engines?.dsh, '宿主已不在 0.x 线上，HOST_VERSION 的形状要跟着改').toMatch(/^[~^]?0\./)
+    // 形状是「可选运算符 + 0.」：0.1.7 起声明面统一写成 >=0.1.7-alpha.1，
+    // 所以这里必须收 >。改回 [~^]? 会让这条在 >= 上必红。
+    expect(pkg.engines?.dsh, '宿主已不在 0.x 线上，HOST_VERSION 的形状要跟着改').toMatch(/^[~^>]*=?0\./)
+  })
+})
+
+/** src/ 下的全部 TypeScript 源文件。 */
+function sourceFiles(dir = 'src'): string[] {
+  const found: string[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = `${dir}/${entry.name}`
+    if (entry.isDirectory()) {
+      found.push(...sourceFiles(path))
+      continue
+    }
+    if (/\.tsx?$/.test(entry.name)) found.push(path)
+  }
+  return found
+}
+
+/**
+ * 读一个源文件里 export const <name> = '<字面量>' 的值。
+ * 拿不到就抛 —— 悄悄返回空串会让下面的对账静默变成「两个空串相等」。
+ */
+function exportedLiteral(file: string, name: string): string {
+  const match = new RegExp(`export const ${name} = '([^']*)'`).exec(readFileSync(file, 'utf8'))
+  expect(match, `${file} 里找不到 export const ${name}`).not.toBeNull()
+  return match?.[1] ?? ''
+}
+
+/**
+ * 设置接缝（0.1.7 迁移）。
+ *
+ * 这几条守的是同一件事：**接缝换了名字与语义**（旧作用域服务 → configForms、
+ * bundle 槽 → row 槽、设置命名空间 ds-balance → dsh-ds-balance）。
+ * 它们的共同症状是**静默失效** —— cordis 的 inject 是激活门禁，少一个服务名
+ * apply 根本不执行，界面上什么都不报。
+ */
+describe('设置接缝', () => {
+  const hostEntryId = exportedLiteral('src/config.ts', 'ENTRY_ID')
+  const clientEntryId = exportedLiteral('src/client/index.tsx', 'ENTRY_ID')
+
+  it('两半体的 ENTRY_ID 字面量逐字相等，且等于包名', () => {
+    // 两半不许值导入（src/AGENTS.md），所以它是故意抄的两份；这条就是那份抄写的对账表。
+    // 0.1.7 起它同时是设置命名空间：客户端按它取表单，宿主半边按它写设置。
+    expect(clientEntryId).toBe(hostEntryId)
+    expect(hostEntryId).toBe(pkg.name)
+  })
+
+  it('左下角条目的 slot id 两半体一致，且与 ENTRY_ID 不同', () => {
+    // 它是 UI 身份标识，不是命名空间；一旦被顺手改成 ENTRY_ID，那一条目的 key 就换了。
+    const host = exportedLiteral('src/config.ts', 'SIDEBAR_ENTRY_ID')
+    const client = exportedLiteral('src/client/index.tsx', 'SIDEBAR_ENTRY_ID')
+    expect(client).toBe(host)
+    expect(client).not.toBe(hostEntryId)
+  })
+
+  it('ROW_CONFIG_KEY 逐字等于 ENTRY_ID + "#" + ENTRY_ID', () => {
+    // 客户端把它写成字面量（产物里要能照字面找到这个键，见 artifacts.test.ts），
+    // 所以拼接关系得在这里对账 —— 光靠肉眼看不出两份字面量什么时候漂开。
+    expect(readFileSync('src/client/index.tsx', 'utf8'))
+      .toContain(`export const ROW_CONFIG_KEY = '${clientEntryId}#${clientEntryId}'`)
+  })
+
+  it('卡片注册项用的就是 CONFIG_SLOT 与 ROW_CONFIG_KEY', () => {
+    // 产物级的断言只能看到「这串键在不在」（esbuild 把键落成具名常量），
+    // 所以「注册项真的用了它们」在这里对账。
+    expect(readFileSync('src/client/index.tsx', 'utf8'))
+      .toContain('{ name: CONFIG_SLOT, key: ROW_CONFIG_KEY, locale: NS }')
+  })
+
+  it('loader/volatile-update 的事件声明在位', () => {
+    // 不引它，ctx.on 拿不到那个事件键（TS2345）；而运行时它表达的是「配置变了」这件事，
+    // 少了它调度就再也不会按新频率重排。
+    expect(readFileSync('src/index.ts', 'utf8'))
+      .toContain("import type {} from '@deepseek-ai/cordis-plugin-loader'")
+  })
+
+  it('源码里不再出现宿主已删的旧接缝', () => {
+    const files = sourceFiles()
+    expect(files.length).toBeGreaterThan(10)
+    const offenders: string[] = []
+    for (const file of files) {
+      const body = stripComments(readFileSync(file, 'utf8'))
+      for (const token of [
+        'settingsScope', 'SettingsScope', 'ctx.settings.register', 'installSection', 'plugins.bundle.config',
+      ]) {
+        if (body.includes(token)) offenders.push(`${file} → ${token}`)
+      }
+    }
+    expect(offenders, `这些文件还在用 0.1.7 已删的接缝：\n${offenders.join('\n')}`).toEqual([])
+  })
+
+  it('每个 @deepseek-ai/dsh-* 区间与 engines.dsh 逐字相同', () => {
+    // 契约是「engines.dsh 与所有 dsh-* 同形状」：不一致时使用者按我们给的区间装不出可用的宿主。
+    // 形状也算 —— 一条写成 ^、另一条写成 >= 就是漂。
+    const ranges = new Set<string>()
+    for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
+      for (const [name, range] of Object.entries(pkg[field] ?? {})) {
+        if (name.startsWith('@deepseek-ai/dsh-')) ranges.add(range as string)
+      }
+    }
+    expect([...ranges]).toEqual([pkg.engines?.dsh])
   })
 })
 

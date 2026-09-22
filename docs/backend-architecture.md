@@ -573,7 +573,14 @@ JSON 解析失败时退回纯文本前 200 字符。
 
 ## 九、配置与集成
 
-### 9.1 注册设置命名空间
+> **§9.1 / §9.4 已被取代（保留作历史）**：这一节写的是「向宿主登记一个设置命名空间」那套接缝 ——
+> `ctx.settings.register`、它返回的 `SettingsScope`、以及 `scope.watch` 都已经被宿主删除。
+> 现在的形态是：配置值以 `Volatile` 引用到达 `apply`，写回走 `ctx.settings.mutate(ENTRY_ID, ops)`，
+> 变更通知走 `loader/volatile-update`。**活契约以代码为准**：`src/config.ts`（schema 与命名空间）、
+> `src/index.ts`（装配与写回）、`src/services/config-service.ts`（端口形状，未变）。
+> 为什么这么改、替代方案是什么 → [决策记录](../.agents/notes/2026-09-22-settings-seam-migration.md)。
+
+### 9.1 注册设置命名空间（已被取代）
 
 ```ts
 ctx.inject(['settings'], (settingsCtx) => {
@@ -616,7 +623,7 @@ ctx.effect(() => {
 
 **存储句柄必须由调用方关闭**：facility 不绑消费方 fiber。
 
-### 9.4 配置变更
+### 9.4 配置变更（已被取代）
 
 **用 `scope.watch`**，它只关心自己那一节、拿的是**解析值**、自带 disposer：
 

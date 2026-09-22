@@ -17,7 +17,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  IconWarningOutline16, Tooltip, useAnchoredPosition, useDismissOnOutsidePointer,
+  IconWarningOutlineRegular, Tooltip, useAnchoredPosition, useDismissOnOutsidePointer,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BalanceResponse, Severity } from '../api-types.ts'
 import { interpolate, type LocaleKey } from '../locales.ts'
@@ -114,8 +114,9 @@ export interface SidebarBalanceProps {
   /** 词典函数。 */
   t: (key: LocaleKey) => string
   /**
-   * 配置槽的探测结果。旧宿主上 `plugins.bundle.config` 不存在，
-   * 浮层据此给一条英文 `[WARN]` 提示；探测本身不影响余额与刷新。
+   * 配置表单的能力探测结果。宿主给不出配置页时（`plugins.row.config` 那一格不在，
+   * 或本插件不是可配置的 bundle 行），浮层据此给一条英文 `[WARN]` 提示；
+   * 探测本身不影响余额与刷新。
    */
   configSlotProbe: ConfigSlotProbe
   /**
@@ -124,12 +125,13 @@ export interface SidebarBalanceProps {
    */
   pluginsNavigation?: PluginsNavigation
   /**
-   * 「改用 X」：把后端实际给的那个币种写进设置作用域的 `displayCurrency`。
+   * 「改用 X」：把后端实际给的那个币种写进本插件那一行的设置命名空间（`displayCurrency`）。
    *
-   * 写入是否落盘由父代理读回 user 层判定（宿主拒绝写入时不抛错）。
-   * 本组件不做乐观更新：界面只跟设置快照走，没落盘就什么都不变，浮层的提示留着让用户重试。
+   * 成败由父代理的 `writeFieldValue` 直接给出（0.1.7 的 `ConfigForm.set` 返回宿主是否接受，
+   * 不再需要读回 user 层猜）。本组件不做乐观更新：界面只跟设置快照走，
+   * 没落盘就什么都不变，浮层的提示留着让用户重试。
    * @param currency - 后端实际给出的币种代码。
-   * @returns 这次写入是否落进 user 层。
+   * @returns 宿主是否接受这次写入。
    */
   onSelectCurrency: (currency: string) => Promise<boolean>
   /** 本组件消费的配置切片。 */
@@ -469,7 +471,7 @@ export function SidebarBalance({
           {markerLabel === null ? null : (
             <Tooltip label={markerHint} side="bottom" delayMs={500}>
               <span className={css.marker} role="img" aria-label={markerLabel}>
-                <IconWarningOutline16 size={12} />
+                <IconWarningOutlineRegular size={12} />
               </span>
             </Tooltip>
           )}

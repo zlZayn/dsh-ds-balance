@@ -106,25 +106,29 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 ## Version compatibility
 
-- The configuration UI registers into the Host's `plugins.bundle.config` slot, which **arrives with DSH 0.1.6-alpha.2** (the floor's single source is `engines.dsh` in [package.json](package.json); check the current lines with `node scripts/compat-swap.mjs check`).
-- On an earlier Host the ring and the popover keep working, but the configuration area never appears on the Plugins page (with no error) — that is the watershed. The plugin never reads a Host version: it probes whether that slot exists, and when it does not, **the popover carries one extra English `[WARN]` line** saying why the configuration page is unavailable and where to upgrade.
+- The configuration UI registers into the Host's `plugins.row.config` slot, keyed literally `<package name>#<row id>` (both are the same for this plugin). **Landing on that slot is the result of a downstream migration**: on earlier Hosts the card sat in `plugins.bundle.config`, and the Host did not remove that slot — what changed is that it no longer hands the entry a `form`. The floor's single source is `engines.dsh` in [package.json](package.json); check the current lines with `node scripts/compat-swap.mjs check`.
+- The floor moved **because the settings seam changed, not because of the slot**: the client-side scope service was removed, the Host-side `settings.register` was removed, and both halves moved to the new `configForms` service and volatile config references. On an earlier Host the ring and the popover keep working, but the configuration page never appears (with no error) — that is the watershed. The plugin never reads a Host version: it probes whether the `plugins.row.config` slot exists, and when it does not, **the popover carries one extra English `[WARN]` line** saying why the configuration page is unavailable and where to upgrade.
 - To get the configuration page, upgrade the Host to the version `engines.dsh` declares or higher: `npm install -g @deepseek-ai/dsh@alpha`.
-- The declaration is **narrow**: the floor is the version that introduced the slot and the ceiling excludes the next possibly-incompatible version — not "everything in the future counts", and nothing earlier is claimed either. It still cannot cover a new prerelease segment, so a new Host alpha can outdate it; the weekly `declaration` patrol watches exactly that, and what to do when it goes red is in [Compatibility](docs/PUBLISHING.md#兼容性).
+- The declaration is **narrow**: the floor is the version we actually tested, written as `>=` with **no ceiling** — it claims neither "everything in the future counts" nor anything earlier. Why it is written that way is in [Compatibility](docs/PUBLISHING.md#兼容性).
 
 ## Configuration
 
-Open **Plugins → Installed** and step into the **dsh-ds-balance** details page. The form runs straight down that page with four groups **all collapsed by default** — expand them from their headers:
+Open **Plugins → Installed**, step into the **dsh-ds-balance** details page and press **Configure** on its row. The form is that row's own subpage, with four groups **all collapsed by default** — expand them from their headers:
 
 <p align="center">
   <img src="assets/settings-cards-position_en.png" alt="Where the DeepSeek balance entry sits in the Plugins list" width="480">
   <br>
-  <em>Where it sits: the Plugins page's list view, with <code>dsh-ds-balance</code> alongside the other installed plugins; the details page behind it carries the form shown above.</em>
+  <em>Where it sits: the Plugins page's list view, with <code>dsh-ds-balance</code> alongside the other installed plugins; the details page behind it, plus Configure on that row, is what carries the form shown above.</em>
 </p>
 
 - **Connection**: the API base URL and the credential, both blank by default — a blank URL means the official DeepSeek endpoint, and the credential is inherited from the official model page and is read-only.
   The nested "Customised settings" holds only the credential reference name.
 - **Display**: which currency to use for amounts, or let it follow the account.
 - **Thresholds**: two alert lines per currency (warning / critical). **Within one currency the critical line must be strictly lower than the warning line** — equality is rejected too.
+  `POST /api/v1/config` enforces the same rule and answers `422` otherwise;
+  but a hand-edited config file with an illegal pair **no longer errors** — the Host side stopped enforcing it, so the plugin **falls that pair back to its defaults** the moment it reads it, and logs one line.
+
+> **Upgrade note**: the settings live in this plugin's own entry config and the key it is filed under changed once; **old values are not migrated** — please fill the table above in once after upgrading.
 - **Refresh**: the server refresh interval and the UI poll interval.
 
 Saving applies immediately; there is no need to restart DSH.

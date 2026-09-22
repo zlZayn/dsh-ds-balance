@@ -21,8 +21,8 @@
 - 对外可见行为变化，同一次改动内同步 [README.md](README.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 颜色只由后端 `severity` 决定；前端读阈值的唯一去处是圆环弧长，且只读 `warn`、只当刻度
 - 样式只用 CSS Modules + `--dsw-alias-*`；禁 Tailwind、禁组件库、禁字面色值
-- **所有 `@deepseek-ai/dsh-*` 声明的下限不得低于 `engines.dsh` 的下限** —— 两份声明自相矛盾时，使用者按我们给的区间装不出可用的宿主。2026-09-20 抬过一批（peer 8 条 + 仅 dev 的 2 条），见[决策记录](.agents/notes/2026-09-20-declaration-floor-alignment.md)。
-- **只做类型面（module augmentation）、运行时由宿主经 `dsh.client.inject` 提供的官方包，只写 `devDependencies`，不写 `peerDependencies`** —— 目前只有 `@deepseek-ai/dsh-client-ui-plugin-manager`，理由与查证见[决策记录](.agents/notes/2026-09-20-plugin-manager-dependency-kind.md)。
+- **所有 `@deepseek-ai/dsh-*` 声明的下限不得低于 `engines.dsh` 的下限**，且**形状也要一致**（本仓统一写 `>=<下限>`，不设上限）。两份声明自相矛盾时，使用者按我们给的区间装不出可用的宿主。抬过两批：2026-09-20（peer 8 条 + 仅 dev 的 2 条）与本次接缝迁移（12 条受管包 + `engines.dsh` 一起改），分别见[决策记录](.agents/notes/2026-09-20-declaration-floor-alignment.md)与[本轮记录](.agents/notes/2026-09-22-settings-seam-migration.md)。红线在 [test/redlines.test.ts](test/redlines.test.ts)。
+- **只做类型面（module augmentation）、运行时由宿主提供或 `dsh.client.inject` 送的官方包，只写 `devDependencies`，不写 `peerDependencies`** —— 目前是 `@deepseek-ai/dsh-client-ui-plugin-manager`（模块增强）与 `@deepseek-ai/cordis-plugin-loader`（`loader/volatile-update` 的事件键声明），理由与查证见[决策记录](.agents/notes/2026-09-20-plugin-manager-dependency-kind.md)。
 
 ## 常用命令
 
@@ -75,6 +75,8 @@
 - [x] 本轮 UI 改动的收尾：文档同步、报告回填、提交
 - [x] 卡片的折叠头已按原生形态取消：不再有要持久化的折叠状态
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
+- [ ] **设置卡片的截图待重拍**：卡片入口从 bundle 详情页搬到了那一行的 Configure 子页，现有四张图全部失效 ——
+  判据与拍摄步骤见 [assets/AGENTS.md](assets/AGENTS.md)，重拍要占用维护者的浏览器与一次宿主重启（本轮刻意不重截）。
 - [x] 发布前：加回 `dsh.bundle`、去掉 `private` → `npm run check:release` 0 失败
 - [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
@@ -87,13 +89,18 @@
 - **`sidebar.footer.action` 的宿主容器是 row flex（宿主遗漏）**：官方 cordis 面板（`packages/extensions/ui-cordis/src/client/`）把根节点写成满宽且不收缩，横排下条目会被挤到 0 宽。我们已用 `:has()` 反选父元素把它改回纵向堆叠 → [决策](.agents/notes/2026-09-17-footer-stack-override.md)。依赖 `:has()` 与该锚点属性稳定。
 - **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包写进 profile 的 `dsh.profile.bundles`**，而 bundle 层与 patch 层的 insert 行**只在启动时读** —— 两条同时存在就是**双挂载**。开发期靠「不声明 `dsh.bundle`」躲开它，发布态不能这么干（包里必须有 bundle 层）。所以装法只能选一种：**`dsh plugin add` 或手写 patch 行，不要都做**。改本机 profile 前先看 `dsh.profile.bundles`。
 - **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。
-- dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 不在宿主那条线上。实际版本现查：`node scripts/compat-swap.mjs check`。
+- dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 与 `@deepseek-ai/cordis` / `@deepseek-ai/cordis-plugin-loader` **不在宿主那条线上**（各有自己的版本号），所以 `compat-swap` 的替换面不覆盖它们，改它们要手工看。实际版本现查：`node scripts/compat-swap.mjs check`。
+- **换版脚本保形，不认识的形状会报错停下**：`scripts/compat-swap.mjs` 只换版本号，运算符（`>=` / `^` / `~` …）原样保留；
+  认不出的形状（`||`、空格分隔多段、`*`、`1.x`、`workspace:^`）直接红。自检：`node scripts/compat-swap.mjs selftest`（`npm test` 里也有一条）。
 - **`npm ci` 会执行 `prepare`**：所以本仓库**不声明** `prepare`。声明了的话 CI 的 `npm ci` 会先产出 `lib/`，typecheck 就再也看不到「干净检出」这个状态 —— 那正是刚修掉的一类缺陷（`test/artifacts.test.ts` 在 CI 上 TS2307，本机因产物早就在而常绿）。见 [决策记录](.agents/notes/2026-09-17-prepare-script-decision.md)。
 - **写临时探针别用 `os.tmpdir()`**：进程环境为空时它在 Windows 上返回相对路径 `undefined\temp`，会把文件写进工作区，还会让 `robocopy` 自我递归出一棵超 MAX_PATH 的目录树。用 `$env:TEMP` 或显式绝对路径，用完即删。
 - **Agent 的 `write` 工具对「自己刚删掉的文件」会拒绝覆盖**（它缓存里那个文件还在）。换个路径，或用 Node 的 `fs.writeFileSync` 直接写。
 - **`package-lock.json` 的根条目会漏 `peerDependencies`**：`npm ci` 不校验它，所以这种漂移能一路绿到底。改完 peer 之后跑一次 `npm install --package-lock-only` 让 lockfile 对齐清单。
-- **跨字段约束的写法与写入顺序 → [settings 规则层](src/client/settings/AGENTS.md)**：宿主 `validate` 看的是合并后的完整值，
-  而一次保存是逐字段写的，所以单字段写入会让中间态短暂非法 —— 成对写入由 `orderPairWrites` 排序。
+- **跨字段约束宿主侧已经拦不住 → [settings 规则层](src/client/settings/AGENTS.md)**：登记接缝被删之后，
+  「告急低于预警」只剩消费侧回落与 `POST /api/v1/config` 的写入侧先验两道。**官方 Plugins 页那条写路径拦不住**，
+  前端置灰保存只是体验。相关决策见[本轮记录](.agents/notes/2026-09-22-settings-seam-migration.md)。
+- **配置改动不会重新挂载宿主半边**：11 个字段全是 `.volatile()`，Loader 只把新值提交进引用并发一次
+  `loader/volatile-update`。所以「改了配置要重启」是错的，「改了**代码**要重启」才是真的。
 - **宿主半边/浏览器半边的装载时机、cordis 服务门禁、构建链三类坑** → [src 规则层](src/AGENTS.md) 与 [scripts 规则层](scripts/AGENTS.md)（进目录即自动注入，这里不重抄）。
 
 ## 文档网络与自更新

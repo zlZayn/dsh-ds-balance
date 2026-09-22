@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Config, THRESHOLD_PAIRS as HOST_PAIRS, validateThresholds, type Config as ConfigShape } from '../src/config.ts'
 import {
-  THRESHOLD_PAIRS, orderPairWrites, thresholdsOk, writeFieldValue, type FieldState,
+  THRESHOLD_PAIRS, thresholdsOk, writeFieldValue, type ConfigFormOf, type FieldState,
 } from '../src/client/settings/use-config-form.ts'
 
 /**
@@ -19,17 +19,17 @@ function state(patch: Partial<FieldState> = {}): FieldState {
   }
 }
 
-/** 造一条待写入的编辑。 */
-function setWrite(field: string, value: unknown) {
-  return { field, write: { kind: 'set' as const, value } }
+/**
+ * 造一份合法的基础配置。
+ *
+ * `Config({})` 现在返回的是**引用面**（11 个字段都是 `Volatile`），
+ * 而这里的判据要的是纯值，所以先解引用 —— 走一次 unknown 是因为两者的
+ * 字段类型在类型系统里本来就不重叠。
+ */
+const base = (): ConfigShape => {
+  const refs = Config({}) as unknown as Record<string, { get(): unknown }>
+  return Object.fromEntries(Object.entries(refs).map(([key, ref]) => [key, ref.get()])) as unknown as ConfigShape
 }
-
-/** 读一条写入里的数值。 */
-function valueOf(item: { write?: { kind: string; value?: unknown } }): number {
-  return item.write?.kind === 'set' ? Number(item.write.value) : Number.NaN
-}
-
-const base = (): ConfigShape => Config({}) as ConfigShape
 
 describe('阈值成对：默认值', () => {
   it('两个半体抄的是同一份默认值', () => {
@@ -110,123 +110,63 @@ describe('前端成对校验', () => {
   })
 })
 
-describe('成对写入的排序', () => {
-  const cny = THRESHOLD_PAIRS[0]
-
-  it('先写预警会让中间态非法时，交换成先写告急', () => {
-    // 现状 (20, 15)，目标 (10, 5)：先写 warn 会得到 (10, 15)，宿主会拒绝整次写入。
-    const ordered = orderPairWrites(
-      [setWrite(cny.warn, 10), setWrite(cny.critical, 5)],
-      { [cny.warn]: 20, [cny.critical]: 15 },
-    )
-    expect(ordered.map(item => item.field)).toEqual([cny.critical, cny.warn])
-  })
-
-  it('先写预警已经合法时保持原顺序', () => {
-    // 现状 (10, 5)，目标 (20, 15)：先写 warn 会得到 (20, 5)，合法。
-    const ordered = orderPairWrites(
-      [setWrite(cny.warn, 20), setWrite(cny.critical, 15)],
-      { [cny.warn]: 10, [cny.critical]: 5 },
-    )
-    expect(ordered.map(item => item.field)).toEqual([cny.warn, cny.critical])
-  })
-
-  it('只写一半时不动顺序', () => {
-    const ordered = orderPairWrites([setWrite(cny.warn, 20)], { [cny.warn]: 10, [cny.critical]: 5 })
-    expect(ordered.map(item => item.field)).toEqual([cny.warn])
-  })
-
-  it('两个币种各排各的', () => {
-    const usd = THRESHOLD_PAIRS[1]
-    const ordered = orderPairWrites(
-      [setWrite(cny.warn, 10), setWrite(cny.critical, 5), setWrite(usd.warn, 0.5), setWrite(usd.critical, 0.2)],
-      { [cny.warn]: 20, [cny.critical]: 15, [usd.warn]: 2, [usd.critical]: 1 },
-    )
-    expect(ordered.map(item => item.field)).toEqual([cny.critical, cny.warn, usd.critical, usd.warn])
-  })
-
-  it('排序之后每一步合并都合法（穷举小取值域）', () => {
-    const valid = (w: number, c: number): boolean => w > c
-    let checked = 0
-    for (const W of [3, 8, 12, 30]) {
-      for (const C of [0, 2, 7, 11]) {
-        if (!valid(W, C)) continue
-        for (const w of [1, 5, 9, 25]) {
-          for (const c of [0, 1, 6, 10]) {
-            if (!valid(w, c)) continue
-            const merged: Record<string, number> = { [cny.warn]: W, [cny.critical]: C }
-            for (const item of orderPairWrites(
-              [setWrite(cny.warn, w), setWrite(cny.critical, c)],
-              merged,
-            )) {
-              merged[item.field] = valueOf(item)
-              expect(valid(merged[cny.warn], merged[cny.critical]),
-                `中间态非法：warn=${merged[cny.warn]} critical=${merged[cny.critical]}`).toBe(true)
-              checked += 1
-            }
-          }
-        }
-      }
-    }
-    expect(checked).toBeGreaterThan(200)
-  })
-})
-
 /**
- * 「改用 X」（浮层）与设置卡片写的是同一个字段、同一条路径，落盘判定也只有一份：
- * 宿主拒绝写入时不抛错，成败从读回的 user 层看。
+ * 「改用 X」（浮层）与设置卡片写的是同一个字段、同一条路径。
+ *
+ * 0.1.7 起判据变了：官方 `ConfigForm.set` **直接返回宿主是否接受**，
+ * 所以「写完读回 user 层猜成败」那一套（原来的 `settle` / `landedWrite`）整个删掉了。
+ * 这里盯的是「返回值原样透传、不吞不猜」。
  */
 describe('写回落盘判定', () => {
   /**
-   * 记账用的假作用域。`accept` 为 false 时模拟宿主静默拒绝：
-   * 快照不变、也不抛错 —— 真实作用域就是这个行为。
-   * `deferred` 模拟真实宿主返回 Promise 的那条路。
+   * 记账用的假表单。
+   *
+   * `accept` 为 false 时模拟宿主拒绝：返回 false 而不抛错 —— 官方契约就是这样
+   * （只有传输失败才 reject）。`deferred` 模拟真实宿主那条异步路。
    */
-  function scopeOf(accept: boolean, deferred = false) {
-    const snapshot = {
-      value: { displayCurrency: 'USD' } as Record<string, unknown>,
-      user: {} as Record<string, unknown>,
-      writable: true,
-    }
+  function formOf(accept: boolean, deferred = false): { form: ConfigFormOf; writes: Array<{ field: string; value: unknown }> } {
     const writes: Array<{ field: string; value: unknown }> = []
-    const apply = (field: string, value: unknown): void => {
+    const snapshot = {
+      status: 'ready' as const,
+      value: { displayCurrency: 'USD' } as Record<string, unknown> | undefined,
+      base: undefined,
+      user: {} as unknown,
+      revision: 1,
+      writable: true,
+      mode: 'host' as const,
+    }
+    const settle = (field: string, value: unknown): boolean => {
       writes.push({ field, value })
-      if (accept) snapshot.user[field] = value
+      return accept
     }
     return {
       writes,
-      scope: {
+      form: {
         getSnapshot: () => snapshot,
         subscribe: () => () => {},
-        set: (field: string, value: unknown) => {
-          if (!deferred) {
-            apply(field, value)
-            return
-          }
-          return new Promise<void>((resolve) => {
-            queueMicrotask(() => { apply(field, value); resolve() })
-          })
-        },
-        unset: (field: string) => { delete snapshot.user[field] },
+        mutate: async () => accept,
+        set: (field, value) => (deferred
+          ? new Promise<boolean>((resolve) => { queueMicrotask(() => { resolve(settle(field, value)) }) })
+          : Promise.resolve(settle(field, value))),
+        unset: async () => accept,
       },
     }
   }
 
-  it('写入落进 user 层才算落盘', async () => {
-    const { scope, writes } = scopeOf(true)
-    await expect(writeFieldValue(scope, 'displayCurrency', 'CNY')).resolves.toBe(true)
+  it('宿主接受时返回 true，写入原样交给表单', async () => {
+    const { form, writes } = formOf(true)
+    await expect(writeFieldValue(form, 'displayCurrency', 'CNY')).resolves.toBe(true)
     expect(writes).toEqual([{ field: 'displayCurrency', value: 'CNY' }])
-    expect(scope.getSnapshot().user.displayCurrency).toBe('CNY')
   })
 
-  it('宿主静默拒绝时判失败，不假装成功', async () => {
-    const { scope } = scopeOf(false)
-    await expect(writeFieldValue(scope, 'displayCurrency', 'CNY')).resolves.toBe(false)
+  it('宿主拒绝时返回 false，不假装成功', async () => {
+    const { form } = formOf(false)
+    await expect(writeFieldValue(form, 'displayCurrency', 'CNY')).resolves.toBe(false)
   })
 
-  it('set 返回 Promise 时先等它落定再读回', async () => {
-    // 不等落定就读回，会把「写成功了」判成失败。
-    const { scope } = scopeOf(true, true)
-    await expect(writeFieldValue(scope, 'displayCurrency', 'CNY')).resolves.toBe(true)
+  it('返回的是宿主那条 Promise 的结果，不抢先给一个 true', async () => {
+    // 不 await 就返回，会把「还没落定」当成成功。
+    const { form } = formOf(false, true)
+    await expect(writeFieldValue(form, 'displayCurrency', 'CNY')).resolves.toBe(false)
   })
 })

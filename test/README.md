@@ -21,10 +21,11 @@
 - 适配器：HTTP 客户端各失败路径、存储记录往返与降级、盐文件生成与复用。
 - HTTP 层：`wire` 的序列化与契约对齐、六个端点的契约行为（含 `200 + state: error`、「每次现读配置」、掩码不回传密钥）、路由表与注册形状。
 - 浏览器半边：视图模型映射、severity → 环形态、mock 场景自洽性、数据层的 URL 构造与失败路径，以及**对抗旧宿主的形状守卫**（宿主没有新字段时不能把组件打挂）。
-- 配置的跨字段约束：阈值成对（告急严格低于预警）—— 宿主校验的拒绝与错误定位、前端空草稿取默认值与边界、
-  以及**成对写入的排序性质**（穷举小取值域，断言每一步合并后都合法）；同时给两个半体的默认值表对账。
-- 产物级：`artifacts.test.ts` 只读 `lib/`，断言宿主入口可求值、信封 id、样式内联、`exports` 指向真实产物。
-- 约定守卫：`redlines.test.ts`。
+- 配置的跨字段约束：阈值成对（告急严格低于预警）—— 判据本身的边界、消费侧回落的取值、
+  `POST /api/v1/config` 的写入侧先验（违反回 422），以及两个半体的默认值表对账。
+- 产物级：`artifacts.test.ts` 只读 `lib/`，断言宿主入口可求值、信封 id、样式内联、`exports` 指向真实产物、设置接缝（槽名 / key / 不再出现旧服务）。
+- 约定守卫：`redlines.test.ts`；**脚本自检**：`compat-swap.test.ts` 跑 `scripts/compat-swap.mjs selftest`，
+  守「换版保形」那条不变量（形状表在生产脚本里，测试不重写规则）。
 - 契约层：`contract-live-*.test.ts` 打真实上游核对响应指纹，由 [vitest.contract.config.ts](../vitest.contract.config.ts) 单独收集；
   日常 [vitest.config.ts](../vitest.config.ts) 显式排除它，所以 `npm test` 不会去真上游。缺凭据时它失败而不是跳过。
   凭据先取 `DSH_CI_API_KEY`、缺了回落 `DEEPSEEK_API_KEY`，判据在 [contract-key.ts](contract-key.ts)（纯函数，已被单测覆盖）。

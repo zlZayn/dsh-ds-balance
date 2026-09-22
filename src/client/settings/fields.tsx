@@ -8,7 +8,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  DisclosureRow, IconChevronDownOutline14, Menu, Tag,
+  DisclosureRow, IconChevronDownOutlineRegular, Menu, Tag,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TagTone } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from './fields.module.css'
@@ -299,7 +299,7 @@ export function SelectorControl(props: SelectorControlProps) {
           onClick={() => { setOpen(value => !value) }}
         >
           {selected?.label ?? ''}
-          <IconChevronDownOutline14 className={css.selectorChevron} />
+          <IconChevronDownOutlineRegular className={css.selectorChevron} />
         </button>
       )}
     />

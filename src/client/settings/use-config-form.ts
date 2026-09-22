@@ -1,36 +1,33 @@
 /**
  * 配置表单的暂存与保存状态机。
  * 编辑只落在本地草稿，保存是草稿变成设置的唯一出口。
- * 快照三元组语义与官方 card-form 一致：value 是生效值，user 是用户覆盖层，键存在即「已覆盖」。
+ *
+ * 0.1.7 起不再有「设置作用域」这个对象：官方客户端服务
+ * `ctx.configForms.get(ENTRY_ID)` 给出的是 {@link ConfigForm} ——
+ * `getSnapshot / subscribe / mutate / set / unset`，其中 `set` / `unset` 直接返回
+ * **宿主是否接受**，所以「写完读回 user 层猜成败」那一套整个删掉了。
+ *
+ * 保存走**一次** `mutate`：全部字段共享一道修订栅栏、一次宿主校验、一次落盘决定
+ * （官方 `config-form-types.ts` 的原话）。这也是 `orderPairWrites` 退役的原因 ——
+ * 逐字段写入才有的中间态在原子提交下不存在。
  * @module dsh-ds-balance/client/settings/use-config-form
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 
-/** 作用域快照。真实 ctx.settingsScope 的快照还带 status/base/revision/mode，这里只取需要的三片。 */
-export interface SettingsScopeSnapshotLike {
-  /** 合并后的生效配置。 */
-  value: Record<string, unknown>
-  /** 用户覆盖层；键是否存在就是「已覆盖」的判据。 */
-  user: Record<string, unknown>
-  /** 宿主文档是否接受写入。 */
-  writable: boolean
-}
+/** 配置表单的键域：11 个字段都是标量，按普通对象收窄。 */
+export type ConfigFormOf = ConfigForm<Record<string, unknown>>
 
 /**
- * 配置卡片依赖的最小作用域面。
- * 真实的 ctx.settingsScope.bind() 返回值结构上满足它，但 set/unset 返回 Promise，父代理的适配层可以原样透传。
+ * `mutate` 接受的操作表。
+ *
+ * **从官方类型推导，不 import `@deepseek-ai/dsh-api-remotes`** —— 那个包不在本仓的
+ * 声明面里，而这里要的只是「这次写入长什么样」。
  */
-export interface SettingsScope {
-  /** 读当前快照。 */
-  getSnapshot(): SettingsScopeSnapshotLike
-  /** 订阅快照变化。 */
-  subscribe(listener: () => void): () => void
-  /** 写入一个字段。 */
-  set(field: string, value: unknown): void
-  /** 清除一个字段的用户覆盖。 */
-  unset(field: string): void
-}
+type MutateOps = Parameters<ConfigFormOf['mutate']>[0]
+type MutateOp = MutateOps[number]
+type MutateValue = Extract<MutateOp, { op: 'set' }>['value']
 
 /** 一次字段写入。 */
 export type FieldWrite =
@@ -210,6 +207,14 @@ export interface FieldState {
 
 /** 表单整体状态。 */
 export interface ConfigFormState {
+  /**
+   * 宿主是否在服务这个命名空间（官方快照的 `status === 'ready'`）。
+   *
+   * 为假时卡片**什么都不渲染** —— 官方所有卡片都这么处理（`ui-primitives` 的
+   * `SettingsFormModel`：`available: snapshot.status === 'ready'`）。
+   * 首帧是 `loading`，所以真机上会先空一拍再出现。
+   */
+  readonly available: boolean
   /** 宿主文档是否接受写入。 */
   readonly writable: boolean
   /** 是否存在会产生写入的草稿。 */
@@ -286,11 +291,12 @@ type StagedEdit =
   | { readonly kind: 'value'; readonly value: unknown }
   | { readonly kind: 'clear' }
 
-/** 规范化后的快照。 */
+/** 规范化后的快照：官方快照收窄成卡片依赖的四片。 */
 interface NormalizedSnapshot {
   readonly value: Record<string, unknown>
   readonly user: Record<string, unknown>
   readonly writable: boolean
+  readonly available: boolean
 }
 
 /**
@@ -320,52 +326,22 @@ function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): b
 }
 
 /**
- * 等待一次写入落定。
- * 契约里 set/unset 返回 void，真实作用是 Promise，这里两种都接得住。
- * @param outcome - 写入调用的返回值。
- * @returns 落定后的 Promise。
- */
-async function settle(outcome: unknown): Promise<void> {
-  if (outcome === null || typeof outcome !== 'object') return
-  if (typeof (outcome as { then?: unknown }).then !== 'function') return
-  await (outcome as PromiseLike<unknown>)
-}
-
-/**
- * 判断一次写入是否真的落进了用户层。
- * 真实作用域被宿主拒绝时不会抛错，只会让快照保持不变，所以成功与否必须从快照读回判定。
- * @param snapshot - 写入后的快照。
- * @param field - 字段名。
- * @param write - 这次写入。
- * @returns 快照是否已经反映这次写入。
- */
-function landedWrite(snapshot: NormalizedSnapshot, field: string, write: FieldWrite): boolean {
-  if (write.kind === 'clear') return !Object.hasOwn(snapshot.user, field)
-  return Object.hasOwn(snapshot.user, field) && snapshot.user[field] === write.value
-}
-
-/**
- * 写一个字段，并读回 user 层确认它落定。
+ * 写一个字段。
  *
- * 设置卡片与侧栏条目共用这一条写路径：宿主拒绝写入时**不抛错**，只让快照保持不变，
- * 所以成败只能从读回的快照判定 —— 判据与 `save()` 用的是同一个 `landedWrite`。
- * @param scope - 设置作用域。
+ * 设置卡片与侧栏「改用 X」共用这一条写路径。**返回值就是宿主是否接受**
+ * （官方 `ConfigForm.set` 的契约），所以不需要再读回 user 层猜 ——
+ * 那条 `landedWrite` 判据连同它的读回整个删掉了。传输失敗会 reject，调用方接住即可。
+ * @param form - 该条目的配置表单。
  * @param field - 字段名。
  * @param value - 要写进该字段的值。
- * @returns 这次写入是否落进 user 层。
+ * @returns 宿主是否接受这次写入。
  */
 export async function writeFieldValue(
-  scope: SettingsScope,
+  form: ConfigFormOf,
   field: string,
   value: unknown,
 ): Promise<boolean> {
-  await settle(scope.set(field, value))
-  const snapshot = scope.getSnapshot()
-  return landedWrite(
-    { value: asRecord(snapshot.value), user: asRecord(snapshot.user), writable: snapshot.writable },
-    field,
-    { kind: 'set', value },
-  )
+  return await form.set(field, value)
 }
 
 /** 计划中的一次写入；write 为 undefined 表示草稿非法。 */
@@ -409,43 +385,6 @@ function planWrites(
     plan.push({ field, write: spec.parse(edit.text) })
   }
   return plan
-}
-
-/**
- * 把写入计划里的成对字段排成「每一步合并后都合法」的顺序。
- *
- * 宿主的 `validate` 在**合并后的完整候选值**上跑，所以单字段写入会让中间态短暂非法：
- * 把 (20, 15) 改成 (10, 5)，先写 warn 会得到 (10, 15)，宿主直接拒绝整次写入。
- *
- * 判据只看 warn：先写 warn 之后是 `(warn', critical)`，合法就保持原顺序；不合法就只能先写 critical ——
- * 那时 `critical' < warn' ≤ critical < warn`，所以 `(warn, critical')` 必然合法。两者必有一个成立。
- * @param writes - 待写入的编辑。
- * @param current - 当前生效值，用来看「另一半现在是多少」。
- * @returns 排好序的新数组。
- */
-export function orderPairWrites(
-  writes: readonly PlannedWrite[],
-  current: Record<string, unknown>,
-): PlannedWrite[] {
-  const ordered = [...writes]
-  for (const pair of THRESHOLD_PAIRS) {
-    const warnAt = ordered.findIndex(item => item.field === pair.warn)
-    const criticalAt = ordered.findIndex(item => item.field === pair.critical)
-    // 只有一半要写时天然安全：另一半没动，草稿合法就等价于中间态合法。
-    if (warnAt === -1 || criticalAt === -1) continue
-    // 已经是「先告急后预警」就不用动。
-    if (criticalAt < warnAt) continue
-    const write = ordered[warnAt].write
-    if (write === undefined) continue
-    // 清空之后生效的是默认值，不是旧值。
-    const next = write.kind === 'clear' ? pair.defaultWarn : Number(write.value)
-    if (!Number.isFinite(next)) continue
-    const criticalNow = current[pair.critical]
-    if (typeof criticalNow === 'number' && Number.isFinite(criticalNow) && next > criticalNow) continue
-    const [moved] = ordered.splice(warnAt, 1)
-    ordered.splice(criticalAt, 0, moved)
-  }
-  return ordered
 }
 
 /**
@@ -507,37 +446,44 @@ function fieldOf(snapshot: NormalizedSnapshot, name: string, edit: StagedEdit | 
 }
 
 /**
- * 绑定一个设置命名空间的配置表单。
- * @param scope - 卡片拿到的设置作用域。
+ * 绑定一个条目的配置表单。
+ *
+ * `readSnapshot` 必须返回**引用稳定**的对象（`useSyncExternalStore` 用 Object.is 比），
+ * 而 `asRecord(undefined)` 每次都造一个新 `{}` —— 所以这里留一层缓存，逐片比过再决定
+ * 要不要换快照。
+ * @param form - `ctx.configForms.get(ENTRY_ID)` 给的表单，`apply` 期建一次、引用稳定。
  * @returns 表单状态与动作。
  */
-export function useConfigForm(scope: SettingsScope): ConfigFormApi {
+export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
   const cacheRef = useRef<{
     value: Record<string, unknown>
     user: Record<string, unknown>
     writable: boolean
+    available: boolean
     snapshot: NormalizedSnapshot
   } | null>(null)
   const readSnapshot = useCallback((): NormalizedSnapshot => {
-    const raw = scope.getSnapshot()
+    const raw = form.getSnapshot()
     const value = asRecord(raw.value)
     const user = asRecord(raw.user)
     const writable = raw.writable !== false
+    const available = raw.status === 'ready'
     const cache = cacheRef.current
     if (cache !== null
       && cache.writable === writable
+      && cache.available === available
       && (cache.value === value || shallowEqual(cache.value, value))
       && (cache.user === user || shallowEqual(cache.user, user))) {
       return cache.snapshot
     }
-    const snapshot: NormalizedSnapshot = { value, user, writable }
-    cacheRef.current = { value, user, writable, snapshot }
+    const snapshot: NormalizedSnapshot = { value, user, writable, available }
+    cacheRef.current = { value, user, writable, available, snapshot }
     return snapshot
-  }, [scope])
+  }, [form])
 
   const subscribe = useCallback(
-    (listener: () => void) => scope.subscribe(listener),
-    [scope],
+    (listener: () => void) => form.subscribe(listener),
+    [form],
   )
   const snapshot = useSyncExternalStore(subscribe, readSnapshot)
   const [staged, setStaged] = useState<ReadonlyMap<string, StagedEdit>>(() => new Map())
@@ -616,33 +562,33 @@ export function useConfigForm(scope: SettingsScope): ConfigFormApi {
 
   const save = useCallback(async (): Promise<void> => {
     if (savingRef.current) return
-    const current = readSnapshot()
-    const writes = orderPairWrites(planWrites(current, staged), current.value)
+    const writes = planWrites(readSnapshot(), staged)
     if (writes.length === 0) return
     if (writes.some(item => item.write === undefined)) return
     savingRef.current = true
     setSaving(true)
     setFailed(false)
-    let landed = true
+    // 一次原子提交：全部字段共享一道修订栅栏、一次宿主校验、一次落盘决定。
+    // 所以**没有中间态**，成对字段的写入顺序不再需要排 —— 这就是 orderPairWrites 退役的原因。
+    const ops: MutateOp[] = []
     for (const item of writes) {
       const write = item.write
-      if (write === undefined) { landed = false; break }
-      try {
-        const outcome: unknown = write.kind === 'clear'
-          ? scope.unset(item.field)
-          : scope.set(item.field, write.value)
-        await settle(outcome)
-      } catch {
-        landed = false
-        break
-      }
-      if (!landedWrite(readSnapshot(), item.field, write)) { landed = false; break }
+      if (write === undefined) continue
+      ops.push(write.kind === 'clear'
+        ? { op: 'unset', path: [item.field] }
+        : { op: 'set', path: [item.field], value: write.value as MutateValue })
+    }
+    let landed = false
+    try {
+      landed = await form.mutate(ops, form.getSnapshot().revision)
+    } catch {
+      landed = false
     }
     savingRef.current = false
     setSaving(false)
     if (landed) setStaged(new Map())
     setFailed(!landed)
-  }, [readSnapshot, scope, staged])
+  }, [form, readSnapshot, staged])
 
   const runTest = useCallback((): void => {
     if (testRunningRef.current) return
@@ -694,6 +640,7 @@ export function useConfigForm(scope: SettingsScope): ConfigFormApi {
 
   return {
     state: {
+      available: snapshot.available,
       writable: snapshot.writable,
       dirty: plan.length > 0,
       invalid,

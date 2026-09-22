@@ -40,7 +40,9 @@ sidebar/ 特有约束：
   - 替代：面板 id 用本目录的字面量常量（`'plugins'`），注释里带宿主 `路径:行号` 引用 —— 见 `../index.tsx` 的 `PLUGINS_PANEL_ID`，对照 `ui-plugin-manager/src/client/index.ts:47`。
 - 消费宿主的跨插件服务一律**鸭子类型收窄**，不 import 宿主包的类型、不为它新增 npm 依赖。
   - 理由：那些包不在本仓的 `node_modules` 与 `package-lock.json` 里，`import type` 也会给声明面添一条边。
-  - 先例：`../index.tsx` 的 `RawScope` 与 `LayoutFace`（公开面见宿主 `ui-layout/src/client/service.ts:28-52` 的 `ILayout`）。
+  - 先例：`../index.tsx` 的 `LayoutFace`（公开面见宿主 `ui-layout/src/client/service.ts:28-52` 的 `ILayout`）。
+  - **配置表单不必再走这一手**：`ctx.configForms.get(ENTRY_ID)` 是官方客户端服务，
+    类型可以直接引（原先那个 `RawScope` 鸭子类型适配层随被删的客户端作用域服务一起删了）。
 - 可选服务**不许塞顶层 `inject`**（缺服务会让整个插件不装载），必须 `ctx.inject([...], …)` 把门并留降级路径。
   - 降级的表现是**不留死入口**，而不是「假装能用」：服务缺席时那枚图标整块不渲染，只留一句可撤销的说明。
 - 调宿主**会抛**的接口要**具名 catch**：注释写清抛因与后果，并留一行记录（`console.warn`）。

@@ -21,7 +21,7 @@ import type { BalanceService } from '../services/balance-service.js'
 import type { ConfigService } from '../services/config-service.js'
 import type { KeyResolver } from '../services/key-resolver.js'
 import type { Scheduler } from '../services/scheduler.js'
-import { CONFIG_FIELDS, endpointOf, type Config } from '../config.js'
+import { CONFIG_FIELDS, endpointOf, validateThresholds, type Config } from '../config.js'
 import { PLUGIN_VERSION, SCHEMA_VERSION } from '../version.js'
 import {
   newRequestId,
@@ -231,7 +231,15 @@ export async function handleConfigUpdate(request: Request, deps: HttpDeps): Prom
       return json({ requestId, error: { code: 'VALIDATION', message: `unknown config field: ${unknown.join(', ')}`, retryable: false } }, 422)
     }
     patch = body
-    if (Object.keys(patch).length > 0) await deps.config.update(patch)
+    if (Object.keys(patch).length > 0) {
+      // 跨字段先验：0.1.7 起宿主侧不再强制「告急严格低于预警」
+      // （register 的 validate 被删、schema 没有跨字段钩子），所以这条端点成了
+      // **唯一**还能在写入侧拦住非法组合的地方。理由是它比官方 Plugins 页那条写路径
+      // 多一层我们的代码；官方那条是宿主直连的原子 mutate，只跑 schema，拦不住。
+      // 违反 ⇒ 422 且什么都不写。判据与消费侧守卫共用同一个 validateThresholds。
+      validateThresholds({ ...deps.config.current(), ...patch } as Config)
+      await deps.config.update(patch)
+    }
   } catch (error) {
     deps.logger?.warn('ds-balance: config write rejected', { requestId, error: describe(error) })
     return json({ requestId, error: toWireError(classify(error)) }, 422)

@@ -7,6 +7,8 @@
  *   node scripts/compat-swap.mjs swap --line next     # 改写 package.json，再跑裸 npm install
  *   node scripts/compat-swap.mjs verify --line next   # 断言 node_modules 里真的装在目标版本上
  *
+ * 换版**保形**：只换版本号，运算符（`^` / `>=` / `~` …）原样保留 —— 见 swapRange。
+ *
  * 为什么要有 `verify`：`npm install` 会**假绿** —— 它可能失败，而 node_modules 停在旧版本上，
  * 于是测试跑在旧依赖上、给出与事实相反的信号。换版后必须回头看实际装到了什么。
  *
@@ -31,6 +33,35 @@ const PREFIX = '@deepseek-ai/dsh-'
 /** 声明区间可能出现的位置。 */
 const MANIFEST_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies']
 
+/**
+ * 认识的区间形状：**单个可选运算符 + 一个版本号**。
+ *
+ * 运算符原样保留（见 {@link swapRange}）：形状由维护者定，脚本只换版本号。
+ * 认不出来的形状宁可报错停下 —— `||`、空格分隔的多段、`*`、`1.x`、`workspace:^`
+ * 换成「一个版本号」都会丢信息，而「每周巡检悄悄改坏声明面」比「巡检红一次」贵得多。
+ * 所以要求版本号是**完整的** `x.y.z`（可带预发布段）。
+ */
+const RANGE_SHAPE = /^(>=|<=|>|<|=|\^|~)?\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/
+
+/**
+ * 保形换版：保留原有运算符，只替换版本号。
+ *
+ * 为什么不能硬编码 `'^' + version`：本仓的声明面统一写成 `>=0.1.7-alpha.1`，
+ * 而换版曾经无条件写回 `^` —— 那样每周的 compat 巡检会把 `>=` 静默改回 `^`，
+ * 形状与 `engines.dsh` 漂开，还产生一条没人看懂来源的 diff。
+ * @param declared - 现有声明区间。
+ * @param version - 目标线上该包的版本。
+ * @returns 换版后的区间，运算符与原来一致。
+ * @throws 区间不是「可选运算符 + 版本号」时抛出。
+ */
+function swapRange(declared, version) {
+  const shape = RANGE_SHAPE.exec(declared.trim())
+  if (shape === null) {
+    throw new Error(`不认识的区间形状：${declared}（换版只支持「可选运算符 + 版本号」，请手工改这一条）`)
+  }
+  return `${shape[1] ?? ''}${version}`
+}
+
 /** 关心的 dist-tag。 */
 const LINES = ['latest', 'next', 'alpha']
 
@@ -38,6 +69,7 @@ const USAGE = `用法：
   node scripts/compat-swap.mjs check
   node scripts/compat-swap.mjs swap --line <${LINES.join('|')}>
   node scripts/compat-swap.mjs verify --line <${LINES.join('|')}>
+  node scripts/compat-swap.mjs selftest
 
 退出码：0 = 通过 / 1 = 有未过 / 2 = 用法错误`
 
@@ -134,7 +166,7 @@ async function swap(line) {
     if (!block) continue
     for (const { name, version } of plan) {
       if (!(name in block)) continue
-      const next = `^${version}`
+      const next = swapRange(block[name], version)
       if (block[name] !== next) {
         console.log(`${field}: ${name} ${block[name]} -> ${next}`)
         block[name] = next
@@ -219,6 +251,60 @@ async function verify(line) {
   return 0
 }
 
+/**
+ * 换版保形的自检表。
+ *
+ * 它是可执行的断言，不是散文：`test/compat-swap.test.ts` 跑这个子命令并要求退出码 0。
+ * 为什么值得单独有：`swap` 会改 package.json，而它曾经无条件写回 `^` ——
+ * 那样的错在**每周巡检**里才发作一次，等看见 diff 时形状早就漂了。
+ * @returns 0 = 全部符合预期；1 = 有不符合的。
+ */
+function selftest() {
+  const cases = [
+    ['>=0.1.7-alpha.1', '0.1.8-alpha.1', '>=0.1.8-alpha.1'],
+    ['^0.1.6-alpha.2', '0.1.7-alpha.1', '^0.1.7-alpha.1'],
+    ['~1.2.3', '1.2.4', '~1.2.4'],
+    ['1.2.3', '2.0.0', '2.0.0'],
+    ['=1.2.3', '1.2.4', '=1.2.4'],
+    ['<2.0.0', '1.9.9', '<1.9.9'],
+    ['>= 0.1.7-alpha.1', '0.1.8-alpha.1', '>=0.1.8-alpha.1'],
+  ]
+  const rejects = ['>=1.0.0 <2.0.0', '1.x || 2.x', '*', 'workspace:^', 'latest', '1.2', '']
+  let failed = 0
+  for (const [declared, version, expected] of cases) {
+    let actual
+    try {
+      actual = swapRange(declared, version)
+    } catch (error) {
+      console.log(`FAIL  ${declared} → 抛错：${error.message}`)
+      failed += 1
+      continue
+    }
+    if (actual !== expected) {
+      console.log(`FAIL  ${declared} → ${actual}（期望 ${expected}）`)
+      failed += 1
+      continue
+    }
+    console.log(`PASS  ${declared} → ${actual}`)
+  }
+  for (const declared of rejects) {
+    try {
+      const actual = swapRange(declared, '9.9.9')
+      console.log(`FAIL  ${JSON.stringify(declared)} 应当被拒，却给出了 ${actual}`)
+      failed += 1
+    } catch {
+      console.log(`PASS  ${JSON.stringify(declared)} 被拒`)
+    }
+  }
+  console.log('')
+  if (failed > 0) {
+    console.error(`${failed} 条不符合预期 —— 换版会改坏声明面的形状，别信这次换版。`)
+    return 1
+  }
+  console.log(`${cases.length + rejects.length} 条全部符合预期。`)
+  return 0
+}
+
 const [command, ...rest] = process.argv.slice(2)
 if (!command || command === '--help' || command === '-h') usageError(command ? '' : '缺少子命令')
 
@@ -227,6 +313,7 @@ try {
   if (command === 'check') code = await check()
   else if (command === 'swap') code = await swap(parseLine(rest))
   else if (command === 'verify') code = await verify(parseLine(rest))
+  else if (command === 'selftest') code = selftest()
   else usageError(`不认识的子命令：${command}`)
 } catch (error) {
   console.error(error.message)

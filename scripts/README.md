@@ -35,7 +35,10 @@
   - 退出码：0 = 全过 / 1 = 有未过 / 2 = 缺凭据（上游那一段没跑）。
   - **不进 CI**：打真实上游，要真实凭据，也占真实配额。
   - 凭据只从环境变量 `DEEPSEEK_API_KEY` 读，只出现在请求头里，不打印、不落盘。
-- `compat-swap.mjs`：把 `@deepseek-ai/dsh-*` 的声明区间换到指定 dist-tag 线上。子命令 `check` / `swap --line <line>` / `verify --line <line>`。
+- `compat-swap.mjs`：把 `@deepseek-ai/dsh-*` 的声明区间换到指定 dist-tag 线上。子命令 `check` / `swap --line <line>` / `verify --line <line>` / `selftest`。
+  - **换版保形**：`swap` 只换版本号，运算符（`>=` / `^` / `~` …）原样保留 —— 宣言的形状由维护者定，脚本不替人做决定。
+    认不出的形状（`||`、空格分隔多段、`*`、`1.x`、`workspace:^`）**报错停下**，不静默改写声明面。
+    `selftest` 是这条不变量的可执行断言（不联网、不装依赖），[../test/compat-swap.test.ts](../test/compat-swap.test.ts) 会跑它。
   - **`verify` 不是可选项**：`npm install` 会假绿 —— 它失败但 `node_modules` 停在旧版本上，测试于是跑在旧依赖上、给出与事实相反的信号。
   - 只换 `@deepseek-ai/dsh-` 前缀；`@deepseek-ai/cordis` 与 `@deepseek-ai/schemastery` 不带这个前缀，天然在替换面之外（它们的 `next` 比 `latest` 旧）。
   - 查 dist-tags 用 HTTP 打 registry，不调 `npm view` —— 少一层 shell 依赖。

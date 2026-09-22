@@ -10,10 +10,14 @@ settings/ 特有约束：
 - 不许 import 官方 `ui-settings-plugins` 的内部构件（bundle-purity gate 会拒），只能照抄模式。
 - 数字字段用 `type="text"` + `inputMode="numeric"`，不用 `type="number"`（[fields.tsx](fields.tsx) 的 `TextControl`）。
 - 新增字段必须同时改宿主 schema（[src/config.ts](../../config.ts) 的 `Config`）与 `CONFIG_FIELDS`（[use-config-form.ts](use-config-form.ts)），否则两半漂移。
-- **跨字段约束要两半各写一道**：宿主挂在 `ctx.settings.register` 的 `validate` 上（schemastery 没有跨字段钩子），前端负责体验。
-  前端那道不许另抄一份判断 —— 判据只有 [use-config-form.ts](use-config-form.ts) 的 `thresholdsOk`。
-- **加跨字段约束时必须一并处理写入顺序**：宿主在**合并后的完整值**上校验，而一次保存是逐字段写的，
-  单字段写入会让中间态短暂非法。排序在 [use-config-form.ts](use-config-form.ts) 的 `orderPairWrites`。
+- **跨字段约束宿主侧已经拦不住**：登记用的 `ctx.settings.register` 连同它的 `validate` 选项一起被删，
+  schemastery 也没有 refine 这类跨字段钩子，而官方文档承诺的 `.check()` 在实现里根本不存在。
+  现在只剩两处：**消费侧** `../../config.ts` 的 `resolveThresholdPairs`（违规即回落默认值 + 一次 warn），
+  与**我们自己的写路径**（`POST /api/v1/config` 在 mutate 之前先跑 `validateThresholds`，违反回 422）。
+  前端这道只管体验（失焦提示 + 置灰保存），**判据不许另抄一份** —— 只有 [use-config-form.ts](use-config-form.ts) 的 `thresholdsOk`。
+- **保存是原子的，所以没有写入顺序这回事**：一次 `form.mutate(ops, revision)` 提交全部草稿，
+  共享一道修订栅栏与一次宿主校验。历史上那条「成对写入必须排序」（`orderPairWrites`）随逐字段写入一起退役，
+  **不要再把它加回来** —— 它现在只会给出「这个约束还在被强制执行」的假信号。
 - 纵向间距只有两个所有者：`.group` 的顶部 12px 与 `.groupLast` 的尾部 12px（[fields.module.css](fields.module.css)）；新加元素不许在旁边叠 margin。
 - 分组折叠头一律用原语 `DisclosureRow`，不自己画（[fields.tsx](fields.tsx) 的 `FieldGroup`）。
   - **例外**：连接组里的二级「自定义设置」用原生 `<details>`（[fields.tsx](fields.tsx) 的 `DetailsGroup`），因为官方 `ProviderEditor` 那一处就是这么做的；本插件照搬官方形态优先于自定规则。
@@ -26,7 +30,9 @@ settings/ 特有约束：
 - **读宿主新增字段必须先过形状守卫**：客户端半边由 HMR 立刻换新，宿主半边要重启才换。见 [../data.ts](../data.ts) 的 `readCredential` 与 [use-credential-state.ts](use-credential-state.ts)。
 - 错误文本用 `var(--dsw-alias-state-error-primary)`；官方 `--dsw-alias-label-error` 从未定义，照抄会静默失效。
 - 选择器触发 pill 没有公共组件，取值照抄 `packages/client/locale/src/client/LanguageRow.module.css:28-51`。
-- `set` / `unset` 的返回值不许丢弃：宿主拒绝写入时不抛错，成败只能靠读回快照的 `user` 层判定（[use-config-form.ts](use-config-form.ts) 的 `landedWrite`）。
+- `set` / `unset` / `mutate` 的返回值不许丢弃：它就是**宿主是否接受**（`Promise<boolean>`），
+  判成败只能用它 —— 不要再去读回 `user` 层猜（那条路已经删了）。
+- **`available` 为假时卡片什么都不渲染**：宿主没在服务这个命名空间时，空控件比不渲染更坏。
 - 组件拿不到 `ctx`：数据只能走 props，或用注册项的 `inject` 工厂（见 [../index.tsx](../index.tsx)）。
 - 文案一律走词典，键集真源是 [../locales.ts](../locales.ts)；组件里不写死字符串。
 - **字段说明只回答「为什么关心」**：一句、一行，不重复标签和分组说明已经说过的信息（[../locales.ts](../locales.ts) 的 `settings.hint.*`）。空话（「请填写兼容的地址」）不算说明。

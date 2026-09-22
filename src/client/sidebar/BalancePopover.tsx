@@ -9,7 +9,7 @@
 
 import type { CSSProperties, RefObject } from 'react'
 import {
-  Button, FishLogo, IconPluginPinwheelOutline16, IconRefreshOutline16, Tooltip,
+  Button, FishLogo, IconPluginPinwheelOutlineRegular, IconRefreshOutlineRegular, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { interpolate, type LocaleKey } from '../locales.ts'
 import { ageBucket, formatMoney, type AgeBucket, type CurrencySelection } from '../model.ts'
@@ -166,7 +166,7 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
               aria-label={t('popover.action.openPlugins')}
               onClick={onOpenPlugins}
             >
-              <IconPluginPinwheelOutline16 size={16} />
+              <IconPluginPinwheelOutlineRegular size={16} />
             </button>
           </Tooltip>
         )}
@@ -219,7 +219,7 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
             data-cooling={cooling || undefined}
             onClick={onRefresh}
           >
-            <IconRefreshOutline16 size={16} />
+            <IconRefreshOutlineRegular size={16} />
           </button>
         </Tooltip>
       </div>

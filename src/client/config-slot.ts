@@ -1,21 +1,39 @@
 /**
- * 配置槽的能力探测：**运行时不查版本号，只问「这个槽在不在」**。
+ * 配置表单的能力探测：**运行时不查版本号，只问「卡片在这一格拿不拿得到配置表单」**。
+ *
+ * 这**一个真实故障**把三种情形归成同一句话 —— 旧宿主、被当普通 entry 挂载、
+ * 那一行不是可配置的 bundle 行：用户看到的现象都是「配置页出不来」，
+ * 而它的当场可观测证据就是 `plugins.row.config` 这一格在不在。
  *
  * 为什么查能力而不是查版本：客户端半边拿不到宿主版本（没有 hostVersion 一类通道），
- * 而「槽在不在」是当场可观测的事实。机制见 README 的「版本兼容」一节。
+ * 而 `engines` 只是 advisory —— 装到旧宿主上不报错，只是这一格永远不出现。
+ * 机制见 README 的「版本兼容」一节。
  *
  * 三态且**可逆**：
  * - `pending` —— 还没等到上限，此时不下结论（新宿主上槽可能在启动后一小会儿才声明）。
  * - `missing` —— 等满了还没等到，提示路径启用。
  * - `available` —— 槽声明到了。若提示已经出现过，这一步会把提示撤掉（防宿主将来改成延迟声明）。
  *
+ * **探测必须跟着卡片走**：卡片注册在哪一格，探测就盯哪一格。盯错一格的话
+ * 它会在新宿主上报 available 而卡片其实在别处 —— 说谎的探测比没有探测更坏。
+ *
+ * 边界：它答的是「这一格在不在」，不答「宿主服务不服务我们这个命名空间」。
+ * 后者由卡片自己看快照的 `status`（不是 `ready` 就什么都不渲染），
+ * 两条合起来才是完整的「拿不到配置表单」。
+ *
  * 探测本身**不参与注册**：注册照旧交给 `ctx.slots.inject`，槽真的在就正常注册。
  * 探测失败只影响提示，不影响圆环、浮层与后端。
  * @module dsh-ds-balance/client/config-slot
  */
 
-/** 新宿主才声明的配置槽：配置卡片注册在它上面。 */
-export const CONFIG_SLOT = 'plugins.bundle.config'
+/**
+ * 配置卡片注册的那一格，key 是 `<包名>#<行 id>`（见 src/client/index.tsx 的 `ROW_CONFIG_KEY`）。
+ *
+ * 0.1.7 起卡片落在这里，宿主 `plugins.bundle.config` 那一格**并没有被删**
+ * （`slot-contract.ts` 两个槽都在），改落点是**有意的**：bundle 那一格渲染时不带
+ * `form`，卡片拿不到宿主递来的表单。
+ */
+export const CONFIG_SLOT = 'plugins.row.config'
 
 /**
  * 等槽声明的上限（毫秒）。
@@ -35,10 +53,10 @@ export const CONFIG_SLOT_TIMEOUT_MS = 15000
  * 时才会出现**，两种语言下一律照原文给。SPEC §5 把这记作一处有意的例外。
  */
 export const CONFIG_SLOT_WARNING =
-  '[WARN] This dsh host does not declare the plugins.bundle.config slot, so this plugin cannot show '
-  + 'its configuration page here. The balance ring and its popover keep working. To get the configuration '
-  + 'page, upgrade dsh to the version this plugin declares in engines.dsh of package.json -- see the '
-  + '"Version compatibility" section in the README.'
+  '[WARN] This dsh host does not give this plugin a configuration form: the plugins.row.config slot is '
+  + 'not declared, or this plugin is not mounted as a configurable bundle row. The balance ring and its '
+  + 'popover keep working. To get the configuration page, upgrade dsh to the version this plugin declares '
+  + 'in engines.dsh of package.json -- see the "Version compatibility" section in the README.'
 
 /** 探测的三态。 */
 export type ConfigSlotState = 'pending' | 'available' | 'missing'

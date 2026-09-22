@@ -1,8 +1,12 @@
 /**
  * 配置读取。
  *
- * 薄封装：把设置作用域包成「现读 + 订阅」两件事，并给出派生值（阈值、超时）。
+ * 薄封装：把配置来源包成「现读 + 订阅」两件事，并给出派生值（阈值、超时）。
  * **不缓存** —— 用户改设置要立刻生效。
+ *
+ * 端口形状与 0.1.6 时逐字相同，所以本文件在设置接缝迁移里**一行都没改**：
+ * 变的只是装配点（`src/index.ts` 收到的是 Loader 的 `Volatile` 引用面，
+ * 写回走 `ctx.settings.mutate`）。这正是分层的收益。
  * @module dsh-ds-balance/services/config-service
  */
 
@@ -11,7 +15,7 @@ import { ValidationError } from '../domain/errors.js'
 import { thresholdsOf } from '../domain/severity.js'
 import { resolveTimeoutMs, type Config } from '../config.js'
 
-/** 配置来源。生产里包 `ctx.settings` 的 scope，测试里给替身。 */
+/** 配置来源。生产里是 Loader 引用面 + `ctx.settings.mutate`，测试里给替身。 */
 export interface ConfigSource {
   /** 现读当前解析值。 */
   get(): Config
@@ -20,8 +24,12 @@ export interface ConfigSource {
   /**
    * 把补丁合并进用户层并持久化。
    *
-   * 可选：装配里可能没有设置服务，此时配置只读。**schema 校验失败会 reject**，
+   * 可选：装配里可能没有设置服务，此时配置只读。**宿主拒绝写入会 reject**，
    * 调用方要把它翻成 `422`。
+   *
+   * 跨字段约束**不在这一层**：宿主侧已经没有钩子，写入侧的先行校验在
+   * `src/http/handlers.ts`（它比别处多一层我们的代码），消费侧的兜底在
+   * `src/config.ts` 的 `resolveThresholdPairs`。
    */
   update?(patch: Record<string, unknown>): Promise<void>
 }

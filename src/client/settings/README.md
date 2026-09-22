@@ -12,7 +12,7 @@
 ### BalanceSettingsCard.tsx
 
 - 职责：卡片本体。持有分组展开一份局部状态；把 `useConfigForm` 的状态翻译成 JSX。
-- 关键导出：`BalanceSettingsCard`、`BalanceSettingsCardProps`，并转发 `SettingsScope`。
+- 关键导出：`BalanceSettingsCard`、`BalanceSettingsCardProps`，并转发 `ConfigFormOf`（对官方 `ConfigForm<Record<string, unknown>>` 的收窄别名）。
 - 分组：连接 → 展示 → 阈值 → 刷新。这是 UI 的排列顺序（按使用频率）；宿主 `Config` 的字段顺序是 连接 → 刷新 → 展示 → 阈值，**两者有意不同**，见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md) 的关键决策。
 - 连接组是**两段式**：外面是只读的凭据状态（`ReadOnlyControl`，继承官方、不可改）与可编辑的 Base URL；二级「自定义设置」折叠里只有**凭据引用名**（`apiKeyRef`，默认收起）。
   **界面上唯一的 API Key 就是那个只读框** —— 卡片不再提供填 Key 的入口；Key 仍可由配置文件给出，所以 schema 与写入面没动。
@@ -64,33 +64,34 @@
 ### use-config-form.ts
 
 - 职责：字段规格表、草稿状态机、保存与读回判定，以及「测试连接」的本地模拟。
-- 关键导出：`useConfigForm`、`SettingsScope`、`SettingsScopeSnapshotLike`、`CONFIG_FIELDS`、`SPEC_BY_FIELD`、`FieldState`、`ConfigFormState`、`TestState`、`ConfigFormApi`、`textField` / `numberField` / `selectField`、`currencyCodes`、`AUTO_CURRENCY`、`KNOWN_CURRENCIES`、`probeFailure`、`TEST_LATENCY_MS`、`THRESHOLD_PAIRS`、`thresholdsOk`、`orderPairWrites`。
+- 关键导出：`useConfigForm`、`writeFieldValue`、`ConfigFormOf`、`CONFIG_FIELDS`、`SPEC_BY_FIELD`、`FieldState`、`ConfigFormState`、`TestState`、`ConfigFormApi`、`textField` / `numberField` / `selectField`、`currencyCodes`、`AUTO_CURRENCY`、`KNOWN_CURRENCIES`、`probeFailure`、`TEST_LATENCY_MS`、`THRESHOLD_PAIRS`、`thresholdsOk`。
 - **成对校验**：`thresholdsOk` 判「同一币种内告急 < 预警」，草稿为空时按**默认值**算（不是旧值），
   所以 `THRESHOLD_PAIRS` 里存了一份默认值 —— 两个半体不许值导入，这份抄写由 [test/threshold-pairs.test.ts](../../../test/threshold-pairs.test.ts) 对着宿主 schema 对账。
-- **成对写入要排序**：宿主那道校验看的是合并后的完整值，`orderPairWrites` 保证每一步中间态都合法。理由见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)。
+- **保存是一次原子提交**：`form.mutate(ops, revision)` 把全部字段放进同一道修订栅栏、一次宿主校验、一次落盘决定，
+  所以**没有中间态**，成对字段的写入顺序不需要排。原先那个 `orderPairWrites` 因此退役（见接缝迁移的决策记录）。
 - **失焦才提示**：`touch` / `touched` 记「哪些字段失焦过」，卡片据此决定要不要显示成对提示，避免打字中途闪一下。
   保存按钮不按这条走 —— 它看 `state.invalid`，有非法项立刻置灰。
 - `CONFIG_FIELDS` 是字段清单的唯一来源：`SPEC_BY_FIELD` 由它派生，卡片渲染的每个字段都必须在这里登记。
-- 被谁依赖：`BalanceSettingsCard.tsx`；`src/client/index.tsx` 只用它的两个类型。
-- 改后必测：字段名与宿主 `Config` 一一对应；保存后的读回判定（见下）；`probeFailure` 的两条失败规则。
+- 被谁依赖：`BalanceSettingsCard.tsx`、`src/client/index.tsx`（`writeFieldValue` 供浮层「改用 X」）。
+- 改后必测：字段名与宿主 `Config` 一一对应；`set` 返回值的透传（见下）；`probeFailure` 的两条失败规则。
 
 ## 对外事实
 
-### SettingsScope 是最小依赖面
+### ConfigForm 是最小依赖面
 
-- 只有四个成员：`getSnapshot()`、`subscribe(listener)`、`set(field, value)`、`unset(field)`。
-- 快照只取三片：`value`、`user`、`writable`（`SettingsScopeSnapshotLike`）。
-- 真实 `ctx.settingsScope.bind()` 的快照还带 `status` / `base` / `revision` / `mode`，多余字段不影响结构兼容。
-- 适配层在 `src/client/index.tsx` 的 `adaptScope`：它把 `value` 的 `undefined` 收窄成 `{}`、把 `user` 收窄成对象，并在方法缺失时退化成只读。
-- 适配层必须返回引用稳定的对象，并在 `apply` 期建一次；`subscribe` / `getSnapshot` 都以它为依赖，每帧换新对象会导致每帧重订阅。
-- 改这个接口就是改跨文件契约，必须同时改 `src/client/index.tsx` 的适配层。
+- 依赖面就是**官方的 `ctx.configForms.get(ENTRY_ID)`**，没有自家适配层：`getSnapshot()`、`subscribe(listener)`、
+  `mutate(ops, revision)`、`set(field, value)`、`unset(field)`。
+- 卡片只取快照里的四片：`value`（可为 `undefined`，首帧如此）、`user`、`writable`、`status === 'ready'`（收成 `available`）。
+- **`available` 为假时卡片什么都不渲染**：与官方每张卡片一致（`ui-primitives` 的 `SettingsFormModel` 同样按 `status === 'ready'` 判）。
+  空控件配一个能点的保存按钮，比不渲染更坏。
+- 表单对象在 `apply` 期建一次、引用稳定，所以订阅回调与 `getSnapshot` 都不会每帧换新。
+- 快照必须**引用稳定**地交给 `useSyncExternalStore`：`useConfigForm` 里那层缓存就是为它准备的（`asRecord(undefined)` 每次都造新对象）。
 
-### 保存成败靠读回快照判定
+### 保存成败由返回值直接给出
 
-- 宿主拒绝写入时**不抛错**：`set` / `unset` 正常 resolve。
-- 因此每个字段写完都要读回：`clear` 要求 `user` 层不再有该字段；`set` 要求 `user` 层有该字段且值相等（`landedWrite`）。
-- 任一字段没落定即整体判失败，草稿保留，footer 出 `role="status"` 提示。
-- `set` / `unset` 的返回值必须原样透传（真实实现返回 Promise）；把 Promise 丢掉，读回时永远看不到落定，每次保存都会误报失败。
+- `set` / `unset` / `mutate` 返回 `Promise<boolean>`：**true = 宿主接受，false = 拒绝或整批跳过**（传输失败才 reject）。
+- 所以「写完读回 user 层猜成败」那一套（原 `settle` / `landedWrite`）已经删掉 —— 判据更少，也更准。
+- 保存是**一次 `mutate`**：草稿全量折成 ops 一起提交，接受就清草稿、拒绝就保留草稿并出 `role="status"` 提示。
 
 ### 纵向间距只有两个所有者
 
@@ -103,6 +104,6 @@
 ## 依赖面
 
 - 运行时只 `require` `react`、`react/jsx-runtime` 与 `@deepseek-ai/dsh-client-ui-primitives`，其余全部内联。
-- 用到的原语：`DisclosureRow`、`Menu`、`Tag`，以及 `IconChevronDownOutline14` / `IconInspectOutline12` / `IconApiOutline14` / `IconGlobeOutline14` / `IconWarningOutline16` / `IconRefreshOutline14`。
+- 用到的原语：`DisclosureRow`、`Menu`、`Tag`，以及 `IconChevronDownOutlineRegular` / `IconApiOutlineRegular` / `IconGlobeOutlineRegular` / `IconWarningOutlineRegular` / `IconRefreshOutlineRegular`（图标按**笔画粗细**分 `Regular` / `Medium`，尺寸走 `size` prop）。
 - 颜色只走 `--dsw-alias-*` 语义令牌；主题信号只有 CSS 变量，不写 `prefers-color-scheme` 或 `[data-ds-dark-theme]`。
 - 类名拼接用 `clsx`（devDependency，构建期内联）。

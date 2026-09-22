@@ -1,34 +1,65 @@
 /**
- * 浏览器半边入口：注册词典、Plugins 页里的配置卡片与左下角条目。
+ * 浏览器半边入口：注册词典、该行 Configure 子页上的配置卡片与左下角条目。
  *
- * 这两半各占一个 slot，互不依赖；配置卡片挂在 `plugins.bundle.config` 上，
- * 宿主按**包名**取这一格，设置命名空间只用来绑作用域。
+ * 这两半各占一个 slot，互不依赖；配置卡片挂在 `plugins.row.config` 上，
+ * key 是 `<包名>#<行 id>`。
  *
- * 配置那一格另有一层**能力探测**（不查版本号）：旧宿主根本没有这一格，
- * 注册会一直等下去、也不报错。探测只决定要不要在浮层里提示，不参与注册 ——
+ * 两侧共用**同一个** {@link ConfigFormOf}：`ctx.configForms.get(ENTRY_ID)` 在 apply 期
+ * 建一次、引用稳定。左下角条目不在 `plugins.row.config` 里，拿不到 slot props 递来的
+ * form —— 而那个 props 本来就是同一个对象（宿主 `manager-store.ts:455` 就是
+ * `id => this.ctx.configForms.get(id)`），所以只留这一条真源，不再有第二条读路径。
+ *
+ * 配置那一格另有一层**能力探测**（不查版本号）：卡片拿不到表单时宿主不会报错，
+ * 只会静默什么都不显示。探测只决定要不要在浮层里提示，不参与注册 ——
  * 槽真的在时，下面那次 `inject` 照旧正常注册。见 [config-slot.ts](config-slot.ts)。
  * @module dsh-ds-balance/client
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useSyncExternalStore, type ReactNode } from 'react'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 // 类型导入即声明：这两行让下面两个 slot 键的契约进入类型系统。
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { BalanceSettingsCard } from './settings/BalanceSettingsCard.tsx'
 import { writeFieldValue } from './settings/use-config-form.ts'
-import type { SettingsScope, SettingsScopeSnapshotLike } from './settings/use-config-form.ts'
+import type { ConfigFormOf } from './settings/use-config-form.ts'
 import { SidebarBalance, type PluginsNavigation } from './sidebar/SidebarBalance.tsx'
 // 副作用导入：修正宿主 .footerActions 的排版遗漏，见 .agents/notes/2026-09-17-footer-stack-override.md。
 import './sidebar/footer-stack.module.css'
 import { NS, en, zh, type LocaleKey } from './locales.ts'
 import { CONFIG_SLOT, createConfigSlotProbe, type ConfigSlotProbe } from './config-slot.ts'
 
-/** 设置命名空间：与宿主 `SETTINGS_NAMESPACE` 逐字一致。 */
-export const SETTINGS_NAMESPACE = 'ds-balance'
+/**
+ * 本插件那一行的 Loader 条目 id —— **逐字抄自宿主半边的 `src/config.ts`**。
+ *
+ * 不许跨半体值导入（[src/AGENTS.md](../AGENTS.md)），所以这里是第二份字面量；
+ * 两份必须逐字相等，且等于 `package.json` 的 `name` 与 `cordis.patch.yml` 的行 id ——
+ * 三条由 `test/artifacts.test.ts` 对账。0.1.7 起它同时是**设置命名空间**：
+ * 客户端按它取表单，写错的表现是卡片在、但拿不到 form。
+ */
+export const ENTRY_ID = 'dsh-ds-balance'
+
+/**
+ * `plugins.row.config` 的 key。
+ *
+ * 宿主 `rowConfigKey(bundle, rowId)`（`config-ledger.ts:36-38`）逐字是
+ * `<包名>#<行 id>`；本插件两者相同，所以这个值看起来像写重复了。
+ *
+ * **写成字面量而不是拼接**：它是宿主**逐字比较**的键，而产物级断言
+ * （`test/artifacts.test.ts`）要在打包后的信封里照字面找到它 —— 拼接出来的表达式
+ * 在产物里是一段代码，不是一个键。拼接关系由 `test/redlines.test.ts` 对账。
+ */
+export const ROW_CONFIG_KEY = 'dsh-ds-balance#dsh-ds-balance'
+
+/**
+ * 左下角条目在 `sidebar.footer.action` 里的 slot id。
+ *
+ * **它不是设置命名空间**，0.1.7 起与配置无关；与宿主半边的 `SIDEBAR_ENTRY_ID` 逐字一致。
+ */
+export const SIDEBAR_ENTRY_ID = 'ds-balance'
 
 /** 两条半体共享的默认值，用于快照缺字段时兜底。与宿主 schema 的默认值一致。 */
 const DEFAULT_CONFIG = {
@@ -39,20 +70,15 @@ const DEFAULT_CONFIG = {
 
 /**
  * 运行时服务门禁：删任何一项都会让 `apply` 静默不跑。
- * 这里只需要 slot、词典与设置作用域三个服务。
+ *
+ * 只留**永远在**的两项。`configForms` **不在这里**：它是可选服务，由 `apply` 内的
+ * `ctx.inject` 把门 —— 缺它只该丢掉配置卡片，不该把左下角圆环一起拖死
+ * （[src/AGENTS.md](../AGENTS.md) 的可选服务规则）。
  */
-export const inject = ['slots', 'locale', 'settingsScope']
+export const inject = ['slots', 'locale']
 
 /** 组件拿到的 `t` 形状。真实类型来自 slot 的 locale 座位，这里只约束键集。 */
 type Translate = (key: LocaleKey) => string
-
-/** 宿主作用域的形状，只声明适配层真正会碰到的成员。 */
-interface RawScope {
-  getSnapshot?: () => { value?: unknown; user?: unknown; writable?: unknown } | undefined
-  subscribe?: (listener: () => void) => () => void
-  set?: (field: string, value: unknown) => void
-  unset?: (field: string) => void
-}
 
 /** 把任意值收窄成普通对象；数组与 null 都当作空对象。 */
 function asRecord(value: unknown): Record<string, unknown> {
@@ -62,58 +88,33 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /**
- * 把宿主返回的作用域包成卡片依赖的最小面。
+ * 订阅配置表单的快照。
  *
- * 两处刻意为之：
- * 1. 用鸭子类型而不是断言具体实现，缺方法时退化成只读，不让整张卡片装不上。
- * 2. `set` / `unset` 的返回值原样透传。宿主拒绝写入时不抛错，调用方要靠快照
- *    的 user 层读回判定成败；把 Promise 丢掉会让每次保存都误报失败。
+ * 官方契约明写 `getSnapshot()` 在两个快照之间返回**同一个引用**，所以可以直接交给
+ * `useSyncExternalStore`，不需要外面再包一层缓存。
+ * @param form - 该条目的配置表单，apply 期建一次，引用稳定。
+ * @returns 当前快照。
  */
-function adaptScope(raw: unknown): SettingsScope {
-  const scope = raw as RawScope
-  return {
-    getSnapshot: (): SettingsScopeSnapshotLike => {
-      const snapshot = typeof scope.getSnapshot === 'function' ? scope.getSnapshot() : undefined
-      return {
-        value: asRecord(snapshot?.value),
-        user: asRecord(snapshot?.user),
-        writable: typeof snapshot?.writable === 'boolean' ? snapshot.writable : true,
-      }
-    },
-    subscribe: (listener) => {
-      const dispose = typeof scope.subscribe === 'function' ? scope.subscribe(listener) : undefined
-      return typeof dispose === 'function' ? dispose : () => {}
-    },
-    set: (field, value) => scope.set?.(field, value),
-    unset: (field) => scope.unset?.(field),
-  }
+function useFormSnapshot(form: ConfigFormOf): ConfigFormSnapshot<Record<string, unknown>> {
+  const subscribe = useCallback((listener: () => void) => form.subscribe(listener), [form])
+  const getSnapshot = useCallback(() => form.getSnapshot(), [form])
+  return useSyncExternalStore(subscribe, getSnapshot)
 }
 
-/** 订阅设置快照。对象在 `apply` 期建一次，引用稳定，不会每帧重订阅。 */
-function useScopeValue(scope: SettingsScope): Record<string, unknown> {
-  const [value, setValue] = useState(() => scope.getSnapshot().value)
-  useEffect(() => {
-    setValue(scope.getSnapshot().value)
-    return scope.subscribe(() => { setValue(scope.getSnapshot().value) })
-  }, [scope])
-  return value
+/** 生效值；缺字段（首帧）时收窄成空对象，读路径保持全域可读。 */
+function useScopeValue(form: ConfigFormOf): Record<string, unknown> {
+  return asRecord(useFormSnapshot(form).value)
 }
 
 /**
- * 订阅设置作用域的可写位。
+ * 订阅「宿主文档是否接受写入」。
  *
- * 宿主存储只读（`writable === false`）时它是 false：界面据此禁用写入入口，
- * 而不是让用户点完发现什么都没发生。
- * @param scope - 设置作用域。
+ * 为 false 时界面据此禁用写入入口，而不是让用户点完发现什么都没发生。
+ * @param form - 该条目的配置表单。
  * @returns 当前是否接受写入。
  */
-function useScopeWritable(scope: SettingsScope): boolean {
-  const [writable, setWritable] = useState(() => scope.getSnapshot().writable)
-  useEffect(() => {
-    setWritable(scope.getSnapshot().writable)
-    return scope.subscribe(() => { setWritable(scope.getSnapshot().writable) })
-  }, [scope])
-  return writable
+function useScopeWritable(form: ConfigFormOf): boolean {
+  return useFormSnapshot(form).writable !== false
 }
 
 /** 从快照里取展示币种。 */
@@ -182,17 +183,18 @@ interface SidebarSeat {
 function SidebarSeatComponent(
   props: {
     seat: SidebarSeat
-    scope: SettingsScope
+    form: ConfigFormOf
     configSlotProbe: ConfigSlotProbe
     pluginsNavigation: PluginsNavigation
   },
 ): ReactNode {
-  const value = useScopeValue(props.scope)
-  const writable = useScopeWritable(props.scope)
-  // 与设置卡片共用同一条写路径：写进 ds-balance 作用域，并读回 user 层确认落盘。
+  const value = useScopeValue(props.form)
+  const writable = useScopeWritable(props.form)
+  // 与设置卡片共用同一条写路径：写进本插件那一行的设置命名空间。
+  // 成败由 writeFieldValue 的返回值直接给出，不再读回 user 层猜。
   const selectCurrency = useCallback(
-    (currency: string): Promise<boolean> => writeFieldValue(props.scope, 'displayCurrency', currency),
-    [props.scope],
+    (currency: string): Promise<boolean> => writeFieldValue(props.form, 'displayCurrency', currency),
+    [props.form],
   )
   return (
     <SidebarBalance
@@ -215,23 +217,29 @@ function SidebarSeatComponent(
 
 /** 配置卡片的座位 props。 */
 interface SettingsSeat {
-  /** 槽的 owner props：`page` 是 bundle 详情页里的表单，`summary` 是列表里的一行说明。 */
+  /**
+   * 槽的 owner props 两个视图：
+   * `page` 是那一行 Configure 子页里的表单；`summary` 是**该行没有描述时的回退**，
+   * 渲染在标题下方那一行（宿主 `PluginManagerPage.tsx:496`）。
+   */
   view: 'summary' | 'page'
   t: unknown
 }
 
 /**
- * Plugins 页里的配置卡片。
+ * Plugins 页里的配置卡片与该行的说明行。
  *
- * 这个槽的 owner props 有两个视图；本卡片只有表单形态，`summary` 那一档留空返回 null
- * （列表里的一行说明由页面自己画）。宿主现在只以 `page` 渲染这一格。
+ * `summary` 不能再返回 null：本包没有发布展示元数据（`locale/*.json` 的 `meta.title` /
+ * `meta.description`），所以行描述**永远是空的**，这一档必然被渲染 —— 返回 null 会在
+ * 标题下留一个空 `<p>`。
  */
-function SettingsSeatComponent(props: { seat: SettingsSeat; scope: SettingsScope }): ReactNode {
+function SettingsSeatComponent(props: { seat: SettingsSeat; form: ConfigFormOf }): ReactNode {
+  const t = props.seat.t as Translate
   switch (props.seat.view) {
     case 'page':
-      return <BalanceSettingsCard t={props.seat.t as Translate} scope={props.scope} />
+      return <BalanceSettingsCard t={t} form={props.form} />
     case 'summary':
-      return null
+      return t('settings.summary')
   }
 }
 
@@ -296,8 +304,6 @@ function createPluginsNavigation(): PluginsNavigationHandle {
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ds-balance: dictionaries')
 
-  const scope = adaptScope(ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE }))
-
   // 探测配置那一格在不在：新宿主由 ui-plugin-manager 的浏览器半边在 apply 期声明它，
   // 旧宿主永不声明。三种态都可逆，所以晚到的声明会把已经出现的提示撤掉。
   const configSlotProbe = createConfigSlotProbe()
@@ -327,26 +333,33 @@ export function apply(ctx: ClientContext): void {
     }), 'ds-balance: plugins panel navigation')
   })
 
-  // 配置卡片的 key 逐字等于 package.json 的 name：bundle 详情页按包名取这一格，
-  // 写错就整块不出现，也不会报错。设置命名空间只用来绑作用域，与它无关。
-  ctx.slots.inject(CONFIG_SLOT, () => {
-    configSlotProbe.markDeclared()
-    return ctx.slots.register(
-      { name: CONFIG_SLOT, key: 'dsh-ds-balance', locale: NS },
-      (seat: SettingsSeat) => <SettingsSeatComponent seat={seat} scope={scope} />,
-    )
-  })
+  // 配置是可选服务：缺它只丢卡片，左下角圆环照常。
+  ctx.inject(['configForms'], (configCtx) => {
+    // 一条读路径、一条写路径。两侧共用同一个 form —— 左下角条目不在 plugins.row.config
+    // 里、拿不到 slot props，而 props 里的 form 本来就是同一个对象，没有第二条真源。
+    const form = configCtx.configForms.get<Record<string, unknown>>(ENTRY_ID)
 
-  ctx.slots.inject('sidebar.footer.action', () =>
-    ctx.slots.register(
-      { name: 'sidebar.footer.action', id: SETTINGS_NAMESPACE, order: 0, locale: NS },
-      (seat: SidebarSeat) => (
-        <SidebarSeatComponent
-          seat={seat}
-          scope={scope}
-          configSlotProbe={configSlotProbe}
-          pluginsNavigation={pluginsNavigation}
-        />
-      ),
-    ))
+    // 卡片的 key 是 rowConfigKey(包名, 行 id)：宿主按它决定这一行有没有 Configure 控件，
+    // 写错就整块不出现，也不会报错。
+    ctx.slots.inject(CONFIG_SLOT, () => {
+      configSlotProbe.markDeclared()
+      return ctx.slots.register(
+        { name: CONFIG_SLOT, key: ROW_CONFIG_KEY, locale: NS },
+        (seat: SettingsSeat) => <SettingsSeatComponent seat={seat} form={form} />,
+      )
+    })
+
+    ctx.slots.inject('sidebar.footer.action', () =>
+      ctx.slots.register(
+        { name: 'sidebar.footer.action', id: SIDEBAR_ENTRY_ID, order: 0, locale: NS },
+        (seat: SidebarSeat) => (
+          <SidebarSeatComponent
+            seat={seat}
+            form={form}
+            configSlotProbe={configSlotProbe}
+            pluginsNavigation={pluginsNavigation}
+          />
+        ),
+      ))
+  })
 }

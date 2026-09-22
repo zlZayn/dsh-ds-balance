@@ -297,6 +297,25 @@ describe('POST /api/v1/config', () => {
     expect(h.updates()).toEqual([])
   })
 
+  it('跨字段先验：告急不小于预警时 422，且不写入', async () => {
+    // 0.1.7 起宿主侧不再强制这条约束（register 的 validate 被删、schema 没有跨字段钩子），
+    // 所以这条端点是写入侧唯一还拦得住的地方。见 src/config.ts 的 validateThresholds。
+    const h = harness()
+    const response = await handleConfigUpdate(post('/api/v1/config', { cnyWarn: 4, cnyCritical: 4 }), h.deps)
+    expect(response.status).toBe(422)
+    expect((await readJson(response)).error.message).toContain('CNY')
+    expect(h.updates()).toEqual([])
+  })
+
+  it('跨字段先验：只写一半时按合并后的完整值判', async () => {
+    // 现行配置是 10 / 5；只把告急抬到 10 就越线了，只看补丁本身是看不出来的。
+    const h = harness()
+    expect((await handleConfigUpdate(post('/api/v1/config', { cnyCritical: 10 }), h.deps)).status).toBe(422)
+    expect(h.updates()).toEqual([])
+    // 合法的一半照旧写得进去。
+    expect((await handleConfigUpdate(post('/api/v1/config', { cnyCritical: 1 }), h.deps)).status).toBe(200)
+  })
+
   it('请求体不是 JSON 对象时 422', async () => {
     const h = harness()
     expect((await handleConfigUpdate(post('/api/v1/config', [1, 2]), h.deps)).status).toBe(422)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CONFIG_SLOT_TIMEOUT_MS, CONFIG_SLOT_WARNING, createConfigSlotProbe,
+  CONFIG_SLOT, CONFIG_SLOT_TIMEOUT_MS, CONFIG_SLOT_WARNING, createConfigSlotProbe,
 } from '../src/client/config-slot.ts'
 
 /**
@@ -101,7 +101,11 @@ describe('配置槽探测', () => {
     expect(CONFIG_SLOT_WARNING.startsWith('[WARN] ')).toBe(true)
     // 非 ASCII 一律不许出现：前缀之外还夹中文或 emoji 就是违约。
     expect(/^[\x20-\x7e]+$/.test(CONFIG_SLOT_WARNING)).toBe(true)
-    expect(CONFIG_SLOT_WARNING).toContain('plugins.bundle.config')
+    // 文案必须点名**卡片真正注册的那一格**。0.1.7 把它从 bundle 槽换到了 row 槽，
+    // 文案不跟着换就会指着一个我们根本没用的槽 —— 提示比没有提示更误事。
+    expect(CONFIG_SLOT_WARNING).toContain(CONFIG_SLOT)
+    expect(CONFIG_SLOT).toBe('plugins.row.config')
+    expect(CONFIG_SLOT_WARNING).not.toContain('plugins.bundle.config')
     expect(CONFIG_SLOT_WARNING).toContain('engines.dsh')
   })
 })

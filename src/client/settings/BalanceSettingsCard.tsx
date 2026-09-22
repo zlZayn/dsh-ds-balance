@@ -1,5 +1,5 @@
 /**
- * 「DeepSeek 余额」在 Plugins 页里该 bundle 详情页上的配置卡片：标题由页面画，卡内只有控件与保存。
+ * 「DeepSeek 余额」在该行 Configure 子页上的配置卡片：标题、面包屑与描述由页面画，卡内只有控件与保存。
  * 只做配置：连接、展示、阈值、刷新四组；不展示任何额度信息，也不按阈值给任何东西上色。
  * 分组按使用频率排序：刷新三项有合理默认值，放最后。
  * @module dsh-ds-balance/client/settings/BalanceSettingsCard
@@ -7,7 +7,7 @@
 
 import { useState, type ReactNode } from 'react'
 import {
-  IconApiOutline14, IconGlobeOutline14, IconRefreshOutline14, IconWarningOutline16,
+  IconApiOutlineRegular, IconGlobeOutlineRegular, IconRefreshOutlineRegular, IconWarningOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { interpolate } from '../locales.ts'
 import type { LocaleKey } from '../locales.ts'
@@ -17,20 +17,20 @@ import {
 } from './fields.tsx'
 import type { FieldStatus, SelectorOption } from './fields.tsx'
 import { AUTO_CURRENCY, currencyCodes, THRESHOLD_PAIRS, useConfigForm } from './use-config-form.ts'
-import type { SettingsScope } from './use-config-form.ts'
+import type { ConfigFormOf } from './use-config-form.ts'
 import { credentialViewOf, useCredentialState } from './use-credential-state.ts'
 import type { CredentialView } from './use-credential-state.ts'
 import css from './BalanceSettingsCard.module.css'
 import fieldCss from './fields.module.css'
 
-export type { SettingsScope } from './use-config-form.ts'
+export type { ConfigFormOf } from './use-config-form.ts'
 
 /** 卡片要求的属性。t 由框架按注册时声明的字典命名空间注入。 */
 export interface BalanceSettingsCardProps {
   /** 词典读取器，键域来自本插件的命名空间。 */
   t: (key: LocaleKey) => string
-  /** 设置作用域；真实 ctx.settingsScope.bind() 的返回值结构上满足它。 */
-  scope: SettingsScope
+  /** 该条目的配置表单，来自 `ctx.configForms.get(ENTRY_ID)`。 */
+  form: ConfigFormOf
 }
 
 /** 与宿主 schema 的默认值逐字一致的凭据引用名；快照缺字段时兜底。 */
@@ -99,11 +99,11 @@ function isFilled(value: unknown): boolean {
 
 /**
  * 渲染配置卡片。
- * @param props - 词典读取器与设置作用域。
- * @returns 卡片元素。
+ * @param props - 词典读取器与配置表单。
+ * @returns 卡片元素；宿主没在服务这个命名空间时**什么都不渲染**。
  */
-export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
-  const form = useConfigForm(scope)
+export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCardProps) {
+  const form = useConfigForm(scopedForm)
   const [groupOpen, setGroupOpen] = useState<Readonly<Record<GroupKey, boolean>>>(DEFAULT_GROUP_OPEN)
 
   // 各组独立展开，不做手风琴：多项同时展开是刻意的（官方 PluginCard.tsx:8-9 的注释）。
@@ -119,7 +119,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
     // 成对校验不是字段级 invalid，得单独问一次：否则收起的阈值组会挡住「保存为什么是灰的」。
     || (key === 'thresholds' && THRESHOLD_PAIRS.some(pair => !form.thresholdPairOk(pair.currency)))
 
-  const { writable, dirty, invalid, saving, failed } = form.state
+  const { available, writable, dirty, invalid, saving, failed } = form.state
   const disabled = !writable || saving
 
   // 凭据字段的状态胶囊：只描述已经存下来的事实，不看编辑中的草稿。
@@ -266,13 +266,18 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
       ? { text: t('settings.invalid'), className: css.notice }
       : null
 
+  // 宿主没在服务这个命名空间（错的 ENTRY_ID、陌生宿主、或远程页面停在 memory 模式）时
+  // **什么都不渲染**：空控件配一个能点的保存按钮，比不渲染更坏。官方每张卡片都这么处理。
+  // 放在所有 hook 之后 —— 提前 return 会换掉 hook 顺序。
+  if (!available) return null
+
   return (
     // 页面把这一格渲染在自己的 <section> 里：无外框的一列控件，所以根节点是 div、不是 li。
     <div className={css.form}>
       {writable ? null : <p className={css.readOnly} role="status">{t('settings.readOnly')}</p>}
 
       <FieldGroup
-        icon={<IconApiOutline14 size={14} />}
+        icon={<IconApiOutlineRegular size={14} />}
         title={t('settings.group.connection')}
         open={groupOpenNow('connection')}
         onToggle={() => { toggleGroup('connection') }}
@@ -320,7 +325,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
       </FieldGroup>
 
       <FieldGroup
-        icon={<IconGlobeOutline14 size={14} />}
+        icon={<IconGlobeOutlineRegular size={14} />}
         title={t('settings.group.display')}
         open={groupOpenNow('display')}
         onToggle={() => { toggleGroup('display') }}
@@ -329,7 +334,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
       </FieldGroup>
 
       <FieldGroup
-        icon={<IconWarningOutline16 size={14} />}
+        icon={<IconWarningOutlineRegular size={14} />}
         title={t('settings.group.thresholds')}
         note={t('settings.hint.threshold')}
         open={groupOpenNow('thresholds')}
@@ -343,7 +348,7 @@ export function BalanceSettingsCard({ t, scope }: BalanceSettingsCardProps) {
 
       {/* 刷新三项都有合理默认值，属于装了就不用动的那一档，因此排在最后。 */}
       <FieldGroup
-        icon={<IconRefreshOutline14 size={14} />}
+        icon={<IconRefreshOutlineRegular size={14} />}
         title={t('settings.group.refresh')}
         note={t('settings.hint.refreshAdvanced')}
         open={groupOpenNow('refresh')}

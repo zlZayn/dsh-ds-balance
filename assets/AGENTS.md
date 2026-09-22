@@ -4,6 +4,18 @@
 
 只讲**在这里要怎么干**；目录里有什么、被谁引用、图长什么样 → [README.md](README.md)。
 
+## 入口已变（四张设置图待重截）
+
+配置卡片的入口换过一次：以前它在 **bundle 详情页**里（点插件名进详情页就能看到表单），
+现在是**那一行自己的 Configure 子页** —— 进 Plugins → Installed → 插件详情页之后，还要点该行右端的 **Configure**。
+变化的原因见 [决策记录](../.agents/notes/2026-09-22-settings-seam-migration.md)。
+
+- 受影响的四张：`settings-card.png` / `settings-card_en.png` / `settings-cards-position.png` / `settings-cards-position_en.png`。
+- **本轮刻意不重截**：重拍要重启一次宿主并占用维护者的浏览器，时机由维护者定。
+- 重拍时把下面「怎么截」的第 3 步读成：**Plugins → Installed → 点插件名 → 点该行的 Configure**；
+  列表那张（`settings-cards-position*.png`）判据不变，仍然**不用**点进详情页。
+- **文件名不许改**：根 README 与 README_en 按名引用，重拍后同名覆盖。
+
 ## 什么时候必须重截
 
 判据是「卡片渲染出来的东西有没有变」，不是「改了哪个文件」。

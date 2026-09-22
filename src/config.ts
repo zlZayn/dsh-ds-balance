@@ -7,10 +7,34 @@
  */
 
 import z from '@deepseek-ai/schemastery'
+import type { Volatile } from '@deepseek-ai/cordis'
 import { DEFAULT_BASE_URL } from './ports/deepseek-client.js'
 
-/** 设置命名空间：与浏览器半边逐字一致，是两半的配对键。 */
-export const SETTINGS_NAMESPACE = 'ds-balance'
+/**
+ * 本插件那一行的 Loader 条目 id —— **0.1.7 起它就是设置命名空间**。
+ *
+ * 三处按它索引，必须逐字一致：
+ * - 宿主半边写设置：`ctx.settings.mutate(ENTRY_ID, ops)`；
+ * - 浏览器半边读表单：`ctx.configForms.get(ENTRY_ID)`；
+ * - `plugins.row.config` 的 key：`ENTRY_ID + '#' + ENTRY_ID`。
+ *
+ * 真源是 [cordis.patch.yml](../cordis.patch.yml) 的 `insert[0].id`，而它与
+ * `package.json` 的 `name` 相同；三者由 `test/artifacts.test.ts` 对账。
+ * 写错的表现分两种：key 错则该行没有 Configure 控件；id 对但没有 volatile
+ * 字段则控件在、点进去却拿不到 form。
+ *
+ * 浏览器半边**不许**从这里值导入（[src/AGENTS.md](AGENTS.md) 的跨半体禁令），
+ * 它在 `src/client/index.tsx` 里写同一份字面量，由同一条断言对账。
+ */
+export const ENTRY_ID = 'dsh-ds-balance'
+
+/**
+ * 左下角条目在 `sidebar.footer.action` 里的 slot id。
+ *
+ * **它不是设置命名空间**（0.1.7 起与配置无关）—— 把它改成一个新值等于换掉
+ * 那一条目的身份标识，而它与配置毫无关系。
+ */
+export const SIDEBAR_ENTRY_ID = 'ds-balance'
 
 /** `displayCurrency` 的「跟随账户」取值。 */
 export const CURRENCY_AUTO = 'auto'
@@ -67,6 +91,41 @@ export interface Config {
 }
 
 /**
+ * `apply` 实际收到的形状：每个字段都是一枚**只读引用**。
+ *
+ * 全字段都是 `.volatile()` 的，所以 Loader 给进来的是 `Volatile<T>` 而不是值：
+ * 改配置时它把新值提交进运行中的引用并只重挂 volatile 部分 —— 本插件因此
+ * **永不重挂**，`apply` 只跑一次。唯一读法是 `ref.get()`；插件侧没有任何 setter。
+ *
+ * 真源：宿主 `vendor/cosmokit/src/volatile.ts`（`Volatile<T>` 只有 `get()`）与
+ * `vendor/loader/src/config/entry.ts` 的 `_commitVolatile`。
+ */
+export type ConfigRefs = { readonly [K in keyof Config]: Volatile<Config[K]> }
+
+/**
+ * 把引用面解成一份纯值配置。
+ *
+ * **每次现读**：引用里存的永远是最新值，所以不许把它缓存进字段。
+ * @param refs - `apply` 收到的引用面。
+ * @returns 当前生效的纯值配置。
+ */
+export function readConfig(refs: ConfigRefs): Config {
+  return {
+    apiKey: refs.apiKey.get(),
+    apiKeyRef: refs.apiKeyRef.get(),
+    baseUrl: refs.baseUrl.get(),
+    serverRefreshSeconds: refs.serverRefreshSeconds.get(),
+    clientPollSeconds: refs.clientPollSeconds.get(),
+    manualRefreshCooldownSeconds: refs.manualRefreshCooldownSeconds.get(),
+    displayCurrency: refs.displayCurrency.get(),
+    cnyWarn: refs.cnyWarn.get(),
+    cnyCritical: refs.cnyCritical.get(),
+    usdWarn: refs.usdWarn.get(),
+    usdCritical: refs.usdCritical.get(),
+  }
+}
+
+/**
  * 配置字段名闭集。
  *
  * 供 `POST /api/v1/config` 过滤请求体用：不在表里的键一律 `422`，避免脏键被
@@ -90,20 +149,32 @@ export const CONFIG_FIELDS = [
 /**
  * 配置 schema。加载期校验，非法配置 fail loud。
  *
+ * **11 个字段全部 `.volatile()`**，两条独立理由，缺一不可：
+ * 1. 只有 volatile 字段进得了表单 —— 宿主的 `volatileForm()` 在没有 volatile
+ *    字段时返回 `undefined`，该行整条退出 `describe()`，行页的 Configure
+ *    控件在、点进去却拿不到 `form`（宿主 `packages/settings/settings/src/schema.ts`）。
+ *    漏加一个字段不会报错，只会让那一个字段在表单里消失。
+ * 2. 写入路径按 volatile 逐路径放行：非 volatile 路径直接抛
+ *    `Config field "..." is not volatile`（宿主 `settings/src/index.ts` 的
+ *    `write()`）。`apiKey` 不给它加，`POST /api/v1/config` 就会被宿主拒掉。
+ *
+ * 副作用是好的：全字段 volatile ⇒ Loader 永远判「只有 volatile 变了」⇒
+ * 改配置**永不重挂**，`apply` 只跑一次。
+ *
  * 阈值只在这里存储，前端不做金额比较：颜色由后端的 `severity` 决定。
  */
 export const Config = z.object({
-  apiKey: z.string().role('secret').default(''),
-  apiKeyRef: z.string().role('credential-ref').default(DEFAULT_API_KEY_REF),
-  baseUrl: z.string().default(''),
-  serverRefreshSeconds: z.natural().min(10).max(3600).default(60),
-  clientPollSeconds: z.natural().min(5).max(600).default(30),
-  manualRefreshCooldownSeconds: z.natural().min(0).max(600).default(30),
-  displayCurrency: z.string().default(CURRENCY_AUTO),
-  cnyWarn: z.number().min(0).default(10),
-  cnyCritical: z.number().min(0).default(5),
-  usdWarn: z.number().min(0).default(2),
-  usdCritical: z.number().min(0).default(1),
+  apiKey: z.string().role('secret').default('').volatile(),
+  apiKeyRef: z.string().role('credential-ref').default(DEFAULT_API_KEY_REF).volatile(),
+  baseUrl: z.string().default('').volatile(),
+  serverRefreshSeconds: z.natural().min(10).max(3600).default(60).volatile(),
+  clientPollSeconds: z.natural().min(5).max(600).default(30).volatile(),
+  manualRefreshCooldownSeconds: z.natural().min(0).max(600).default(30).volatile(),
+  displayCurrency: z.string().default(CURRENCY_AUTO).volatile(),
+  cnyWarn: z.number().min(0).default(10).volatile(),
+  cnyCritical: z.number().min(0).default(5).volatile(),
+  usdWarn: z.number().min(0).default(2).volatile(),
+  usdCritical: z.number().min(0).default(1).volatile(),
 })
 
 /** 一对阈值：同一币种内的预警与告急。 */
@@ -111,6 +182,15 @@ export interface ThresholdPair {
   readonly currency: string
   readonly warn: keyof Config
   readonly critical: keyof Config
+  /**
+   * 这一对在 schema 里的默认值。
+   *
+   * 消费侧守卫要靠它回落 —— 用户手改配置文件写成非法组合时，我们只能给一个
+   * 「至少是合法且可解释」的值。**与 schema 默认值的一致性由
+   * `test/config.test.ts` 对着 `Config({})` 兜底**，不靠人记。
+   */
+  readonly defaultWarn: number
+  readonly defaultCritical: number
 }
 
 /**
@@ -121,20 +201,28 @@ export interface ThresholdPair {
  * 两边各存一份是因为**宿主与浏览器两个半体不许值导入**；约定本身由测试对着本表兜底。
  */
 export const THRESHOLD_PAIRS: readonly ThresholdPair[] = [
-  { currency: 'CNY', warn: 'cnyWarn', critical: 'cnyCritical' },
-  { currency: 'USD', warn: 'usdWarn', critical: 'usdCritical' },
+  { currency: 'CNY', warn: 'cnyWarn', critical: 'cnyCritical', defaultWarn: 10, defaultCritical: 5 },
+  { currency: 'USD', warn: 'usdWarn', critical: 'usdCritical', defaultWarn: 2, defaultCritical: 1 },
 ]
 
 /**
  * 跨字段校验：每个币种内 `critical` 必须**严格低于** `warn`。
  *
- * 挂在 `ctx.settings.register` 的 `validate` 上，不挂在 schema 上：
- * schemastery 没有 refine / superRefine 这类跨字段钩子，而
- * `SettingsRegisterOptions.validate` 正是为「schema 表达不了的约束」准备的 ——
- * 它拿到的是**合并后、schema 已通过**的完整候选值，抛错即拒绝写入、什么都不落盘。
+ * **0.1.7 起宿主侧不再有强制手段**，这是本轮迁移最硬的一处事实：
+ * - `ctx.settings.register` 连同它的 `validate` 选项一起被删了；
+ * - schemastery 没有 refine / superRefine，也没有 `.check()`（官方
+ *   `docs/cookbook/adding-a-settings-card.md` 承诺了它，但实现里没有这个成员）；
+ * - 根节点套任何 wrapper（`transform` / `intersect`）都会让 `volatileForm()`
+ *   返回 `undefined` ⇒ 该行整条退出 `describe()` ⇒ **卡片彻底不出现**。
  *
- * **它在合并后的完整值上跑**，所以单字段写入会让中间态短暂非法；
- * 客户端把成对的写入排过序（`orderPairWrites`），保证每一步中间态都合法。
+ * 所以这条判据只剩两个落点：
+ * 1. **消费侧守卫** —— [resolveThresholdPairs](#resolvethresholdpairs) 在每次现读时
+ *    把非法的那一对回落成默认值并记一次 warn；
+ * 2. **我们自己的写路径** —— `POST /api/v1/config` 在 `ctx.settings.mutate` 之前
+ *    先跑这里，违反回 `422`（见 `src/http/handlers.ts`）。
+ *
+ * 官方 Plugins 页那条写路径**拦不住**：它是宿主直连的原子 mutate，只跑 schema。
+ * 前端那道 `thresholdsOk` 因此仍是用户体验的唯一防线，而它只影响体验，不是强制。
  *
  * 为什么必须严格低于、不能相等：两者相等时余额恰好压线会被同时判成 warn 与 critical，
  * 「预警」这一档就不存在了。措辞锚在**告急**上 —— 用户要调的是那个偏低的数。
@@ -148,6 +236,34 @@ export function validateThresholds(value: Config): void {
     if (critical < warn) continue
     throw new Error(`${pair.currency} 告急必须低于预警（当前 预警 ${String(warn)} / 告急 ${String(critical)}）`)
   }
+}
+
+/**
+ * 消费侧守卫：把违反约束的那一对**回落成 schema 默认值**。
+ *
+ * 为什么不是「违反就整个插件不可用」：一次手改配置文件写错，惩罚不该是全部功能消失。
+ * 为什么不是「干脆不校验」：那样会出现「预警档不存在」的静默错误 —— 余额恰好压线时
+ * 同时判成 warn 与 critical，正是 `validateThresholds` 要避免的那件事。
+ *
+ * 与 `validateThresholds` 的关系：那个是**判据**（纯函数，违反即抛），本函数是
+ * **消费侧的策略**（不抛，改正并报告）。判据只有一份，两处都用它。
+ * @param value - 现读到的纯值配置。
+ * @returns 修正后的配置，以及被回落过的币种（供调用方各记一次 warn）。
+ */
+export function resolveThresholdPairs(value: Config): { config: Config; violations: readonly string[] } {
+  const violations: string[] = []
+  let config = value
+  for (const pair of THRESHOLD_PAIRS) {
+    if (value[pair.critical] < value[pair.warn]) continue
+    violations.push(pair.currency)
+    if (config === value) config = { ...value }
+    // 字段名是 `keyof Config`（值类型是 11 个字段的并集），逐键赋值 TS 推不出来，
+    // 所以走一次数值视图 —— 这对字段在 schema 里本来就是数字。
+    const numeric = config as unknown as Record<string, number>
+    numeric[pair.warn] = pair.defaultWarn
+    numeric[pair.critical] = pair.defaultCritical
+  }
+  return { config, violations }
 }
 
 /**
