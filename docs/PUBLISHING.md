@@ -10,6 +10,10 @@
 - `npm run check:release` —— 发布态不变量：`dsh.bundle` 加回来了吗、`private` 去掉了吗。
 - `npm run typecheck` 与 `npm test`。
 - `node scripts/acceptance.mjs` —— 打真实上游的端到端验收，需要环境里有 `DEEPSEEK_API_KEY`（**插件日常继承的那把**，不是契约巡检的专用 key）。
+- **`git rev-parse origin/main` 必须等于 `git rev-parse HEAD`** —— 工作流跑的是**远端**那份代码。
+  **没 push 就没有可发的东西**：守卫判的是「上个 tag 到远端 HEAD 之间有没有改动」，而远端上那个区间是空的，
+  它会以「没有可发的」红掉（2026-09-22 就是这么撞的：本地领先 11 个提交、远端还停在 `v2.0.0-alpha.1` 那个提交上）。
+  **先 push，再 dispatch。**
 - `git diff --name-only <上个 tag>..HEAD | node scripts/release-guard.mjs` —— 产物到底变没变。
 - 按下面的判定链定档，然后 `npm version <patch|minor|major> --no-git-tag-version`。
   这一步会同时改 `package.json` 与 `package-lock.json`；只手工改前者会被 CI 拦下。
@@ -46,6 +50,11 @@
 6. 探该版本在不在 npm 上。在就跳过发布，补跑一条流水线不会撞 403。
 7. `npm publish --provenance`。认证走 OIDC，仓库里没有任何长期凭据。
 8. 打 `v<version>` tag 并推送；tag 已存在则跳过。
+
+**它不建 GitHub Release。** 跑完 workflow 只得到 npm 上那个版本 + 一个 tag ——
+1.0.0 与 1.1.0 那两个 Release 是发完之后**手工补建**的：
+`gh release create v<version> --title v<version> --prerelease --notes …`（正式版去掉 `--prerelease`）。
+别以为跑完流水线门面上就齐了。
 
 `dry-run` 输入只做检查与打包，不发布也不打 tag。
 
