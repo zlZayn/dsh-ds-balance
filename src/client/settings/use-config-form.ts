@@ -299,15 +299,18 @@ interface NormalizedSnapshot {
   readonly available: boolean
 }
 
+/** 是不是普通对象（数组与 `null` 都不算）。 */
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null && !Array.isArray(input)
+}
+
 /**
  * 收窄成普通对象；非对象一律当空对象，读路径保持全域可读。
  * @param input - 任意快照分片。
  * @returns 普通对象。
  */
 function asRecord(input: unknown): Record<string, unknown> {
-  return typeof input === 'object' && input !== null && !Array.isArray(input)
-    ? input as Record<string, unknown>
-    : {}
+  return isRecord(input) ? input : {}
 }
 
 /**

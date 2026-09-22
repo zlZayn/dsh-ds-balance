@@ -226,7 +226,7 @@ export async function handleConfigUpdate(request: Request, deps: HttpDeps): Prom
   try {
     const body = await readJsonObject(request)
     if (body === null) return json({ requestId, error: { code: 'VALIDATION', message: 'body must be a JSON object', retryable: false } }, 422)
-    const unknown = Object.keys(body).filter((key) => !(CONFIG_FIELDS as readonly string[]).includes(key))
+    const unknown = Object.keys(body).filter((key) => !CONFIG_FIELDS.some((field) => field === key))
     if (unknown.length > 0) {
       return json({ requestId, error: { code: 'VALIDATION', message: `unknown config field: ${unknown.join(', ')}`, retryable: false } }, 422)
     }

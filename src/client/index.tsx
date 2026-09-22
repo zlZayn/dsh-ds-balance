@@ -88,11 +88,24 @@ export const inject = ['slots', 'locale']
 /** 组件拿到的 `t` 形状。真实类型来自 slot 的 locale 座位，这里只约束键集。 */
 type Translate = (key: LocaleKey) => string
 
+/** 是不是可调用的翻译函数。 */
+function isTranslate(value: unknown): value is Translate {
+  return typeof value === 'function'
+}
+
+/** 收窄座位里的 `t`：宿主没给（类型未知）时回落成「原样返回键」的兜底，绝不崩。 */
+function translateOf(value: unknown): Translate {
+  return isTranslate(value) ? value : (key) => key
+}
+
+/** 是不是普通对象（数组与 `null` 都不算）。 */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /** 把任意值收窄成普通对象；数组与 null 都当作空对象。 */
 function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
+  return isRecord(value) ? value : {}
 }
 
 /**
@@ -207,7 +220,7 @@ function SidebarSeatComponent(
   return (
     <SidebarBalance
       wide={props.seat.wide}
-      t={props.seat.t as Translate}
+      t={translateOf(props.seat.t)}
       configSlotProbe={props.configSlotProbe}
       pluginsNavigation={props.pluginsNavigation}
       onSelectCurrency={selectCurrency}
@@ -246,7 +259,7 @@ interface SettingsSeat {
  * `meta.description`），行描述永远是空的，那一档必然被渲染。
  */
 function SettingsSeatComponent(props: { seat: SettingsSeat; form: ConfigFormOf }): ReactNode {
-  const t = props.seat.t as Translate
+  const t = translateOf(props.seat.t)
   return <BalanceSettingsCard t={t} form={props.form} />
 }
 
@@ -257,17 +270,6 @@ function SettingsSeatComponent(props: { seat: SettingsSeat; form: ConfigFormOf }
  * 跨插件值导入是本仓红线。
  */
 const PLUGINS_PANEL_ID = 'plugins'
-
-/**
- * 宿主 layout 服务里我们真正会碰到的成员。
- *
- * 鸭子类型收窄：本仓不装 `@deepseek-ai/dsh-client-ui-layout`，不 import 它的类型 ——
- * 与下面 `RawScope` 同一套做法。公开面见宿主 `ui-layout/src/client/service.ts:28-52` 的 `ILayout`。
- */
-interface LayoutFace {
-  /** @param panelId - 已注册的 main 面板 key；未注册时**会抛**。 */
-  selectPanel?: (panelId: string) => void
-}
 
 /** apply 期的入口句柄：比座位拿到的 {@link PluginsNavigation} 多一个挂载点。 */
 interface PluginsNavigationHandle extends PluginsNavigation {
@@ -325,9 +327,12 @@ export function apply(ctx: ClientContext): void {
   // layout 刻意**不进顶层 inject**：缺服务会让整个插件不装载。
   const pluginsNavigation = createPluginsNavigation()
   ctx.inject(['layout'], (layoutCtx) => {
-    const face = (layoutCtx as unknown as { layout?: LayoutFace }).layout
-    // 服务在但长得不对（宿主换了实现）时同样什么都不做 —— 没图标，好过点了会炸。
-    if (face === undefined || typeof face.selectPanel !== 'function') return
+    // 鸭子类型收窄：宿主可能是旧版本或换了实现（本仓不装 ui-layout、不 import 它的类型），
+    // 读不到 layout 或长得不对时同样什么都不做 —— 没图标，好过点了会炸。
+    if (!('layout' in layoutCtx)) return
+    const face = layoutCtx.layout
+    if (typeof face !== 'object' || face === null) return
+    if (!('selectPanel' in face) || typeof face.selectPanel !== 'function') return
     // 绑回服务对象：宿主的 selectPanel 内部要用 this（LayoutController 的 panels 与 navigation）。
     const selectPanel = face.selectPanel.bind(face)
     layoutCtx.effect(() => pluginsNavigation.attach(() => {
