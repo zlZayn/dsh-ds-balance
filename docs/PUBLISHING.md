@@ -56,6 +56,14 @@
 `gh release create v<version> --title v<version> --prerelease --notes …`（正式版去掉 `--prerelease`）。
 别以为跑完流水线门面上就齐了。
 
+**「发布成功」以 registry 为准，而且它有几分钟延迟。** CLI 打出 `+ <包名>@<号>`、provenance 也进了
+透明度日志之后，registry 那一刻**可能还查不到这个号** —— 日志里会明写
+*Your package is being processed and may take a few minutes to become available*。
+2026-09-22 实测：约 **2 分钟**后 `dist-tags` 才切过去。
+**别在这一刻判失败，更别重发**（重发撞的是「版本已存在」）；轮询 `npm view <包名> dist-tags`，
+等那个号出现再核对 shasum 与 integrity。它与上面那条「先核远端」是同一个家族：
+**动作在远端，判据也要落在远端，而且要给它时间。**
+
 `dry-run` 输入只做检查与打包，不发布也不打 tag。
 
 ### 手动发布（本机直接 `npm publish`）
