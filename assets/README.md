@@ -6,9 +6,9 @@
 
 ## 文件与引用面
 
-- `sidebar-popover.png`：左边栏底部的条目与展开的余额浮层，中文实拍，被根 [README.md](../README.md) 引用。
+- `sidebar-popover.png`：左边栏底部的条目与展开的余额浮层，中文实拍（515×480，取景左右边界按侧栏容器与浮层的并集裁，右侧不含任何聊天区元素），被根 [README.md](../README.md) 引用。
 - `sidebar-popover_en.png`：同一画面的英文版，被 [README_en.md](../README_en.md) 引用。
-- `settings-card.png`：配置表单的中文实拍（插件详情页里从插件标题下方到保存按钮），被根 [README.md](../README.md) 引用。
+- `settings-card.png`：插件详情页的中文实拍（**从图标 / 标题 / 版本 tag / 描述那一块到保存按钮**，四组全展开），被根 [README.md](../README.md) 引用。
 - `settings-card_en.png`：同一画面的英文版，被 [README_en.md](../README_en.md) 引用。
 - `settings-cards-position.png`：**Plugins 页列表视图**的中文实拍（左侧栏收起态 + Official / Installed 两组列表，本插件在已安装里可见，卡片上写的是显示名「DeepSeek 余额」），被根 [README.md](../README.md) 引用。
 - `settings-cards-position_en.png`：同一画面的英文版，被 [README_en.md](../README_en.md) 引用。
@@ -16,17 +16,11 @@
 六张都是**从真实界面实拍**的：界面语言当前是 English，所以先拍全部 `_en` 图，再切成中文拍中文版，最后切回 English。
 重截流程、判据与验收标准见 [AGENTS.md](AGENTS.md)。
 
-> **六张全部待重截**：三处改动叠在一起，每一张的画面都与现在的界面对不上 ——
->
-> - 四张设置图（`settings-card*.png` + `settings-cards-position*.png`）：配置入口回到 bundle 详情页
->   （点插件名进去就是配置区，行上没有 Configure 步骤）+ 版本 tag，**外加**插件页上的**标题、描述与图标**
->   换成了包根的展示元数据（标题从包名变成「DeepSeek 余额」/「DeepSeek Balance」，描述第一次出现，
->   图标从宿主默认图变成那个橙色弧环）—— 列表卡片与详情页都画这三样，见 [icon.svg](../icon.svg)；
->   `settings-cards-position*.png` 上一轮判它「不用动」，**本轮起不再成立**；
-> - `sidebar-popover*.png` 两张：浮层材质从「半透明无模糊」变成磨砂，圆环换了几何。
->
-> 图先留着，根 README 的引用也先不动 —— 重拍之后按同名覆盖即可；
-> 路径与判据见 [AGENTS.md](AGENTS.md)，**不需要重启宿主**（改动全在浏览器半边）。
+> **第三轮已全部重拍**（展示元数据 + 图标落地之后）：六张都是从真实界面实拍、同名覆盖，
+> 拍法与判据的最新版见 [AGENTS.md](AGENTS.md) —— 其中两条是这一轮踩出来的：
+> 侧栏那两张的左右边界按**容器几何**取（手填坐标会把聊天区碎片带进图里），
+> 长元素一律走「解除裁剪 + fullPage + 本地裁」，**绝不碰 viewport**（那会把 dpr 打成 1）。
+> 侧栏条目上的环是**实时状态环**，余额低于告急线时就是红的 —— 与 [icon.svg](../icon.svg) 那个橙色品牌环不是一回事。
 
 ## 风格基准
 

@@ -97,6 +97,52 @@ describe('插件清单', () => {
 })
 
 /**
+ * 发布流程。
+ *
+ * 顺序是**死**的：先 bump 并提交 → 需要截图就先拍 → 最后发布。
+ * 为什么：界面上的版本 tag 是**截图的判废项**，而它显示的就是 `package.json` 里那个号。
+ * 只要发布流程自己 bump，工作树就永远停在「上一个已发布版本」，截图必然拍出旧号。
+ * 界面出的错比 CI 出的错贵 —— 所以要红在测试里，而不是红在门面图上。
+ */
+describe('发布流程', () => {
+  /**
+   * 在一份 YAML 里找**命令位置**上的改写版本调用。
+   * 只看命令位置（行首、`run:` 之后、`&&` / `;` 之后）—— 提示文案里写「bump with: npm version …」
+   * 是给维护者看的一句话，不是调用，不该被误伤。
+   */
+  const bumpCalls = (text: string): string[] =>
+    text.split('\n').flatMap((line, index) => {
+      const body = line.replace(/^\s*(?:-\s*)?(?:run:\s*)?/, '')
+      return body.split(/&&|;|\|\|/).map((part) => part.trim())
+        .filter((part) => /^(?:npm|pnpm)\s+(?:--?[\w-]+\s+)*version(?:\s|$)/.test(part))
+        .map((part) => `第 ${index + 1} 行：${part.slice(0, 60)}`)
+    })
+
+  it('release.yml 里不得出现改写版本的调用', () => {
+    // bump 是发布**之前**的独立一步（在维护者机器上跑），workflow 只发不 bump。
+    // 判据与顺序的说明在 docs/PUBLISHING.md；反向控制在同一组的下一条。
+    const workflow = readFileSync('.github/workflows/release.yml', 'utf8')
+    const found = bumpCalls(workflow)
+    expect(found, `release.yml 里出现了改写版本的调用：\n${found.join('\n')}`).toEqual([])
+  })
+
+  it('上面那条检测器有牙齿（反向控制）', () => {
+    // 防空转：扫不到东西的守卫等于没有守卫。
+    expect(bumpCalls('      - run: npm version patch --no-git-tag-version'))
+      .toEqual(['第 1 行：npm version patch --no-git-tag-version'])
+    expect(bumpCalls('run: pnpm version minor')).toEqual(['第 1 行：pnpm version minor'])
+    expect(bumpCalls('        npm --no-git-tag-version version prerelease'))
+      .toEqual(['第 1 行：npm --no-git-tag-version version prerelease'])
+    expect(bumpCalls('run: npm ci && npm version patch')).toEqual(['第 1 行：npm version patch'])
+    // 正常的发布步骤、以及提示文案里的那串字，都不该被误伤。
+    expect(bumpCalls('run: npm ci')).toEqual([])
+    expect(bumpCalls('run: npm publish --provenance --tag "$tag"')).toEqual([])
+    expect(bumpCalls('run: npm run build && npm test')).toEqual([])
+    expect(bumpCalls('echo "bump with: npm version <patch|minor|major> --no-git-tag-version"')).toEqual([])
+  })
+})
+
+/**
  * 插件展示元数据（插件页上的标题与描述）。
  *
  * 宿主**直读**包内的 `locale/*.json` 与 `package.json`，我们的代码一个字节都不读它 ——

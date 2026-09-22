@@ -79,17 +79,9 @@
 - [x] 本轮 UI 改动的收尾：文档同步、报告回填、提交
 - [x] 卡片的折叠头已按原生形态取消：不再有要持久化的折叠状态
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
-- [ ] **两张设置卡片图待重拍**：两个原因叠在一起 —— ① 配置入口已回到 bundle 详情页（点插件名进去就是配置区，
-  行上没有 Configure 步骤），图里的入口/版本是旧的那一版；② 插件页的**标题、描述与图标**现在来自包根的
-  展示面（标题从包名换成「DeepSeek 余额」，描述第一次出现，图标从宿主默认图变成那个橙色弧环），
-  而这张图正拍着这三样。受影响的是 `settings-card*.png` 两张。
-  判据与拍摄步骤见 [assets/AGENTS.md](assets/AGENTS.md)；**不需要重启宿主**（改动全在浏览器半边，
-  `npm run build` + HMR 即换），只需要维护者的浏览器与一次语言切换。
-- [ ] **两张 Plugins 列表图待重拍**：列表卡片的标题、描述与图标同样来自包根的展示面 —— 上一轮判它「不用动」
-  （那时只改了入口，列表结构没变），**本轮起不再成立**：`settings-cards-position*.png` 两张拍的就是那张卡片。
-  判据同见 [assets/AGENTS.md](assets/AGENTS.md)。
-- [ ] **两张侧栏图待重拍**：浮层材质从「半透明无模糊」变成磨砂（`.panel::before` + `backdrop-filter`），
-  圆环几何也换了（同网格细环）。受影响的是 `sidebar-popover*.png` 两张，判据见 [assets/README.md](assets/README.md)。
+- [x] **六张门面图已于第三轮全部重拍**（展示元数据 + 图标落地之后）：`settings-card*.png`、
+  `settings-cards-position*.png`、`sidebar-popover*.png` 各两张，第三轮实测的拍法与判据写进了
+  [assets/AGENTS.md](assets/AGENTS.md)（侧栏按容器几何裁、长元素不碰 viewport）。
 - [x] 发布前：加回 `dsh.bundle`、去掉 `private` → `npm run check:release` 0 失败
 - [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)

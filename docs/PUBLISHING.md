@@ -20,6 +20,21 @@
 
 唯一入口是 [release.yml](../.github/workflows/release.yml)，手动触发。
 
+### bump 是发布**之前**的独立一步，workflow 不 bump
+
+顺序是死的：**先 bump 并提交 → 需要截图就先拍 → 最后发布**。
+
+为什么不能把 bump 塞进 workflow：界面上的**版本 tag 是截图的判废项**，而它显示的就是 `package.json` 里那个号。
+只要发布流程自己改版本，工作树就永远停在「上一个已发布版本」—— 截图必然拍出旧号
+（2026-09-22 zhihu 那一轮就是这么翻的车）。所以：
+
+- bump 在维护者机器上跑（`npm version <tier> --no-git-tag-version`，见上一节），**提交之后**才谈截图与发布；
+- `release.yml` **只发不 bump**：它读现成的版本号、按结果版本推导 dist-tag（带预发布段 → 同名 dist-tag，`latest` 不动）；
+- 这条不变量**已落成红线**：`release.yml` 里不得出现 `npm version <tier>` 这类调用（带反向控制），
+  见 [test/redlines.test.ts](../test/redlines.test.ts) 的「发布流程」一组。
+
+推论：**发一个版本 = 一次 bump 提交 + 一次 workflow 运行**，两件事分开看；workflow 重跑不会改任何版本号。
+
 它按固定顺序跑，前面任何一步红了都走不到发布：
 
 1. 校验 `package.json` 与 `package-lock.json` 的版本号一致。
