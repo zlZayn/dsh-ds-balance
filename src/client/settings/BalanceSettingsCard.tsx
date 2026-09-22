@@ -1,5 +1,5 @@
 /**
- * 「DeepSeek 余额」在该行 Configure 子页上的配置卡片：标题、面包屑与描述由页面画，卡内只有控件与保存。
+ * 「DeepSeek 余额」在 bundle 详情页里的配置卡片：标题与描述由页面画，卡内只有控件与保存。
  * 只做配置：连接、展示、阈值、刷新四组；不展示任何额度信息，也不按阈值给任何东西上色。
  * 分组按使用频率排序：刷新三项有合理默认值，放最后。
  * @module dsh-ds-balance/client/settings/BalanceSettingsCard

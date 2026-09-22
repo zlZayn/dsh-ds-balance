@@ -106,19 +106,19 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 ## Version compatibility
 
-- The configuration UI registers into the Host's `plugins.row.config` slot, keyed literally `<package name>#<row id>` (both are the same for this plugin). **Landing on that slot is the result of a downstream migration**: on earlier Hosts the card sat in `plugins.bundle.config`, and the Host did not remove that slot — what changed is that it no longer hands the entry a `form`. The floor's single source is `engines.dsh` in [package.json](package.json); check the current lines with `node scripts/compat-swap.mjs check`.
-- The floor moved **because the settings seam changed, not because of the slot**: the client-side scope service was removed, the Host-side `settings.register` was removed, and both halves moved to the new `configForms` service and volatile config references. On an earlier Host the ring and the popover keep working, but the configuration page never appears (with no error) — that is the watershed. The plugin never reads a Host version: it probes whether the `plugins.row.config` slot exists, and when it does not, **the popover carries one extra English `[WARN]` line** saying why the configuration page is unavailable and where to upgrade.
+- The configuration UI registers into the Host's `plugins.bundle.config` slot, **keyed literally by the package name**: one bundle, one configuration, rendered on that bundle's own details page. **That landing spot travelled once** (bundle slot → row slot → bundle slot) and neither move was about Host versions — it is a UX choice: the row slot costs one extra Configure click, while the bundle slot's owner props **never carry a `form`** — the card fetches it itself through `ctx.configForms.get(<the Loader entry id of this plugin's row>)`. The floor's single source is `engines.dsh` in [package.json](package.json); check the current lines with `node scripts/compat-swap.mjs check`.
+- The floor moved **because the settings seam changed, not because of the slot**: the client-side scope service was removed, the Host-side `settings.register` was removed, and both halves moved to the new `configForms` service and volatile config references — **without those two the whole client half never renders** (the ring and the popover go with it). The plugin never reads a Host version: it watches whether `ctx.inject(['configForms'])` calls back within its window (**never the slot name** — both candidate slots are present on earlier Hosts too, and a slot being there says nothing about getting a form). When it never does, **the popover carries one extra English `[WARN]` line** saying why the configuration page is unavailable and where to upgrade.
 - To get the configuration page, upgrade the Host to the version `engines.dsh` declares or higher: `npm install -g @deepseek-ai/dsh@alpha`.
 - The declaration is **narrow**: the floor is the version we actually tested, written as `>=` with **no ceiling** — it claims neither "everything in the future counts" nor anything earlier. Why it is written that way is in [Compatibility](docs/PUBLISHING.md#兼容性).
 
 ## Configuration
 
-Open **Plugins → Installed**, step into the **dsh-ds-balance** details page and press **Configure** on its row. The form is that row's own subpage, with four groups **all collapsed by default** — expand them from their headers:
+Open **Plugins → Installed** and step into the **dsh-ds-balance** details page — **the configuration sits right below the description, ready to edit** (there is no second Configure step on that row). Four groups are **all collapsed by default** — expand them from their headers:
 
 <p align="center">
   <img src="assets/settings-cards-position_en.png" alt="Where the DeepSeek balance entry sits in the Plugins list" width="480">
   <br>
-  <em>Where it sits: the Plugins page's list view, with <code>dsh-ds-balance</code> alongside the other installed plugins; the details page behind it, plus Configure on that row, is what carries the form shown above.</em>
+  <em>Where it sits: the Plugins page's list view, with <code>dsh-ds-balance</code> alongside the other installed plugins; open its details page and the form shown above sits right below the description.</em>
 </p>
 
 - **Connection**: the API base URL and the credential, both blank by default — a blank URL means the official DeepSeek endpoint, and the credential is inherited from the official model page and is read-only.

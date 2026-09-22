@@ -114,8 +114,8 @@ export interface SidebarBalanceProps {
   /** 词典函数。 */
   t: (key: LocaleKey) => string
   /**
-   * 配置表单的能力探测结果。宿主给不出配置页时（`plugins.row.config` 那一格不在，
-   * 或本插件不是可配置的 bundle 行），浮层据此给一条英文 `[WARN]` 提示；
+   * 配置表单的能力探测结果。宿主拿不出配置表单时（没有 `configForms` 客户端服务，
+   * 或这个 profile 里没装 Plugins 页），浮层据此给一条英文 `[WARN]` 提示；
    * 探测本身不影响余额与刷新。
    */
   configSlotProbe: ConfigSlotProbe

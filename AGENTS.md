@@ -75,8 +75,13 @@
 - [x] 本轮 UI 改动的收尾：文档同步、报告回填、提交
 - [x] 卡片的折叠头已按原生形态取消：不再有要持久化的折叠状态
 - [ ] 阶段 7 交付清单：截图 / 录屏需维护者配合
-- [ ] **设置卡片的截图待重拍**：卡片入口从 bundle 详情页搬到了那一行的 Configure 子页，现有四张图全部失效 ——
-  判据与拍摄步骤见 [assets/AGENTS.md](assets/AGENTS.md)，重拍要占用维护者的浏览器与一次宿主重启（本轮刻意不重截）。
+- [ ] **两张设置卡片图待重拍**：配置入口已回到 bundle 详情页（点插件名进去就是配置区，行上没有 Configure 步骤），
+  而图里的入口/版本仍是旧的那一版 —— 受影响的是 `settings-card*.png` 两张；
+  `settings-cards-position*.png` 两张按判据**不用动**（列表结构没变）。
+  判据与拍摄步骤见 [assets/AGENTS.md](assets/AGENTS.md)；**不需要重启宿主**（改动全在浏览器半边，
+  `npm run build` + HMR 即换），只需要维护者的浏览器与一次语言切换。
+- [ ] **两张侧栏图待重拍**：浮层材质从「半透明无模糊」变成磨砂（`.panel::before` + `backdrop-filter`），
+  圆环几何也换了（同网格细环）。受影响的是 `sidebar-popover*.png` 两张，判据见 [assets/README.md](assets/README.md)。
 - [x] 发布前：加回 `dsh.bundle`、去掉 `private` → `npm run check:release` 0 失败
 - [x] 六项发布面全部落地（assets / CONTRIBUTING / PUBLISHING / contract 配置 / 3 个 workflow / 3 个 script）→ [落地记录](.agents/notes/2026-09-17-release-surface-landing.md)
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
@@ -102,7 +107,17 @@
   「告急低于预警」只剩消费侧回落与 `POST /api/v1/config` 的写入侧先验两道。**官方 Plugins 页那条写路径拦不住**，
   前端置灰保存只是体验。相关决策见[本轮记录](.agents/notes/2026-09-22-settings-seam-migration.md)。
 - **配置改动不会重新挂载宿主半边**：11 个字段全是 `.volatile()`，Loader 只把新值提交进引用并发一次
-  `loader/volatile-update`。所以「改了配置要重启」是错的，「改了**代码**要重启」才是真的。
+  `loader/volatile-update`。所以「改了配置要重启」是错的，「改了**代码**要重启」才是真的 ——
+  而**只改浏览器半边时连重启都不需要**：profile 用 `link:` 挂绝对路径，`npm run build` 出来的
+  `lib/client.js` 就是宿主读的那一份，HMR 一轮询即换（换不到就刷新页面）。
+- **插件仓不在官方那条材质门禁的覆盖里**：宿主 `ui-theme/tests/elevation-styles.client.spec.ts` 只扫官方仓的
+  `packages/`。所以「菜单填充必须配 `backdrop-filter`」这类约束**在插件侧没有任何自动保护** ——
+  本轮反馈 1（浮层没有磨砂）就是这么漏掉的。本仓的同形红线在 [test/redlines.test.ts](test/redlines.test.ts) 的
+  「菜单材质成对」一组，改样式前先看它。
+- **探测不许盯槽名**：两个配置槽在宿主两条线上**都**在座（历史事实，版本号见
+  [决策记录](.agents/notes/2026-09-22-config-entry-back-to-bundle-config.md)），所以「槽在不在」推不出
+  「拿不拿得到 form」—— 那是**结构性**的，不是某个版本的问题。能力探测一律盯**服务**（`configForms`），
+  见 [config-slot.ts](src/client/config-slot.ts) 的模块头。
 - **宿主半边/浏览器半边的装载时机、cordis 服务门禁、构建链三类坑** → [src 规则层](src/AGENTS.md) 与 [scripts 规则层](scripts/AGENTS.md)（进目录即自动注入，这里不重抄）。
 
 ## 文档网络与自更新

@@ -1,8 +1,13 @@
 /**
  * 状态圆环：条目在展开态与折叠态共用的唯一图标。
  *
- * 几何逐条照抄官方 ContextMeter：viewBox 14×14、r=5.5、stroke-width 2、
- * 用 strokeDasharray 而不是 stroke-dashoffset，起点靠 rotate(-90 7 7) 挪到 12 点。
+ * 几何分两处照官方，**不是整份照抄同一个文件**：
+ * - **网格与笔画**照左栏那批图标 —— viewBox 16×16、笔画 1（宿主
+ *   `ui-primitives/src/icons/index.tsx` 的 `ICON_REGULAR_STROKE`；每个 `Icon*Artwork` 都是
+ *   `viewBox="0 0 16 16"`）。这样它与侧栏里任何一个字形共用同一套度量，
+ *   并排时轻重一致；旧写法是 14 格 / 笔画 2，比邻居粗一倍多。
+ * - **弧的读法**照官方 `ContextMeter`：用 strokeDasharray 而不是 stroke-dashoffset，
+ *   起点靠 `rotate(-90 <center> <center>)` 挪到 12 点。
  *
  * 两件事分开编码：
  * - **弧长**表达比例：余额占该币种 warn 阈值的几分之几，由 `model.ts` 的 `ringRatioOf` 算好传进来。
@@ -16,14 +21,36 @@
 import type { RingMarker } from '../model.ts'
 import css from './PercentRing.module.css'
 
-/** viewBox 边长，与官方 ContextMeter 一致。 */
-const VIEW = 14
+/** viewBox 边长，与官方 `Icon*Artwork` 的网格一致。 */
+const VIEW = 16
 
-/** 描边宽度。 */
-const STROKE = 2
+/**
+ * 描边宽度，取官方 `ICON_REGULAR_STROKE` —— 宿主 `ui-primitives/src/icons/index.tsx:21`
+ * 的 `ICON_REGULAR_STROKE = 1`（viewBox 单位）。
+ *
+ * 注释里带出处是**故意的**：svg 上的 `stroke-width` 由 CSS（`PercentRing.module.css`）写，
+ * 组件这两条常量只决定几何，所以「笔画有没有跟丢官方」只能靠
+ * [test/redlines.test.ts](../../../test/redlines.test.ts) 拿它对账。
+ */
+const STROKE = 1
 
-/** 半径：外径 13 落在 14 的 viewBox 里，四周各留 0.5。 */
-const RADIUS = (VIEW - STROKE) / 2
+/**
+ * 圆本身在网格里四周各留多少（不含笔画）。
+ *
+ * 取 1 是照官方 `ContextMeter` 的比例反推出来的：它 `viewBox 14` / `RADIUS 5.5` / `stroke 2`
+ * ⇒ 圆留 0.5、**墨迹外径 13 落在 14 的格里**（四周各留 0.5）。本仓换成 16 的格子、
+ * 笔画 1，同一套「留白 = 半径之外那一圈」的算下来：
+ * 墨迹外径 = 2 × RADIUS + STROKE = 14，四周各留 1 —— 与官方字形实测的 12–13.75 同一档。
+ */
+const RING_INSET = 1
+
+/**
+ * 半径。
+ *
+ * 与官方 `ContextMeter` **同一个公式**（`RADIUS = 边长/2 − 圆留白 − 笔画/2`，那边算出来是 5.5），
+ * 所以环在格子里的大小关系与它逐值同构；渲染 16px 时笔画 1.000px、墨迹外径 14.0px。
+ */
+const RADIUS = VIEW / 2 - RING_INSET - STROKE / 2
 
 /** 圆心。 */
 const CENTER = VIEW / 2
@@ -34,10 +61,11 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 /**
  * 中心叉号的半臂长（viewBox 单位）。
  *
- * 环内径 = 2 × RADIUS − STROKE = 10，取它的 50% 作为整条对角线长度 → 半臂 ≈ 1.8。
- * 用 viewBox 单位写，所以符号跟着环一起缩放，12px 下仍清晰。
+ * 环内径取 50% 作整条对角线，半臂 = 内径 / 2 / √2。内径 = 2 × RADIUS − STROKE = 12，
+ * 于是对角线长 6、半臂 ≈ 2.121。用 viewBox 单位写，所以符号跟着环一起缩放，12px 下仍清晰。
+ * 写成由 RADIUS 与 STROKE 推出来（而不是写死 2.121）：环的几何一改，叉号跟着走。
  */
-const CROSS_ARM = 1.8
+const CROSS_ARM = (2 * RADIUS - STROKE) / 2 / Math.SQRT2
 
 /**
  * 保留三位小数。
@@ -84,7 +112,8 @@ export function PercentRing({ state, marker = null, ratio = 1, size = 18, title 
       {/* <title> 是 SVG 的原生悬停提示；aria-hidden 只影响无障碍树，不影响它。 */}
       {title === undefined ? null : <title>{title}</title>}
       <circle className={css.track} cx={CENTER} cy={CENTER} r={RADIUS} />
-      {/* dash 取弧长、gap 取整周长，于是只画出一条弧；rotate 让接缝落在 12 点而不是 3 点。
+      {/* dash 取弧长、gap 取整周长，于是只画出一条弧；rotate 让接缝落在 12 点而不是 3 点
+          （中心跟着 VIEW 走，16 格时是 rotate(-90 8 8)）。
           比例为 0 时整条弧不画：dash 长度为 0 配上圆头线帽会在 12 点留下一个点。 */}
       {clamped === 0 ? null : (
         <circle

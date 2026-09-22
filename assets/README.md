@@ -16,10 +16,13 @@
 六张都是**从真实界面实拍**的：界面语言当前是 English，所以先拍全部 `_en` 图，再切成中文拍中文版，最后切回 English。
 重截流程、判据与验收标准见 [AGENTS.md](AGENTS.md)。
 
-> **待重截（本轮刻意未拍）**：配置卡片的入口从「bundle 详情页里的一段」搬到了**那一行的 Configure 子页**，
-> 所以 `settings-card*.png` 与 `settings-cards-position*.png` **四张都已经与现界面不符**
-> （图先留着，根 README 的引用也先不动 —— 重拍之后按同名覆盖即可）。
-> 新的拍摄路径见 [AGENTS.md](AGENTS.md) 的「入口已变」一节；重拍要重启一次宿主并占用维护者的浏览器。
+> **待重截（本轮刻意未拍）**：两张 `settings-card*.png` 与现界面不符 —— 配置入口已回到 bundle 详情页
+> （点插件名进去就是配置区，行上没有 Configure 步骤），浮层材质与圆环几何也变了，
+> 所以两张 `sidebar-popover*.png` 同样待重拍。**共四张**：
+> `settings-card*.png`（入口 + 版本 tag）与 `sidebar-popover*.png`（磨砂 + 细环）。
+> `settings-cards-position*.png` 两张**不用动**：它们拍的是 Plugins 列表结构，本轮没碰。
+> 图先留着，根 README 的引用也先不动 —— 重拍之后按同名覆盖即可；
+> 路径与判据见 [AGENTS.md](AGENTS.md)，**不需要重启宿主**（改动全在浏览器半边）。
 
 ## 风格基准
 

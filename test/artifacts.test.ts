@@ -20,8 +20,8 @@ const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as {
  */
 const ENTRY_ID = 'dsh-ds-balance'
 
-/** `plugins.row.config` 的 key：宿主 `rowConfigKey(bundle, rowId)` 逐字是 `<包名>#<行 id>`。 */
-const ROW_CONFIG_KEY = ENTRY_ID + '#' + ENTRY_ID
+/** `plugins.bundle.config` 的 key —— 宿主按**包名**索引这一格。 */
+const BUNDLE_CONFIG_KEY = ENTRY_ID
 
 const MISSING = 'lib/ 里没有产物：先跑 `npm run build`（`npm test` 自带这一步）'
 
@@ -44,8 +44,9 @@ describe('构建产物', () => {
   })
 
   it('ENTRY_ID 与包名、patch 行 id 三者逐字一致', () => {
-    // 宿主半边写设置、浏览器半边读表单、plugins.row.config 的 key 都按它索引。
-    // 漂开的表现分两种：key 错 ⇒ 那一行没有 Configure 控件；id 错 ⇒ 控件在、点进去拿不到 form。
+    // 宿主半边写设置、浏览器半边读表单、plugins.bundle.config 的 key 都按它索引。
+    // 漂开的表现分两种：槽 key 与包名错开 ⇒ 详情页里整段配置不出现；
+    // 设置命名空间错开 ⇒ 卡片在、表单永远只读。两者都不报错。
     expect(pkg.name).toBe(ENTRY_ID)
     const patch = readFileSync('cordis.patch.yml', 'utf8')
     const rowId = /^\s*-\s*id:\s*(\S+)\s*$/m.exec(patch)?.[1]
@@ -66,24 +67,24 @@ describe('构建产物', () => {
     expect(bundle).toContain('id: ' + JSON.stringify(pkg.name))
   })
 
-  it('配置卡片挂在该行的 plugins.row.config 上，key 逐字 <包名>#<行 id>', () => {
+  it('配置卡片挂在 plugins.bundle.config 上，key 逐字就是包名', () => {
     const bundle = readFileSync('lib/client.js', 'utf8')
-    // 宿主按 rowConfigKey(包名, 行 id) 取这一格；key 写错就整块不出现，也不会报错。
-    expect(bundle).toContain('plugins.row.config')
+    // 宿主按包名取这一格（ledger.bundles.has(pkg.name)）；key 写错就整段不出现，
+    // 也不会报错。
+    expect(bundle).toContain('plugins.bundle.config')
     // 产物里的 key 是一个具名常量（esbuild 不把它内联进注册项），所以这里断言的是
-    // 「这串键在产物里」。注册项确实用的是它、且槽名与推导都对，由
-    // redlines.test.ts 的源码级断言补上。
-    expect(bundle).toContain(ROW_CONFIG_KEY)
-    // bundle 那一格**还在宿主里**，但我们有意不注册它：它渲染时不带 form，
-    // 挂上去会是「槽在、key 对、卡片没数据」。留着这个字符串就说明改回去了。
-    expect(bundle).not.toContain('plugins.bundle.config')
+    // 「这串键在产物里」。注册项确实用的是它，由 redlines.test.ts 的源码级断言补上。
+    expect(bundle).toContain(BUNDLE_CONFIG_KEY)
+    // row 那一格**还在宿主里**，但我们有意不注册它：那会让行上多出一个 Configure
+    // 控件、配置区再多一次点击。留着这个字符串就说明又改回去了。
+    expect(bundle).not.toContain('plugins.row.config')
     // 早已退场的槽名，留着等于卡片在活界面上不渲染。
     expect(bundle).not.toContain('settings.plugin.item')
     // 0.1.7 删掉的客户端服务：它一旦回到 inject 里，apply 会静默不执行（整块功能消失）。
     expect(bundle).not.toContain('settingsScope')
-    // 槽的 owner props 是两视图：page 出表单，summary 出该行的说明行。
-    expect(bundle).toContain('case "page"')
-    expect(bundle).toContain('case "summary"')
+    // 卡片的座位只有 page 一档：bundle 槽只渲染 page（宿主 slot-contract.ts），
+    // summary 那一支已随本轮回退删掉 —— 产物里再出现它就是又留了一条不可达路径。
+    expect(bundle).not.toContain('case "summary"')
   })
 
   it('浏览器信封把样式内联回 factory（DSH 不加载独立的 css 文件）', () => {

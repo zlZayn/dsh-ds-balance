@@ -1,5 +1,11 @@
 # 设置接缝迁移：作用域服务 → configForms + volatile 配置引用
 
+> **状态（2026-09-22，同一天晚些时候）：其中两条已被
+> [2026-09-22-config-entry-back-to-bundle-config.md](2026-09-22-config-entry-back-to-bundle-config.md) 取代** ——
+> 「决策 2：探测目标槽改成 `plugins.row.config`」与「决策 3：只注册 `plugins.row.config`」。
+> 接缝本身（configForms / volatile 引用 / 声明区间 / 命名空间）**不变**，被取代的只有**配置卡片落在哪一格**：
+> 它与那条探测为什么不能盯槽名。下文保留作历史。
+
 **类型**：决策记录（问题 / 决策 / 替代方案 / 影响）。
 **这一轮的另一半**：跨仓的派活、裁决与验收口径记在中转站，读完即作废；本文件是本仓的长期记录。
 

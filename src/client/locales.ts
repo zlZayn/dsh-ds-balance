@@ -84,9 +84,9 @@ export const zh = {
   'settings.invalidNumber': '请填数字；留空表示使用默认值。',
   'settings.hint.refreshAdvanced': '不常改：默认值适用于大多数情况。',
   'settings.currencyMismatch': '当前账户无 {wanted} 余额，实际显示 {shown}',
-  // 该行 Configure 子页标题下方的那一行。本包没有发布展示元数据（locale/*.json），
-  // 所以页面的行描述为空，这一档就是那一行的实际内容 —— 一句话说清这一行是什么。
-  'settings.summary': '账户余额圆环与浮层的配置。',
+  // 这里曾有一条 'settings.summary'（该行 Configure 子页的说明行）。回退到
+  // plugins.bundle.config 之后没有任何渲染路径会问 summary 档，于是连同它一起删了 ——
+  // 详见 src/client/index.tsx 的 SettingsSeat。
 
   'dev.title': '开发场景',
   'dev.hint': '仅用于 UI 开发；不影响真实配置。',
@@ -177,7 +177,6 @@ export const en: Record<LocaleKey, string> = {
   'settings.invalidNumber': 'Enter a number; leave empty to use the default.',
   'settings.hint.refreshAdvanced': 'Rarely changed: the defaults suit most setups.',
   'settings.currencyMismatch': 'The account has no {wanted} balance; showing {shown}',
-  'settings.summary': 'Configuration for the balance ring and its popover.',
 
   'dev.title': 'Dev scenario',
   'dev.hint': 'UI development only; does not affect real configuration.',

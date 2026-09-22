@@ -47,10 +47,13 @@
 
 ### BalancePopover.module.css
 
-- 职责：浮层皮肤，逐条对齐官方 `ui-chat` 的 `stat-dialog.module.css`（StatsPills 与 TurnUsagePanel 共用那套）。
-- 关键导出：CSS Module 类 `panel` / `title` / `titleLabel` / `titleRule` / `iconButton` / `details` / `notice` / `noticeText` / `noticeActions` / `footer` / `updated` / `status` / `refresh`。
+- 职责：浮层皮肤 —— **容器句**逐条对齐官方 `ui-chat` 的 `stat-dialog.module.css`（StatsPills 与 TurnUsagePanel 共用那套），**材质句**照同槽邻居的官方 cordis 面板 `packages/extensions/ui-cordis/src/client/CordisPanel.module.css`。
+- 关键导出：CSS Module 类 `panel` / `panel::before` / `title` / `titleLabel` / `titleRule` / `iconButton` / `details` / `notice` / `noticeText` / `noticeActions` / `footer` / `updated` / `status` / `refresh`。
+- **材质分两层，别合回一层**：`.panel` 只留 `isolation: isolate` / `z-index` / 圆角 / `box-shadow` 与描边重绑；半透明填充与 `backdrop-filter: var(--dsw-menu-backdrop-filter)` 画在 `.panel::before` 上。理由两层：
+  ① 官方规范要求写 `--dsw-specific-menu` 的表面在同一条规则里配那条滤镜（官方把菜单材质拆成了这两条 token）；
+  ② 滤镜非 `none` 的元素会成为 fixed 后代的包含块，而本面板内部有两个**非 portal** 的 Tooltip 气泡（Plugins 图标与刷新按钮）——写在 `.panel` 上会让它们按视口算好的坐标变成相对面板的偏移，气泡直接跑出屏幕。
 - 被谁依赖：`BalancePopover.tsx`。
-- 改后必测什么：宽度三行（`max-content` + 上下界都随视口收缩）在窄窗口下不溢出；标题与明细之间只有一条分隔线；亮暗两色下文字仍可读。
+- 改后必测什么：宽度三行（`max-content` + 上下界都随视口收缩）在窄窗口下不溢出；标题与明细之间只有一条分隔线；亮暗两色下文字仍可读；**悬停右上角 Plugins 图标与右下角刷新按钮时，气泡仍紧贴各自的按钮**（材质层回归判据）；**面板背后有内容时看得出模糊**。
 
 ### PercentRing.tsx
 
@@ -58,7 +61,8 @@
 - 关键导出：`PercentRing`、`PercentRingProps`（`state` / `marker` / `ratio` / `size` / `title`）、`RingState`。
 - `marker` 是中心符号，目前只有 `'cross'`：`unavailable` 用它把「账户维度不可用」与 `critical` 的「余额维度告急」分开 —— 两者都是红弧，因为官方 token 没有第五种色相（详见 [docs/ui-handoff.md](../../../docs/ui-handoff.md)）。
 - 被谁依赖：`SidebarBalance.tsx`，两个形态都用它；形态由 [../model.ts](../model.ts) 的 `ringSpecOf` 给出，弧长由同一个文件的 `ringRatioOf` 给出。
-- 改后必测什么：四档 `state` 各自的颜色；`ratio` 为 0 时 svg 里没有 `.fill` 那条弧、为 1 时是满环；`unavailable` 时 svg 里恰好多两条 `<line>`；svg 自身的 `aria-hidden` 仍在（语义由外层 `aria-label` 承担）；折叠态的 `title` 只在有状态文案时出；**弧的接缝仍在 12 点** —— 靠 `transform="rotate(-90 7 7)"`，**不是 `stroke-dashoffset`**（换成 dashoffset 会把接缝挪回 3 点，也把这段实现拉离官方 `ContextMeter`：宿主 `packages/client/ui-conversation/src/client/skeleton/ContextMeter.tsx:117-127`）。现。
+- **几何分两处照官方，不是整份照抄同一个文件**：网格与笔画照左栏那批图标（`viewBox="0 0 16 16"`、笔画 1 = 宿主 `ui-primitives/src/icons/index.tsx:21` 的 `ICON_REGULAR_STROKE`），弧的读法照官方 `ContextMeter`（宿主 `packages/client/ui-conversation/src/client/skeleton/ContextMeter.tsx:117-127`）。圆心 (8,8)、`r=6.5`（与官方 `ContextMeter` 同一个公式：边长/2 − 圆留白 − 笔画/2）：墨迹外径 14 落在 16 的格里、四周各留 1，与官方字形 12–13.75 的墨迹跨度同档（另加一格容差，见红线）。
+- 改后必测什么：四档 `state` 各自的颜色；`ratio` 为 0 时 svg 里没有 `.fill` 那条弧、为 1 时是满环；`unavailable` 时 svg 里恰好多两条 `<line>`；svg 自身的 `aria-hidden` 仍在（语义由外层 `aria-label` 承担）；折叠态的 `title` 只在有状态文案时出；**弧的接缝仍在 12 点** —— 靠 `transform="rotate(-90 8 8)"`（圆心跟着 `VIEW` 走），**不是 `stroke-dashoffset`**（换成 dashoffset 会把接缝挪回 3 点）。
 
 ### PercentRing.module.css
 
@@ -66,7 +70,7 @@
 - 关键导出：CSS Module 类 `ring` / `track` / `fill` / `cross`。
 - **颜色只在 `.ring[data-state='...']` 上定一次**（赋给 `color`），弧与叉号都取 `currentColor`；别在两处各写一份 token。
 - 被谁依赖：`PercentRing.tsx`。
-- 改后必测什么：轨道与环线宽一致（都是 2）；四档 `data-state` 全部命中；叉号比环细一档且随 viewBox 缩放；圆角线帽只加在环与叉号上、轨道保持平头。
+- 改后必测什么：轨道与环线宽一致（都是 1）；**四档 `data-state` 全部命中，含 `idle` 走 `--dsw-alias-state-idle-primary`**；叉号与环同宽（都是 1）且随 viewBox 缩放；圆角线帽只加在环与叉号上、轨道保持平头。
 
 ### footer-stack.module.css
 

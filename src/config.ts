@@ -16,12 +16,13 @@ import { DEFAULT_BASE_URL } from './ports/deepseek-client.js'
  * 三处按它索引，必须逐字一致：
  * - 宿主半边写设置：`ctx.settings.mutate(ENTRY_ID, ops)`；
  * - 浏览器半边读表单：`ctx.configForms.get(ENTRY_ID)`；
- * - `plugins.row.config` 的 key：`ENTRY_ID + '#' + ENTRY_ID`。
+ * - `plugins.bundle.config` 的 key 取**包名**，今天与它同串（见 src/client/index.tsx
+ *   的 `BUNDLE_CONFIG_KEY`）。
  *
  * 真源是 [cordis.patch.yml](../cordis.patch.yml) 的 `insert[0].id`，而它与
  * `package.json` 的 `name` 相同；三者由 `test/artifacts.test.ts` 对账。
- * 写错的表现分两种：key 错则该行没有 Configure 控件；id 对但没有 volatile
- * 字段则控件在、点进去却拿不到 form。
+ * 写错的表现分两种：槽 key 与包名漂开则该格整段不出现（不报错）；
+ * form 那一路的 id 漂开则卡片在、表单永远只读。
  *
  * 浏览器半边**不许**从这里值导入（[src/AGENTS.md](AGENTS.md) 的跨半体禁令），
  * 它在 `src/client/index.tsx` 里写同一份字面量，由同一条断言对账。
@@ -151,8 +152,9 @@ export const CONFIG_FIELDS = [
  *
  * **11 个字段全部 `.volatile()`**，两条独立理由，缺一不可：
  * 1. 只有 volatile 字段进得了表单 —— 宿主的 `volatileForm()` 在没有 volatile
- *    字段时返回 `undefined`，该行整条退出 `describe()`，行页的 Configure
- *    控件在、点进去却拿不到 `form`（宿主 `packages/settings/settings/src/schema.ts`）。
+ *    字段时返回 `undefined`，该行整条退出 `describe()`，于是
+ *    `ctx.configForms.get(ENTRY_ID)` 拿到的快照永远不是 `ready`，
+ *    卡片在、字段却一个都不出现（宿主 `packages/settings/settings/src/schema.ts`）。
  *    漏加一个字段不会报错，只会让那一个字段在表单里消失。
  * 2. 写入路径按 volatile 逐路径放行：非 volatile 路径直接抛
  *    `Config field "..." is not volatile`（宿主 `settings/src/index.ts` 的

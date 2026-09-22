@@ -24,6 +24,17 @@
   官方 token 里 `error-primary` 与 `error-secondary` 在深色主题下同值，没有第五种色相，
   所以 `unavailable` 用红弧加**中心叉号**与 `critical` 区分。这是维护者拍板的取舍，不要改回红系双色。
 - **`selected` 由后端权威**：前端不挑币种，只把设置里的 `displayCurrency` 当查询参数传过去。
+- **圆环与左栏图标共用同一套度量**：viewBox 16×16、笔画 1（官方 `ICON_REGULAR_STROKE`），
+  半径走与官方 `ContextMeter` **同一个公式**（边长/2 − 圆留白 − 笔画/2）⇒ 墨迹外径 14 落在格里；
+  弧的读法（`strokeDasharray` + `rotate(-90 …)`）也照它。四档颜色逐条对齐官方 `StateDot` 的
+  `data-state`，`idle` 走官方为它新增的那条 `--dsw-alias-state-idle-primary`。
+  几何口径由 [test/redlines.test.ts](../test/redlines.test.ts) 的「圆环几何」一组守住，别在组件里另写一套数。
+- **菜单材质必须成对**：凡用 `--dsw-specific-menu` 画填充的表面，必须在**同一条规则**里带
+  `backdrop-filter: var(--dsw-menu-backdrop-filter)` —— 官方把菜单材质拆成了这两条 token（填充半透明、
+  模糊另起一条），只写前者就是「透光但不磨砂」。
+  带 fixed 浮层的表面（本仓的余额浮层里有非 portal 的 Tooltip 气泡）还要把这两句画在**隔离的背景伪元素**
+  （`isolation: isolate` + `::before`）上 —— 容器自己带 `backdrop-filter` 会换掉那些浮层的包含块。
+  官方那条门禁只扫官方仓，所以本仓自己有一条同形的红线。
 - **弧长是唯一读阈值的去处，且只读 `warn`**：弧长 = 余额 / 该币种 `warn` 阈值，封顶 1，金额比较走整数不走浮点。
   阈值没配或非正数时退回按 `severity` 定性：`ok` 与 `unavailable` 满环、`warn` 3/4、`critical` 1/4、`unknown` 空环。
   判据只有 [../src/client/model.ts](../src/client/model.ts) 的 `ringRatioOf` 一处 —— 别在组件里再算一遍。
@@ -31,12 +42,19 @@
 ## 关键决策
 
 - 左下角落点 = `sidebar.footer.action`；折叠 / 展开由该槽的 `wide` prop 决定，不自行探测宽度。
-- 配置卡片落点 = `plugins.row.config`，key 逐字 `<包名>#<行 id>`（本插件两者同名）。**这是有意的落点变更，不是被迫迁移**：
-  bundle 那一格宿主并没有删，但它渲染时不带 `form`。槽的 owner props 是两视图，`summary` 那一档是**该行缺描述时的回退**，
-  本包没发布展示元数据，所以它必然被渲染 —— 那里给的是一句真文案，不是 `null`。
-- **设置命名空间 = 本插件那一行的 Loader 条目 id**（`dsh-ds-balance`）。宿主半边的 `ctx.settings.mutate`、
-  浏览器半边的 `ctx.configForms.get` 与 `plugins.row.config` 的 key 都按它索引。
-  它与左下角条目的 slot id（`ds-balance`，纯 UI 身份）**是两个不同的值**，别合并成一个常量。
+- 配置卡片落点 = `plugins.bundle.config`，**key 逐字就是包名** —— 一个 bundle 一份配置，渲染在它自己的详情页里
+  （描述与「包含的组件」之间），于是从插件列表点插件名进去**就是**配置区，不多一次 Configure。
+  **这个落点往返过一次**（bundle 槽 → 行槽 → bundle 槽），两次都不是版本问题：行槽的唯一增量是那次点击，
+  而 bundle 槽的座位 props **永远不带 `form`**（宿主两条线上同形，`PluginManagerPage.tsx:584`），
+  表单只能自己取。两件事都能满足之后，槽的选择就是纯 UX —— 取「直接页面」。
+  **卡片的视图档只剩 `page`**：宿主 `slot-contract.ts` 明写 *Bundle configuration renders only `page`*，
+  `summary` 只出现在行槽（行缺描述时的回退）。所以那一档连同它的文案一起删了 ——
+  本仓对假信号敏感，不留「谁都不敢删、也没人渲染」的死分支。
+- **设置命名空间 = 本插件那一行的 Loader 条目 id**（`dsh-ds-balance`）。宿主半边的 `ctx.settings.mutate` 与
+  浏览器半边的 `ctx.configForms.get` 都按它索引。
+  **它与 `plugins.bundle.config` 的 key（包名）今天同串，但不是一个概念** —— 这是本轮引入的静默耦合点：
+  槽 key 写成别的，整段配置不出现；`get()` 传错，卡片在、表单永远只读。两者都不报错，靠红线对账。
+  它也与左下角条目的 slot id（`ds-balance`，纯 UI 身份）**是两个不同的值**，别合并成一个常量。
 - **配置值活在引用里，不活在 `apply` 的参数里**：11 个字段全是 `.volatile()`，`apply` 收到 `Volatile` 引用面，
   读值一律 `ref.get()`。收益是改配置**永不重挂** —— Loader 只把新值提交进引用并发一次 `loader/volatile-update`；
   代价是没有 setter，写回必须走宿主的设置域。
@@ -46,12 +64,16 @@
 - 构建 = `tsc` + `tsc -p tsconfig.client.json` + 自研 esbuild 打包（复刻 `window.__ModuleLoader__.load` 信封）。
 - `sidebar.footer.action` 的宿主容器缺 `flex-direction`，插件侧用 `:has()` 反选父元素补成纵向堆叠；这是唯一一处插件覆盖宿主布局的地方。
 - 依赖锚点跟随宿主运行的 alpha 线。
-- **配置表单只做能力探测，不查宿主版本号**：客户端半边拿不到宿主版本，而「卡片在这一格拿不拿得到 form」当场可观测。
-  旧宿主、被当普通 entry 挂载、那一行不是可配置的 bundle 行 —— 三种情形对使用者是同一个现象，探测把它们归成一句话。
-  注册照旧（槽真在就正常注册），另起一个给宽的上限计时器；到点仍未声明才判缺槽，并在浮层里加一行英文 `[WARN]`。
-  三态**可逆**：声明晚到会把提示撤掉 —— 宿主将来改成延迟声明也不会留下误报。探测失败不中断圆环、浮层与后端。
-  **探测盯的槽必须与卡片注册的槽是同一个**：盯错一格会在新宿主上说 available 而卡片其实在别处 —— 说谎的探测比没有探测更坏。
+- **配置表单只做能力探测，不查宿主版本号**：客户端半边拿不到宿主版本，而「卡片拿不拿得到 form」当场可观测。
+  更早的宿主没有配置服务、这个 profile 里没装 Plugins 页 —— 两种情形对使用者是同一个现象，探测把它们归成一句话。
+  **探测盯的是 `configForms` 服务，不是槽名**（本轮定案，推翻上一轮）：`plugins.bundle.config` 在宿主两条线上
+  都在座、且两版渲染它都不传 `form`，所以「槽在不在」与「拿不拿得到表单」**结构性无关** ——
+  盯槽名就是一条恒为真、说不了什么话的探测。真正的判据是嵌套 `ctx.inject(['configForms'])` 在窗口内
+  有没有回调（回调里报 available），注册照旧交给 `ctx.slots.inject`。
+  三态**可逆**：服务晚到会把提示撤掉，不会留下误报。探测失败不中断圆环、浮层与后端。
   它答不了的那一半（宿主服务不服务我们的命名空间）由卡片自己看快照的 `status`：不是 `ready` 就什么都不渲染。
+  **缺 `configForms` 的实际表现是整个浏览器半边不渲染**（圆环与浮层一起消失，不是只丢卡片）：左下角条目
+  也要读 `displayCurrency`，那条路同样走这个服务。要解耦是产品决策，不在本轮范围。
 - 设置卡片分四组、各自可折叠，顺序是 连接 → 展示 → 阈值 → 刷新（按使用频率排）；宿主 `Config` 的字段顺序是 连接 → 刷新 → 展示 → 阈值（按任务书排）。**两者有意不同，不要改成一样。**
 - 四组默认**全部收起**，各自可展开（进页面先看到四个组名，要哪组点哪组）；组内有非法草稿时该组**强制展开**（`groupOpenNow`）—— 非法会禁用保存，收起的组会让 footer 的「请检查标红的字段」指向看不见的地方。
 - 凭据行在标签行右侧只带两态胶囊：已配置密钥。/ 未配置密钥。（官方 `ui-settings-plugins` 原文）；
@@ -103,6 +125,8 @@
 - 折叠态与展开态都必须能吃下所有 `severity`，未知值回落 `unknown`。
 - 组件拿不到 `ctx`；数据只能走注册项的 `inject` 工厂。
 - 跨插件值导入会被 bundle-purity gate 拒绝，只能用公共导出。
+- **不许把 `backdrop-filter` 写在带 fixed 浮层的容器上**：它会成为那些后代的包含块，把按视口算好的坐标变成
+  相对容器的偏移。本仓的余额浮层里有两个非 portal 的 Tooltip 气泡，踩中就是气泡跑到屏幕外。
 - `lib/client.js` 路径被浏览器信封占用，`src/client.ts` 会造成宿主启动崩溃。
 - 侧栏底部的按钮**不得**写 `aria-haspopup`：已装邻居用它做 DOM 遍历来找设置触发按钮，会先命中我们。
 - 浮层在关闭态**不得**留下可命中区域；向上展开时盖住上邻是既定取舍，不许靠改定位去「顺便修好」。

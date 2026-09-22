@@ -106,19 +106,19 @@ dsh plugin --profile web add "$PWD"
 
 ## 版本兼容
 
-- 配置界面注册在宿主的 `plugins.row.config` 槽，key 逐字是 `<包名>#<行 id>`（本插件两者同名）。**卡片落到这一格是下游迁移的结果**：更早的宿主上它挂在 `plugins.bundle.config`，而宿主没删那个槽 —— 变的是那一格渲染时不再带 `form`。下限的真源是 [package.json](package.json) 的 `engines.dsh`，现状现查 `node scripts/compat-swap.mjs check`。
-- 下限抬上去的原因**不是槽，是设置接缝换了**：客户端侧的作用域服务被删、宿主侧 `settings.register` 被删，两半改用新的 `configForms` 与 volatile 配置引用。更早的宿主上圆环与浮层照常工作，只是**配置页出不来**（不报错）—— 这就是分水岭。插件不查宿主版本号，只探测 `plugins.row.config` 那一格在不在；探测不到时**浮层里会多一行英文 `[WARN]`**，说明配置界面为什么不可用、该往哪儿升级。
+- 配置界面注册在宿主的 `plugins.bundle.config` 槽，**key 逐字就是包名**：一个 bundle 一份配置，渲染在它自己的详情页里。**这个落点往返过一次**（bundle 槽 → 行槽 → bundle 槽），两次都不是版本问题，是 UX 选择：行槽要多点一次 Configure，而 bundle 槽的座位 props **永远不带 `form`** —— 表单由卡片自己向 `ctx.configForms.get(<本插件那一行的 Loader 条目 id>)` 取。下限的真源是 [package.json](package.json) 的 `engines.dsh`，现状现查 `node scripts/compat-swap.mjs check`。
+- 下限抬上去的原因**是设置接缝换了，不是槽**：客户端侧的作用域服务被删、宿主侧 `settings.register` 被删，两半改用新的 `configForms` 与 volatile 配置引用 —— **没有那两样东西，浏览器半边整个不渲染**（圆环与浮层也一起消失）。插件不查宿主版本号：它盯的是 `ctx.inject(['configForms'])` 在窗口内有没有回调（**不盯槽名** —— 两个候选槽在更早的宿主上也在座，槽在不在推不出拿不拿得到表单）；拿不到时**浮层里会多一行英文 `[WARN]`**，说明配置界面为什么不可用、该往哪儿升级。
 - 需要配置界面，就把宿主升到 `engines.dsh` 声明的那一版或更高：`npm install -g @deepseek-ai/dsh@alpha`。
 - 声明是**窄**的：下限是我们实测过的那一版，用 `>=` 而**不设上限** —— 既不承诺「以后都兼容」，也不会因为宿主多推一个预发布段就失效。为什么这么定见[兼容性](docs/PUBLISHING.md#兼容性)。
 
 ## 配置
 
-打开侧边栏 **插件（Plugins）** →「已安装（Installed）」组 → 点进 **dsh-ds-balance** 的详情页 → 在它那一行上点 **Configure**；配置表单是**该行的独立子页**，四组**默认全收起**，点组头逐组展开：
+打开侧边栏 **插件（Plugins）** →「已安装（Installed）」组 → 点进 **dsh-ds-balance** 的详情页 —— **配置区就在描述下面，直接可改**（那一行上没有第二个 Configure 步骤）；四组**默认全收起**，点组头逐组展开：
 
 <p align="center">
   <img src="assets/settings-cards-position.png" alt="Plugins 页列表里「DeepSeek 余额」的位置" width="480">
   <br>
-  <em>Plugins 页列表里的位置：<code>dsh-ds-balance</code> 与其他已安装插件并排；点进它的详情页、再点那一行的 Configure 才是上面那张配置表单。</em>
+  <em>Plugins 页列表里的位置：<code>dsh-ds-balance</code> 与其他已安装插件并排；点它的插件名进详情页，上面那张配置表单就在描述下面。</em>
 </p>
 
 - **连接**：API 地址与凭据，两项都默认留空 —— 地址留空即用 DeepSeek 官方端点，凭据继承官方模型页那一份、只读不可改；

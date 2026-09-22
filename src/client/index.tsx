@@ -1,17 +1,17 @@
 /**
- * 浏览器半边入口：注册词典、该行 Configure 子页上的配置卡片与左下角条目。
+ * 浏览器半边入口：注册词典、bundle 详情页里的配置卡片与左下角条目。
  *
- * 这两半各占一个 slot，互不依赖；配置卡片挂在 `plugins.row.config` 上，
- * key 是 `<包名>#<行 id>`。
+ * 这两半各占一个 slot，互不依赖；配置卡片挂在 `plugins.bundle.config` 上，
+ * key 逐字就是包名。
  *
  * 两侧共用**同一个** {@link ConfigFormOf}：`ctx.configForms.get(ENTRY_ID)` 在 apply 期
- * 建一次、引用稳定。左下角条目不在 `plugins.row.config` 里，拿不到 slot props 递来的
- * form —— 而那个 props 本来就是同一个对象（宿主 `manager-store.ts:455` 就是
- * `id => this.ctx.configForms.get(id)`），所以只留这一条真源，不再有第二条读路径。
+ * 建一次、引用稳定。`plugins.bundle.config` 的座位 props **永远不带 `form`**
+ * （0.1.6 与 0.1.7 两版同形，宿主 `PluginManagerPage.tsx:584` 只递 `view` 与 `entryKey`），
+ * 所以这一条就是唯一读路径 —— 左下角条目与卡片都不经过 slot props 拿表单。
  *
  * 配置那一格另有一层**能力探测**（不查版本号）：卡片拿不到表单时宿主不会报错，
  * 只会静默什么都不显示。探测只决定要不要在浮层里提示，不参与注册 ——
- * 槽真的在时，下面那次 `inject` 照旧正常注册。见 [config-slot.ts](config-slot.ts)。
+ * 服务真的在时，下面那次 `inject` 照旧正常注册。见 [config-slot.ts](config-slot.ts)。
  * @module dsh-ds-balance/client
  */
 
@@ -43,16 +43,19 @@ import { CONFIG_SLOT, createConfigSlotProbe, type ConfigSlotProbe } from './conf
 export const ENTRY_ID = 'dsh-ds-balance'
 
 /**
- * `plugins.row.config` 的 key。
+ * `plugins.bundle.config` 的 key —— **就是包名**。
  *
- * 宿主 `rowConfigKey(bundle, rowId)`（`config-ledger.ts:36-38`）逐字是
- * `<包名>#<行 id>`；本插件两者相同，所以这个值看起来像写重复了。
+ * 宿主按包名索引这一格（`slot-contract.ts` 对该槽的说明 + `config-ledger.ts:51` 的
+ * `keysOf('plugins.bundle.config')` + `PluginManagerPage.tsx:1269` 的
+ * `configured={ledger.bundles.has(pkg.name)}`），所以它与 {@link ENTRY_ID} 今天是同一个
+ * 字面量。**别把两件事并成一个概念**：槽 key 取包名，`ctx.configForms.get()` 取
+ * **Loader 条目 id**；两者今天同串，漂开的表现是卡片在、表单永远只读。
+ * 这条静默耦合由 `test/redlines.test.ts` 与 `test/artifacts.test.ts` 对账。
  *
- * **写成字面量而不是拼接**：它是宿主**逐字比较**的键，而产物级断言
- * （`test/artifacts.test.ts`）要在打包后的信封里照字面找到它 —— 拼接出来的表达式
- * 在产物里是一段代码，不是一个键。拼接关系由 `test/redlines.test.ts` 对账。
+ * **写成独立具名常量而不是直接用 `ENTRY_ID`**：产物级断言要在打包后的信封里照字面
+ * 找到这个键 —— 直接复用那个常量会让「键」与「命名空间」在产物里无从分辨。
  */
-export const ROW_CONFIG_KEY = 'dsh-ds-balance#dsh-ds-balance'
+export const BUNDLE_CONFIG_KEY = 'dsh-ds-balance'
 
 /**
  * 左下角条目在 `sidebar.footer.action` 里的 slot id。
@@ -72,8 +75,13 @@ const DEFAULT_CONFIG = {
  * 运行时服务门禁：删任何一项都会让 `apply` 静默不跑。
  *
  * 只留**永远在**的两项。`configForms` **不在这里**：它是可选服务，由 `apply` 内的
- * `ctx.inject` 把门 —— 缺它只该丢掉配置卡片，不该把左下角圆环一起拖死
- * （[src/AGENTS.md](../AGENTS.md) 的可选服务规则）。
+ * `ctx.inject` 把门（[src/AGENTS.md](../AGENTS.md) 的可选服务规则）。
+ *
+ * **缺它的实际表现是整个浏览器半边不渲染** —— 圆环与浮层也一起消失，不是只丢卡片：
+ * 左下角条目要读 `displayCurrency`（浮层的「改用 X」也写它），那条路同样走
+ * `configForms`，所以两者**同生共死**。这是 0.1.6 及更早宿主上的真实现象，
+ * 也正是 [config-slot.ts](config-slot.ts) 那层探测要报的那件事。
+ * 把两者解耦（例如缺服务时仍画一个不带设置的圆环）是产品决策，不在本轮范围。
  */
 export const inject = ['slots', 'locale']
 
@@ -218,29 +226,28 @@ function SidebarSeatComponent(
 /** 配置卡片的座位 props。 */
 interface SettingsSeat {
   /**
-   * 槽的 owner props 两个视图：
-   * `page` 是那一行 Configure 子页里的表单；`summary` 是**该行没有描述时的回退**，
-   * 渲染在标题下方那一行（宿主 `PluginManagerPage.tsx:496`）。
+   * 槽的 owner props 声明的两个视图。**`plugins.bundle.config` 只会问 `page`**：
+   * 宿主 `slot-contract.ts` 的原话是 *Bundle configuration renders only `page`*，
+   * 全仓渲染这一格也只有 `PluginManagerPage.tsx:584` 一处；`summary` 只出现在
+   * `plugins.row.config`（行缺描述时的回退，`:496`）。
+   * 这里照抄 owner props 的类型面，不缩窄 —— 缩窄成 `'page'` 会与宿主声明脱节。
    */
   view: 'summary' | 'page'
   t: unknown
 }
 
 /**
- * Plugins 页里的配置卡片与该行的说明行。
+ * bundle 详情页里的配置卡片。
  *
- * `summary` 不能再返回 null：本包没有发布展示元数据（`locale/*.json` 的 `meta.title` /
- * `meta.description`），所以行描述**永远是空的**，这一档必然被渲染 —— 返回 null 会在
- * 标题下留一个空 `<p>`。
+ * **`summary` 那一档已删**（本轮）：回退到 `plugins.bundle.config` 之后没有任何渲染路径
+ * 会请求它（见 {@link SettingsSeat}），留着就是一个永不执行的分支 ——
+ * 本仓对假信号很敏感（`orderPairWrites` 退役那条注释就是先例）。
+ * 当年它也不能返回 null：本包没有发布展示元数据（`locale/*.json` 的 `meta.title` /
+ * `meta.description`），行描述永远是空的，那一档必然被渲染。
  */
 function SettingsSeatComponent(props: { seat: SettingsSeat; form: ConfigFormOf }): ReactNode {
   const t = props.seat.t as Translate
-  switch (props.seat.view) {
-    case 'page':
-      return <BalanceSettingsCard t={t} form={props.form} />
-    case 'summary':
-      return t('settings.summary')
-  }
+  return <BalanceSettingsCard t={t} form={props.form} />
 }
 
 /**
@@ -304,8 +311,10 @@ function createPluginsNavigation(): PluginsNavigationHandle {
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ds-balance: dictionaries')
 
-  // 探测配置那一格在不在：新宿主由 ui-plugin-manager 的浏览器半边在 apply 期声明它，
-  // 旧宿主永不声明。三种态都可逆，所以晚到的声明会把已经出现的提示撤掉。
+  // 探测「拿不拿得到配置表单」这个**能力**，不查版本号，也不盯槽名 ——
+  // plugins.bundle.config 这一格在 0.1.6 与 0.1.7 都存在且都不传 form，盯它等于盯一条
+  // 恒为真的信号。真正会断的那一环是 configForms 服务，所以下面那次 inject 的回调
+  // 才是 markDeclared 的触发点。三种态都可逆，晚到的服务会把已经出现的提示撤掉。
   const configSlotProbe = createConfigSlotProbe()
   ctx.effect(() => () => configSlotProbe.dispose(), 'ds-balance: config slot probe')
 
@@ -333,21 +342,24 @@ export function apply(ctx: ClientContext): void {
     }), 'ds-balance: plugins panel navigation')
   })
 
-  // 配置是可选服务：缺它只丢卡片，左下角圆环照常。
+  // 配置是**可选服务**：用嵌套 inject 把门，服务缺席时这一段不跑（探测那条计时器照跑，
+  // 到点就把浮层里的 [WARN] 提示点亮）。`get()` 的实参是**设置命名空间** = 本插件那一行的
+  // Loader 条目 id，不是槽 key —— 两者今天同串，但它们不是一个概念。
   ctx.inject(['configForms'], (configCtx) => {
-    // 一条读路径、一条写路径。两侧共用同一个 form —— 左下角条目不在 plugins.row.config
-    // 里、拿不到 slot props，而 props 里的 form 本来就是同一个对象，没有第二条真源。
+    // 服务到位 = 宿主有配置能力。这是探测要盯的那一环，所以在这里报 available。
+    configSlotProbe.markDeclared()
+
+    // 一条读路径。两侧共用同一个 form：卡片的座位 props 永远不带 form
+    // （bundle 槽两版同形），左下角条目更是拿不到 slot props。
     const form = configCtx.configForms.get<Record<string, unknown>>(ENTRY_ID)
 
-    // 卡片的 key 是 rowConfigKey(包名, 行 id)：宿主按它决定这一行有没有 Configure 控件，
-    // 写错就整块不出现，也不会报错。
-    ctx.slots.inject(CONFIG_SLOT, () => {
-      configSlotProbe.markDeclared()
-      return ctx.slots.register(
-        { name: CONFIG_SLOT, key: ROW_CONFIG_KEY, locale: NS },
+    // 卡片的 key 是**包名**：宿主按 ledger.bundles.has(pkg.name) 判这一格有没有注册项，
+    // 写错就整段配置不出现，也不会报错。
+    ctx.slots.inject(CONFIG_SLOT, () =>
+      ctx.slots.register(
+        { name: CONFIG_SLOT, key: BUNDLE_CONFIG_KEY, locale: NS },
         (seat: SettingsSeat) => <SettingsSeatComponent seat={seat} form={form} />,
-      )
-    })
+      ))
 
     ctx.slots.inject('sidebar.footer.action', () =>
       ctx.slots.register(

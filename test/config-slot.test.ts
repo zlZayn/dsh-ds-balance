@@ -101,11 +101,13 @@ describe('配置槽探测', () => {
     expect(CONFIG_SLOT_WARNING.startsWith('[WARN] ')).toBe(true)
     // 非 ASCII 一律不许出现：前缀之外还夹中文或 emoji 就是违约。
     expect(/^[\x20-\x7e]+$/.test(CONFIG_SLOT_WARNING)).toBe(true)
-    // 文案必须点名**卡片真正注册的那一格**。0.1.7 把它从 bundle 槽换到了 row 槽，
-    // 文案不跟着换就会指着一个我们根本没用的槽 —— 提示比没有提示更误事。
-    expect(CONFIG_SLOT_WARNING).toContain(CONFIG_SLOT)
-    expect(CONFIG_SLOT).toBe('plugins.row.config')
+    expect(CONFIG_SLOT).toBe('plugins.bundle.config')
+    // 文案**刻意不点名任何槽**：两个候选槽在 0.1.6 与 0.1.7 都同时存在，
+    // 而两版渲染 bundle 那一格都不传 form —— 点名一个恒为真的槽会把下一个人引错方向。
+    // 它要指出的是真正会断的那一环：configForms 服务。
     expect(CONFIG_SLOT_WARNING).not.toContain('plugins.bundle.config')
+    expect(CONFIG_SLOT_WARNING).not.toContain('plugins.row.config')
+    expect(CONFIG_SLOT_WARNING).toContain('configForms')
     expect(CONFIG_SLOT_WARNING).toContain('engines.dsh')
   })
 })

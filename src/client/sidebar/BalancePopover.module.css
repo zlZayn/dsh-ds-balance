@@ -1,11 +1,17 @@
 /* 浮层皮肤与定位照抄官方「用量 / 用时」浮层：
    packages/client/ui-chat/src/client/chat/stat-dialog.module.css
    （StatsPills 与 TurnUsagePanel 共用同一套）。
+   **材质分两层**：容器（.panel）只留描边与投影，半透明填充与 backdrop-filter 画在隔离的
+   背景伪元素（.panel::before）上 —— 配方抄同槽邻居官方 cordis 面板
+   packages/extensions/ui-cordis/src/client/CordisPanel.module.css 的 .panel / .panel::before。
    定位改用 ui-primitives 的 useAnchoredPosition，面板经 createPortal 挂到 document.body，
    见 BalancePopover.tsx 与 SidebarBalance.tsx。 */
 
 .panel {
   position: fixed;
+  /* 把 ::before 的 z-index: -1 关进本面板自己的层叠上下文，不让它漏到面板背后。
+     面板本来就有 z-index，这一句是把「必须如此」写明；与官方 cordis 面板逐值一致。 */
+  isolation: isolate;
   z-index: 1100;
   box-sizing: border-box;
   /* 按最宽的一行定尺寸，再夹在上下界之间；两个界都随视口收缩（左右各留 12px），
@@ -16,13 +22,38 @@
   padding: 16px;
   border: 0;
   border-radius: 12px;
-  background: var(--dsw-specific-menu);
+  /* 填充挪到 .panel::before —— 见下面那条规则。 */
   --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
   box-shadow: var(--dsw-elevation-prominent);
   font-size: 12px;
   line-height: 18px;
   color: var(--dsw-alias-label-secondary);
   cursor: default;
+}
+
+/* 半透明菜单材质：填充与 backdrop-filter 必须成对画在这条隔离的背景层上。
+   两层理由，缺一层都会坏：
+   ① 官方规范要求写 --dsw-specific-menu 的表面在同一条规则里带上
+      --dsw-menu-backdrop-filter（规范单页 packages/client/ui-theme/docs/web-styling.zh.md，
+      门禁 packages/client/ui-theme/tests/elevation-styles.client.spec.ts 的
+      translucentMenusWithoutBackdrop）。0.1.7 把菜单材质拆成了这两条 token：填充变半透明，
+      模糊另起一条 —— 只写填充就是「透光但不磨砂」。
+   ② **不许**把 backdrop-filter 写在 .panel 上：filter / backdrop-filter 非 none 会给该元素
+      建立 fixed / absolute 后代的包含块，而本面板内部有两个非 portal 的 Tooltip 气泡
+      （BalancePopover.tsx 里 Plugins 图标与刷新按钮；ui-primitives 的 Tooltip 的 .bubble 是
+      position: fixed、portal 默认 false）—— 它们按视口坐标算好的 left/top 会被解释成相对本
+      面板的偏移，气泡整体跑出屏幕。官方那条「容器带 fixed 浮层的表面把填充与滤镜画在隔离的
+      背景伪元素上」说的就是这件事。
+   ::before 不生成盒子之外的东西：它没有内容、不吃指针事件，只在面板底下铺一层材质。 */
+.panel::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--dsw-specific-menu);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  content: '';
+  pointer-events: none;
 }
 
 /* 标题行：左端是图标 + 标题（链到官网用量页），右端是切到 Plugins 页的图标按钮。

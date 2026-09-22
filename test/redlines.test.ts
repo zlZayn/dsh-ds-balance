@@ -240,9 +240,13 @@ function exportedLiteral(file: string, name: string): string {
  * 设置接缝（0.1.7 迁移）。
  *
  * 这几条守的是同一件事：**接缝换了名字与语义**（旧作用域服务 → configForms、
- * bundle 槽 → row 槽、设置命名空间 ds-balance → dsh-ds-balance）。
+ * 设置命名空间 ds-balance → dsh-ds-balance）。
  * 它们的共同症状是**静默失效** —— cordis 的 inject 是激活门禁，少一个服务名
  * apply 根本不执行，界面上什么都不报。
+ *
+ * 配置卡片的落点**往返过一次**（bundle 槽 → row 槽 → bundle 槽）；理由与判据见
+ * .agents/notes/2026-09-22-config-entry-back-to-bundle-config.md。
+ * 所以下面守的不是「哪个槽名」，而是**两条今天同串、却各管一件事的 id**。
  */
 describe('设置接缝', () => {
   const hostEntryId = exportedLiteral('src/config.ts', 'ENTRY_ID')
@@ -263,18 +267,44 @@ describe('设置接缝', () => {
     expect(client).not.toBe(hostEntryId)
   })
 
-  it('ROW_CONFIG_KEY 逐字等于 ENTRY_ID + "#" + ENTRY_ID', () => {
+  it('BUNDLE_CONFIG_KEY 逐字等于 ENTRY_ID（槽 key 取包名）', () => {
+    // 宿主按包名索引这一格（slot-contract 对该槽的说明 + config-ledger.ts:51 的
+    // keysOf('plugins.bundle.config') + PluginManagerPage.tsx:1269 的
+    // configured={ledger.bundles.has(openPkg.name)}）。
     // 客户端把它写成字面量（产物里要能照字面找到这个键，见 artifacts.test.ts），
-    // 所以拼接关系得在这里对账 —— 光靠肉眼看不出两份字面量什么时候漂开。
+    // 所以这层相等关系得在这里对账 —— 光靠肉眼看不出两份字面量什么时候漂开。
+    //
+    // **这是本轮新引入的静默耦合点**：槽 key 取包名、ctx.configForms.get() 取 Loader
+    // 条目 id，两者今天同串。它们必须逐字相等，但**不是一个概念** ——
+    // 漂开的表现是「卡片在、表单永远只读」，不报错。
     expect(readFileSync('src/client/index.tsx', 'utf8'))
-      .toContain(`export const ROW_CONFIG_KEY = '${clientEntryId}#${clientEntryId}'`)
+      .toContain(`export const BUNDLE_CONFIG_KEY = '${clientEntryId}'`)
   })
 
-  it('卡片注册项用的就是 CONFIG_SLOT 与 ROW_CONFIG_KEY', () => {
+  it('卡片注册项用的就是 CONFIG_SLOT 与 BUNDLE_CONFIG_KEY', () => {
     // 产物级的断言只能看到「这串键在不在」（esbuild 把键落成具名常量），
     // 所以「注册项真的用了它们」在这里对账。
     expect(readFileSync('src/client/index.tsx', 'utf8'))
-      .toContain('{ name: CONFIG_SLOT, key: ROW_CONFIG_KEY, locale: NS }')
+      .toContain('{ name: CONFIG_SLOT, key: BUNDLE_CONFIG_KEY, locale: NS }')
+  })
+
+  it('configForms.get() 的实参是 ENTRY_ID（设置命名空间，不是槽 key）', () => {
+    // 宿主 formFor 只认 describe 镜像里存在的设置命名空间（PluginManagerPage.tsx:1123 的
+    // `if (!configurations?.some(view => view.ns === id)) return undefined`），
+    // 传成槽 key 就是「拿不到 form」—— 两者今天同串，靠这条钉住它用的是哪个常量。
+    expect(readFileSync('src/client/index.tsx', 'utf8'))
+      .toContain('configForms.get<Record<string, unknown>>(ENTRY_ID)')
+  })
+
+  it('能力探测盯 configForms 服务，不再盯槽名', () => {
+    // 旧的探测盯槽名，而 plugins.bundle.config 在 0.1.6 与 0.1.7 都存在、且两版渲染它
+    // 都不传 form ⇒ 那条信号恒为真，等于一个说谎的探测。现在 markDeclared 必须挂在
+    // 那次 inject 的回调里 —— 位置写错就等于把探测退回旧语义。
+    const entry = readFileSync('src/client/index.tsx', 'utf8')
+    const injectAt = entry.indexOf("ctx.inject(['configForms']")
+    const markAt = entry.indexOf('configSlotProbe.markDeclared()')
+    expect(injectAt, "src/client/index.tsx 里找不到 ctx.inject(['configForms'])").toBeGreaterThan(-1)
+    expect(markAt, '探测没有挂在 configForms 服务到位的那一刻').toBeGreaterThan(injectAt)
   })
 
   it('loader/volatile-update 的事件声明在位', () => {
@@ -285,13 +315,16 @@ describe('设置接缝', () => {
   })
 
   it('源码里不再出现宿主已删的旧接缝', () => {
+    // 表里**只放真的被删掉的东西**。上一轮把 'plugins.bundle.config' 也列了进来，
+    // 那是误分类：它在 0.1.6 与 0.1.7 都活着（宿主 slot-contract.ts 两个槽都在），
+    // 而且本轮卡片正落回那一格 —— 留着这一条会与 CONFIG_SLOT 的断言互相打架。
     const files = sourceFiles()
     expect(files.length).toBeGreaterThan(10)
     const offenders: string[] = []
     for (const file of files) {
       const body = stripComments(readFileSync(file, 'utf8'))
       for (const token of [
-        'settingsScope', 'SettingsScope', 'ctx.settings.register', 'installSection', 'plugins.bundle.config',
+        'settingsScope', 'SettingsScope', 'ctx.settings.register', 'installSection',
       ]) {
         if (body.includes(token)) offenders.push(`${file} → ${token}`)
       }
@@ -318,5 +351,156 @@ describe('UI 约定', () => {
     for (const file of files) {
       expect(stripComments(readFileSync(file, 'utf8'))).not.toContain('aria-haspopup')
     }
+  })
+})
+
+/** 一条扁平化后的 CSS 规则：逗号分隔的选择器 + 按源码顺序的声明。 */
+interface CssRule {
+  selectors: string[]
+  declarations: [property: string, value: string][]
+}
+
+/**
+ * 把一张样式表摊平成规则。
+ *
+ * **与宿主那份同形、故意不合并**：判据是上游的，抄形状不抄文件（宿主
+ * `ui-theme/tests/stylesheet-scan.ts` 的 `parseRules`）。不处理嵌套 —— 本仓的
+ * `@supports` 块里是单层规则，外层会作为「无声明的前奏」被跳过。
+ * @param css - 样式表文本。
+ * @returns 每条规则一项，按源码顺序。
+ */
+function parseCssRules(css: string): CssRule[] {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const rules: CssRule[] = []
+  for (const [, selector = '', body = ''] of withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const declarations = body
+      .split(';')
+      .map(part => part.trim())
+      .filter(part => part.includes(':'))
+      .map((part): [string, string] => {
+        const colon = part.indexOf(':')
+        return [part.slice(0, colon).trim(), part.slice(colon + 1).trim()]
+      })
+    rules.push({ selectors: selector.split(',').map(part => part.trim()), declarations })
+  }
+  return rules
+}
+
+/** 高程式表面的投影 token（宿主那句 ELEVATED_SHADOW 的等价物）。 */
+const ELEVATED_SHADOW = /--dsw-(?:shadow-lv|elevation-)/
+
+/**
+ * 画了菜单填充、却没在同一条规则里配 backdrop-filter 的那些规则。
+ *
+ * 判据与宿主 `ui-theme/tests/elevation-styles.client.spec.ts` 的
+ * `translucentMenusWithoutBackdrop()` **逐条同形**（那条也是本仓要复刻的东西）。
+ * @param css - 样式表文本。
+ * @returns 违规规则的选择器。
+ */
+function translucentMenusWithoutBackdrop(css: string): string[] {
+  return parseCssRules(css)
+    .filter(rule => rule.declarations.some(([property, value]) =>
+      (property === 'background' || property === 'background-color')
+      && value === 'var(--dsw-specific-menu)'))
+    .filter(rule => rule.declarations.some(([property, value]) =>
+      property === 'box-shadow' && ELEVATED_SHADOW.test(value))
+      || rule.selectors.some(selector => /::(?:before|after)$/.test(selector)))
+    .filter(rule => !rule.declarations.some(([property, value]) =>
+      property === 'backdrop-filter' && value === 'var(--dsw-menu-backdrop-filter)'))
+    .map(rule => rule.selectors.join(', '))
+}
+
+/**
+ * 圆环的几何口径。
+ *
+ * 断言**从源码文本里读常量**、不从被测模块 import：`tsconfig.test.json` 把 `src/client` 排除在外
+ * （它由客户端那份 tsconfig 管），import 进来会把整个浏览器半边拖进测试项目的类型检查。
+ */
+describe('圆环几何', () => {
+  const ring = readFileSync('src/client/sidebar/PercentRing.tsx', 'utf8')
+  const ringCss = readFileSync('src/client/sidebar/PercentRing.module.css', 'utf8')
+  /** 读一个 `const <name> = <字面量>` 的数字值。 */
+  const numberOf = (name: string): number => {
+    const match = new RegExp(`const ${name} = ([0-9.]+)\\b`).exec(ring)
+    expect(match, `PercentRing.tsx 里找不到 const ${name} = <数字>`).not.toBeNull()
+    return Number(match?.[1])
+  }
+
+  it('网格与笔画等于官方图标的那两条（viewBox 16 / ICON_REGULAR_STROKE = 1）', () => {
+    // 口径的出处是宿主源码，不是我们自己定的数：
+    // ui-primitives/src/icons/index.tsx:21 的 ICON_REGULAR_STROKE = 1，
+    // 且每个 Icon*Artwork 都写 viewBox="0 0 16 16"。官方改网格时这条会红 —— 那正是要的。
+    expect(numberOf('VIEW'), 'viewBox 边长').toBe(16)
+    expect(numberOf('STROKE'), '笔画（viewBox 单位）').toBe(1)
+  })
+
+  it('环在网格里的比例与官方 ContextMeter 同构，外径落在字形跨度里', () => {
+    // 官方那套（宿主 ui-conversation/.../ContextMeter.tsx:17-19）：viewBox 14、RADIUS 5.5、
+    // stroke 2 ⇒ 半径 = 边长/2 − 圆留白 − 笔画/2 = 7 − 0.5 − 1 = 5.5，墨迹外径 13 落在 14 的格里。
+    // 本仓换到 16 的官方图标网格后必须**用同一个公式**，否则「同网格」只是嘴上说说：
+    // 漏掉 − 笔画/2 那一项，墨迹就会比邻居的框粗出去一圈（这条断言就是为它写的）。
+    const view = numberOf('VIEW')
+    const stroke = numberOf('STROKE')
+    const inset = numberOf('RING_INSET')
+    const radius = view / 2 - inset - stroke / 2
+    expect(radius, '半径（VIEW / 2 − RING_INSET − STROKE / 2）').toBe(6.5)
+    const diameter = 2 * radius + stroke
+    expect(diameter, '墨迹外径').toBe(14)
+    expect(diameter).toBeGreaterThanOrEqual(12)
+    expect(diameter).toBeLessThanOrEqual(13.75 + 1)
+    // 四周留白必须为正：撑满整格就是旧写法那个「比邻居大一圈」。
+    expect(inset).toBeGreaterThan(0)
+    // 交叉校验官方那一侧的形状：同一个公式代进它的数应当得到 5.5。
+    expect(14 / 2 - 0.5 - 2 / 2).toBe(5.5)
+  })
+
+  it('两条 stroke-width 都是 STROKE，叉号与环同宽', () => {
+    // svg 上的 stroke-width 由 CSS 写（组件里没有 strokeWidth 属性），所以这两条常量之外
+    // 还有一份真源 —— 靠这条对账：漏改一处就是「环 1px、叉号 1.5px」或反过来。
+    const stroke = numberOf('STROKE')
+    const widths = [...ringCss.matchAll(/stroke-width: ([0-9.]+);/g)].map(match => Number(match[1]))
+    expect(widths.length, 'PercentRing.module.css 里的 stroke-width 条数').toBe(3)
+    for (const width of widths) expect(width).toBe(stroke)
+  })
+})
+
+describe('菜单材质成对', () => {
+  /** 本仓的全部 CSS Module 源文件。 */
+  function moduleStylesheets(dir = 'src/client'): string[] {
+    const found: string[] = []
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${entry.name}`
+      if (entry.isDirectory()) found.push(...moduleStylesheets(path))
+      else if (entry.name.endsWith('.css')) found.push(path)
+    }
+    return found
+  }
+
+  it('写了 --dsw-specific-menu 的表面必须同规则配 --dsw-menu-backdrop-filter', () => {
+    // 0.1.7 把菜单材质拆成了两条 token：填充（--dsw-specific-menu，变成半透明）与
+    // 模糊（--dsw-menu-backdrop-filter，新加的）。只写前者就是「透光但不磨砂」——
+    // 浮层看着像掉了一层底色，而不是官方那种玻璃。
+    //
+    // **为什么这条得由我们自己写**：宿主那条门禁（ui-theme/tests/elevation-styles
+    // .client.spec.ts）只扫官方仓的 packages/，插件仓不在它的覆盖里 ——
+    // 本轮反馈 1 就是这么漏掉的（官方门禁绿着，我们的浮层没有模糊）。
+    const missing = moduleStylesheets().flatMap(file =>
+      translucentMenusWithoutBackdrop(readFileSync(file, 'utf8'))
+        .map(selectors => `${file} ${selectors}`))
+    expect(missing, `这些规则画了菜单填充却没有 backdrop-filter：\n${missing.join('\n')}`).toEqual([])
+  })
+
+  it('扫描器真的看到了那个菜单表面（否则上一条是永不触发的假绿）', () => {
+    // 与「活文档」那条同一个道理：walk 坏掉、或者唯一的消费者被改了命名，
+    // 上一条会静默变成一条永远为真的守卫。这条钉住「扫到了什么」。
+    const css = readFileSync('src/client/sidebar/BalancePopover.module.css', 'utf8')
+    expect(translucentMenusWithoutBackdrop(css)).toEqual([])
+    expect(parseCssRules(css).some(rule => rule.selectors.includes('.panel::before'))).toBe(true)
+    expect(parseCssRules(css)
+      .find(rule => rule.selectors.includes('.panel::before'))?.declarations
+      .find(([property]) => property === 'background')?.[1]).toBe('var(--dsw-specific-menu)')
+    // 反向控制：把滤镜删掉必须被抓出来（判据本身有牙齿）。
+    expect(translucentMenusWithoutBackdrop(
+      '.a::before { background: var(--dsw-specific-menu); }')).toEqual(['.a::before'])
   })
 })

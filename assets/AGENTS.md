@@ -4,16 +4,18 @@
 
 只讲**在这里要怎么干**；目录里有什么、被谁引用、图长什么样 → [README.md](README.md)。
 
-## 入口已变（四张设置图待重截）
+## 入口是 bundle 详情页（两张设置图待重截）
 
-配置卡片的入口换过一次：以前它在 **bundle 详情页**里（点插件名进详情页就能看到表单），
-现在是**那一行自己的 Configure 子页** —— 进 Plugins → Installed → 插件详情页之后，还要点该行右端的 **Configure**。
-变化的原因见 [决策记录](../.agents/notes/2026-09-22-settings-seam-migration.md)。
+配置卡片落在 **bundle 详情页里**：点插件名进详情页，**配置区就在描述下面、直接可改**，
+那一行上**没有**第二个 Configure 步骤。落点往返过一次（bundle 页 → 行子页 → bundle 页），
+理由见 [决策记录](../.agents/notes/2026-09-22-config-entry-back-to-bundle-config.md)。
 
-- 受影响的四张：`settings-card.png` / `settings-card_en.png` / `settings-cards-position.png` / `settings-cards-position_en.png`。
-- **本轮刻意不重截**：重拍要重启一次宿主并占用维护者的浏览器，时机由维护者定。
-- 重拍时把下面「怎么截」的第 3 步读成：**Plugins → Installed → 点插件名 → 点该行的 Configure**；
-  列表那张（`settings-cards-position*.png`）判据不变，仍然**不用**点进详情页。
+- 待重截的是 `settings-card.png` / `settings-card_en.png` 两张（入口与版本 tag 都变了）。
+- `settings-cards-position*.png` 两张判据不变，**不用动**：它们拍的是 Plugins 页的**列表**结构。
+  根 README 的图注文字已按新入口改过（那段文字不在这两张图里）。
+- **不需要重启宿主**：本轮改动全在浏览器半边（`src/client/**`），`npm run build` 之后由 `dsh-client-hmr` 换新；
+  换不到就刷新一次页面。上一轮那句「重拍要重启一次宿主」是那一轮改宿主半边时的要求，**对本轮不成立**。
+- 下面「怎么截」的第 3 步照旧：**Plugins → Installed → `ds-balance`**，滚到配置区完整可见 —— 只是不再有 Configure 那一步。
 - **文件名不许改**：根 README 与 README_en 按名引用，重拍后同名覆盖。
 
 ## 什么时候必须重截

@@ -41,9 +41,9 @@ describe('CONFIG_FIELDS', () => {
  * 本轮最要紧的一条断言（勘察报告的 R1）。
  *
  * 漏加 `.volatile()` 的症状是**静默的**：宿主的 `volatileForm()` 在没有 volatile
- * 字段时返回 `undefined`，那一行整条退出 `describe()` —— 行上还有 Configure 控件，
- * 点进去却拿不到 `form`，什么都不显示、也不报错。前端测试看不见它，
- * 只有对着 schema 数一遍才拦得住。
+ * 字段时返回 `undefined`，那一行整条退出 `describe()` ——
+ * `ctx.configForms.get(ENTRY_ID)` 拿到的快照永远不是 `ready`，卡片在、字段一个都不出现，
+ * 什么都不显示、也不报错。前端测试看不见它，只有对着 schema 数一遍才拦得住。
  */
 describe('volatile 面', () => {
   it('11 个字段一个不漏，全部带 volatile', () => {

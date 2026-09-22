@@ -94,8 +94,10 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # 预发布版本（如 2.0.0-alpha.0）发到它自己的 dist-tag（alpha），**不动 latest**：
-      # 这一版要求宿主提供 plugins.bundle.config 槽（下限见 package.json 的 engines.dsh），在旧宿主上配置界面不会出现，
+      # 预发布版本（如 2.0.0-alpha.2）发到它自己的 dist-tag（alpha），**不动 latest**：
+      # 这一版要求宿主提供 configForms 客户端服务（下限见 package.json 的 engines.dsh）——
+      # 只提「插件用 plugins.bundle.config 槽」会把门槛说低：那个槽在更早的宿主上也在座，
+      # 而缺 configForms 时整个浏览器半边都不渲染。旧宿主上配置入口不会出现，
       # 直接推 latest 会让还在旧宿主线上的使用者静默失去配置入口。
       - name: Publish
         if: steps.probe.outputs.exists == 'false'

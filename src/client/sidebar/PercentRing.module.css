@@ -1,4 +1,8 @@
-/* 状态圆环：几何照抄官方 ContextMeter，颜色按 state 机械映射。 */
+/* 状态圆环：网格与笔画照官方左栏图标（viewBox 16 / 笔画 1），弧的读法照官方 ContextMeter，
+   颜色按 state 机械映射。 */
+
+/* 说明：本文件里没有 --dsw-specific-menu 那类菜单材质，所以不需要配 backdrop-filter
+   （红线「菜单材质成对」扫的是填充与滤镜同规则出现，见 test/redlines.test.ts）。 */
 
 /* 颜色只在这里定一次：弧与中心符号都取 currentColor，避免两处各写一份 token。 */
 .ring {
@@ -21,26 +25,35 @@
   color: var(--dsw-alias-state-error-primary);
 }
 
+/* idle 走官方 StateDot 的 idle 色，不走 .ring 的基色（label-tertiary 是文字色）。
+   这条 token 是 0.1.7 新增的（宿主 ui-theme 的 design-platform.css，light = neutral-300 /
+   dark = neutral-600），与 StateDot.module.css 的 data-state='idle' 同源。 */
+.ring[data-state='idle'] {
+  color: var(--dsw-alias-state-idle-primary);
+}
+
 .track {
   fill: none;
   stroke: var(--dsw-alias-border-l3);
-  stroke-width: 2;
+  stroke-width: 1;
 }
 
 .fill {
   fill: none;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 1;
   /* 圆角线帽只加在环上，轨道保持平头（与官方一致）。 */
   stroke-linecap: round;
 }
 
 /* 中心叉号：账户维度「不可用」的形状编码。
-   两条对角短线，长度约环内径的 50%，笔画比环细一档；随 viewBox 一起缩放，
-   所以 12px 下依然清晰。没有动画。 */
+   两条对角短线，长度约环内径的 50%，**笔画与环相同**（都是 1）—— 层级改由长度承担：
+   环内径 12、叉号对角线 6，本身就只有环的一半。旧写法让叉号细一档（1.5 对 2），
+   在官方网格的 1px 笔画下细一档只剩 0.75px，斜线上是一条明显发灰的线。
+   随 viewBox 一起缩放，所以 12px 下依然清晰。没有动画。 */
 .cross {
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.5;
+  stroke-width: 1;
   stroke-linecap: round;
 }
