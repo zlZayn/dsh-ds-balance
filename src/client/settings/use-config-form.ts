@@ -121,10 +121,10 @@ export interface ThresholdPair {
 }
 
 /** 阈值成对的清单；字段名沿用宿主 schema 的「币种代码小写 + Warn / Critical」。 */
-export const THRESHOLD_PAIRS: readonly ThresholdPair[] = [
+export const THRESHOLD_PAIRS = [
   { currency: 'CNY', warn: 'cnyWarn', critical: 'cnyCritical', defaultWarn: 10, defaultCritical: 5 },
   { currency: 'USD', warn: 'usdWarn', critical: 'usdCritical', defaultWarn: 2, defaultCritical: 1 },
-]
+] as const satisfies readonly ThresholdPair[]
 
 /** 草稿文本折算成数字；空草稿按默认值算，不是数字则给 `null`（那由字段自己的 parse 报错）。 */
 function pairNumber(state: FieldState, fallback: number): number | null {

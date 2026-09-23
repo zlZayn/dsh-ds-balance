@@ -202,10 +202,10 @@ export interface ThresholdPair {
  * 归成一对来判（[use-config-form.ts](client/settings/use-config-form.ts) 的 `THRESHOLD_PAIRS`）。
  * 两边各存一份是因为**宿主与浏览器两个半体不许值导入**；约定本身由测试对着本表兜底。
  */
-export const THRESHOLD_PAIRS: readonly ThresholdPair[] = [
+export const THRESHOLD_PAIRS = [
   { currency: 'CNY', warn: 'cnyWarn', critical: 'cnyCritical', defaultWarn: 10, defaultCritical: 5 },
   { currency: 'USD', warn: 'usdWarn', critical: 'usdCritical', defaultWarn: 2, defaultCritical: 1 },
-]
+] as const satisfies readonly ThresholdPair[]
 
 /**
  * 跨字段校验：每个币种内 `critical` 必须**严格低于** `warn`。

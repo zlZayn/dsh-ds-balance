@@ -64,12 +64,12 @@ const DEFAULT_GROUP_OPEN: Readonly<Record<GroupKey, boolean>> = {
 }
 
 /** 每组包含哪些字段；用来判断「这一组里有没有需要用户看见的非法草稿」。 */
-const GROUP_FIELDS: Readonly<Record<GroupKey, readonly string[]>> = {
+const GROUP_FIELDS = {
   connection: ['apiKey', 'apiKeyRef', 'baseUrl'],
   display: ['displayCurrency'],
   thresholds: ['cnyWarn', 'cnyCritical', 'usdWarn', 'usdCritical'],
   refresh: ['serverRefreshSeconds', 'clientPollSeconds', 'manualRefreshCooldownSeconds'],
-}
+} as const satisfies Record<GroupKey, readonly string[]>
 
 /** 字段名到控件 id 的映射。 */
 const FIELD_IDS: Record<string, string> = {
