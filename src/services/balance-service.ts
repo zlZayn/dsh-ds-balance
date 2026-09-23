@@ -7,7 +7,7 @@
  */
 
 import type { BalanceSnapshot, BalanceView, CacheState } from '../domain/balance.js'
-import { classify, parseRetryAfter, type ErrorCode, type ErrorInfo } from '../domain/errors.js'
+import { classify, describeError, parseRetryAfter, type ErrorCode, type ErrorInfo } from '../domain/errors.js'
 import { normalize } from '../domain/normalize.js'
 import { pickBalance } from '../domain/select.js'
 import { severityOf, thresholdsFor } from '../domain/severity.js'
@@ -120,7 +120,7 @@ export class BalanceService {
       this.state = this.withinWindow() ? 'ok' : 'stale'
       this.publishGauge()
     } catch (error) {
-      this.options.logger?.debug('ds-balance: no snapshot restored', { error: describe(error) })
+      this.options.logger?.debug('ds-balance: no snapshot restored', { error: describeError(error) })
     }
   }
 
@@ -219,7 +219,7 @@ export class BalanceService {
     } catch (error) {
       if (this.persistWarned) return
       this.persistWarned = true
-      this.options.logger?.warn('ds-balance: snapshot not persisted, continuing in memory', { error: describe(error) })
+      this.options.logger?.warn('ds-balance: snapshot not persisted, continuing in memory', { error: describeError(error) })
     }
   }
 
@@ -271,9 +271,4 @@ function retryAfterOf(error: unknown, now: number): number | null {
   const headers = error.headers
   if (!(headers instanceof Headers)) return null
   return parseRetryAfter(headers, now) ?? null
-}
-
-/** 把未知异常压成一行。 */
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }

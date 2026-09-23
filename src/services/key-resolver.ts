@@ -8,7 +8,7 @@
  * @module dsh-ds-balance/services/key-resolver
  */
 
-import { NoKeyError } from '../domain/errors.js'
+import { NoKeyError, describeError } from '../domain/errors.js'
 import type { Credentials } from '../ports/credentials.js'
 import type { Logger } from '../ports/logger.js'
 
@@ -33,11 +33,6 @@ export interface KeyResolverOptions {
 
 /** 契约要求的引用名形状。 */
 export const CREDENTIAL_REF_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
-
-/** 把未知异常压成一行。 */
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 /** 解析当前可用的明文密钥。 */
 export class KeyResolver {
@@ -75,7 +70,7 @@ export class KeyResolver {
         // 没有 seam、引用名不存在、远程拒绝 —— 都只是「这一档没取到」，继续往下走。
         this.options.logger?.debug('ds-balance: credentials.resolve did not yield a key, falling back to env', {
           ref,
-          error: describe(error),
+          error: describeError(error),
         })
       }
     }

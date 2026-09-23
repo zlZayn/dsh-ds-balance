@@ -4,7 +4,7 @@
  */
 
 import type { RawBalanceResponse } from '../domain/balance.js'
-import { NetworkError, ParseError, TimeoutError, UpstreamError, classify } from '../domain/errors.js'
+import { NetworkError, ParseError, TimeoutError, UpstreamError, classify, describeError } from '../domain/errors.js'
 import { parseErrorBody } from '../domain/normalize.js'
 import type { DeepSeekCallOptions, DeepSeekClient, TestConnectionResult } from '../ports/deepseek-client.js'
 
@@ -99,7 +99,7 @@ export class HttpDeepSeekClient implements DeepSeekClient {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new TimeoutError(`upstream aborted after ${options.timeoutMs}ms`, { cause: error })
       }
-      throw new NetworkError(error instanceof Error ? error.message : String(error), { cause: error })
+      throw new NetworkError(describeError(error), { cause: error })
     } finally {
       clearTimeout(timer)
       options.signal?.removeEventListener('abort', forwardAbort)

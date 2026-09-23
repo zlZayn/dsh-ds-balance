@@ -11,7 +11,7 @@
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import { z } from 'zod'
 import type { BalanceInfo, BalanceSnapshot } from '../domain/balance.js'
-import { StorageError } from '../domain/errors.js'
+import { StorageError, describeError } from '../domain/errors.js'
 import { formatMoney, parseMoney } from '../domain/money.js'
 import type { CoreStore, StoreHealth } from '../ports/core-store.js'
 import type { Logger } from '../ports/logger.js'
@@ -116,11 +116,6 @@ export function fromStored(record: StoredSnapshot): BalanceSnapshot {
   }
 }
 
-/** 把未知异常压成一行可读文本。 */
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
 /**
  * 官方存储接缝上的快照存储。
  *
@@ -160,7 +155,7 @@ export class DomainCoreStore implements CoreStore {
         this.ready = null
         if (!this.openFailureLogged) {
           this.openFailureLogged = true
-          this.options.logger?.error('ds-balance: storage domain unavailable, running degraded', { error: describe(error) })
+          this.options.logger?.error('ds-balance: storage domain unavailable, running degraded', { error: describeError(error) })
         }
       })
       this.ready = attempt
@@ -179,7 +174,7 @@ export class DomainCoreStore implements CoreStore {
   private async requireTable(): Promise<KvTableLike> {
     await this.ensureOpen()
     if (this.openError !== undefined) {
-      throw new StorageError(`storage domain unavailable: ${describe(this.openError)}`, { cause: this.openError })
+      throw new StorageError(`storage domain unavailable: ${describeError(this.openError)}`, { cause: this.openError })
     }
     if (this.table === null) throw new StorageError('storage domain is not open')
     return this.table
@@ -210,7 +205,7 @@ export class DomainCoreStore implements CoreStore {
   async health(): Promise<StoreHealth> {
     if (this.closed) return { ok: false, detail: 'closed' }
     await this.ensureOpen()
-    return this.openError === undefined ? { ok: true } : { ok: false, detail: describe(this.openError) }
+    return this.openError === undefined ? { ok: true } : { ok: false, detail: describeError(this.openError) }
   }
 
   /** 幂等关闭。**必须挂在 `ctx.effect` 的 disposer 上。** */

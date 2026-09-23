@@ -7,6 +7,7 @@
  */
 
 import type { BalanceView } from '../domain/balance.js'
+import { describeError } from '../domain/errors.js'
 import type { Logger } from '../ports/logger.js'
 import type { BalanceStatus, GetViewOptions } from './balance-service.js'
 
@@ -179,7 +180,7 @@ export class Scheduler {
     } catch (error) {
       // 服务承诺永不抛错；这里是防御，不让调度链断掉。
       this.options.logger?.error('ds-balance: scheduler tick threw', {
-        error: error instanceof Error ? error.message : String(error),
+        error: describeError(error),
       })
     }
     if (!this.running) return

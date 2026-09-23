@@ -11,7 +11,7 @@
  */
 
 import type { CacheState } from '../domain/balance.js'
-import { classify } from '../domain/errors.js'
+import { classify, describeError } from '../domain/errors.js'
 import type { CoreStore } from '../ports/core-store.js'
 import type { DeepSeekClient } from '../ports/deepseek-client.js'
 import type { Credentials } from '../ports/credentials.js'
@@ -63,11 +63,6 @@ function json(body: unknown, status = 200): Response {
 /** 是否是普通对象（数组与 `null` 都不算）。 */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-/** 把未知异常压成一行。**绝不带凭据** —— 异常里不含密钥是上游的约定。 */
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 /** 读一个查询参数；URL 坏掉时返回 `null`。 */
@@ -141,7 +136,7 @@ export async function handleBalance(request: Request, deps: HttpDeps): Promise<R
     const view = await deps.service.getView(currency === null || currency === '' ? {} : { currency })
     return json(toWireBalanceView(view, deps.service.accountTag8() ?? '', requestId))
   } catch (error) {
-    deps.logger?.error('ds-balance: balance handler failed', { requestId, error: describe(error) })
+    deps.logger?.error('ds-balance: balance handler failed', { requestId, error: describeError(error) })
     return json(failureView(requestId, error))
   }
 }
@@ -156,7 +151,7 @@ export async function handleRefresh(request: Request, deps: HttpDeps): Promise<R
     const result = await deps.service.forceRefresh(reason)
     return json({ requestId, schemaVersion: SCHEMA_VERSION, ...result, error: null })
   } catch (error) {
-    deps.logger?.error('ds-balance: refresh handler failed', { requestId, error: describe(error) })
+    deps.logger?.error('ds-balance: refresh handler failed', { requestId, error: describeError(error) })
     return json({
       requestId,
       schemaVersion: SCHEMA_VERSION,
@@ -189,7 +184,7 @@ async function credentialInfo(deps: HttpDeps, ref: string): Promise<WireCredenti
       writable: described.writable === true,
     }
   } catch (error) {
-    deps.logger?.debug('ds-balance: credential describe failed', { ref, error: describe(error) })
+    deps.logger?.debug('ds-balance: credential describe failed', { ref, error: describeError(error) })
     return null
   }
 }
@@ -214,7 +209,7 @@ export async function handleConfigGet(_request: Request, deps: HttpDeps): Promis
   try {
     return json(await configBody(requestId, deps))
   } catch (error) {
-    deps.logger?.error('ds-balance: config read handler failed', { requestId, error: describe(error) })
+    deps.logger?.error('ds-balance: config read handler failed', { requestId, error: describeError(error) })
     return json({ requestId, schemaVersion: SCHEMA_VERSION, error: toWireError(classify(error)) })
   }
 }
@@ -241,14 +236,14 @@ export async function handleConfigUpdate(request: Request, deps: HttpDeps): Prom
       await deps.config.update(patch)
     }
   } catch (error) {
-    deps.logger?.warn('ds-balance: config write rejected', { requestId, error: describe(error) })
+    deps.logger?.warn('ds-balance: config write rejected', { requestId, error: describeError(error) })
     return json({ requestId, error: toWireError(classify(error)) }, 422)
   }
   // 写完立刻回读，让调用方看到落盘后的真实值（掩码同上）。
   try {
     return json(await configBody(requestId, deps))
   } catch (error) {
-    deps.logger?.error('ds-balance: config readback failed', { requestId, error: describe(error) })
+    deps.logger?.error('ds-balance: config readback failed', { requestId, error: describeError(error) })
     return json({ requestId, schemaVersion: SCHEMA_VERSION, error: toWireError(classify(error)) })
   }
 }
@@ -273,7 +268,7 @@ export async function handleTestConnection(request: Request, deps: HttpDeps): Pr
     const result = await deps.client.testConnection({ baseUrl, apiKey, timeoutMs })
     return json({ requestId, schemaVersion: SCHEMA_VERSION, ...result })
   } catch (error) {
-    deps.logger?.warn('ds-balance: test-connection handler failed', { requestId, error: describe(error) })
+    deps.logger?.warn('ds-balance: test-connection handler failed', { requestId, error: describeError(error) })
     const info = classify(error)
     return json({ requestId, schemaVersion: SCHEMA_VERSION, ok: false, latencyMs: 0, code: info.code, message: info.message })
   }
@@ -288,7 +283,7 @@ export async function handleHealthz(_request: Request, deps: HttpDeps): Promise<
     const health = await deps.store.health()
     store = { ok: health.ok, detail: health.detail ?? null }
   } catch (error) {
-    store = { ok: false, detail: describe(error) }
+    store = { ok: false, detail: describeError(error) }
   }
   return json({
     requestId,
