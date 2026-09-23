@@ -102,7 +102,7 @@ export function selectField(field: string): ValueFieldSpec {
 export const AUTO_CURRENCY = 'auto'
 
 /** 已知币种。阈值分组就是按这两个币种定义的，故它们是币种列表的最小闭集。 */
-export const KNOWN_CURRENCIES: readonly string[] = ['CNY', 'USD']
+export const KNOWN_CURRENCIES = ['CNY', 'USD'] as const
 
 /** 一对阈值：同一币种内的预警与告急。 */
 export interface ThresholdPair {

@@ -56,7 +56,7 @@ export const scenarios = {
   }),
 
   /** 有旧值但本次刷新失败。 */
-  stale: make({ state: 'stale', stale: true, severity: 'unknown', ageMs: 3_600_000, fetchedAt: T0 - 3_600_000, error: { code: 'NETWORK', message: 'fetch failed' } }),
+  stale: make({ state: 'stale', stale: true, severity: 'unknown', ageMs: 3_600_000, fetchedAt: T0 - 3_600_000, error: { code: 'NO_NETWORK', message: 'fetch failed' } }),
 
   /** 无值失败。 */
   error: make({
@@ -67,7 +67,7 @@ export const scenarios = {
     balances: [],
     selected: null,
     ageMs: 0,
-    error: { code: 'HTTP_500', message: 'upstream returned 500' },
+    error: { code: 'UPSTREAM_5XX', message: 'upstream returned 500' },
   }),
 
   /** 未配置。 */

@@ -8,7 +8,7 @@
 
 import { randomUUID } from 'node:crypto'
 import type { BalanceView, CacheState, Currency, Severity, ThresholdPair } from '../domain/balance.js'
-import type { ErrorInfo } from '../domain/errors.js'
+import type { ErrorCode, ErrorInfo } from '../domain/errors.js'
 import { formatMoney } from '../domain/money.js'
 import { SCHEMA_VERSION } from '../version.js'
 
@@ -30,9 +30,10 @@ export interface WireThresholdPair {
  * 线上的错误结构。
  *
  * `details` **不出去**：它可能带上游原文，属于内部诊断面。
+ * `code` 取宿主闭集 {@link ErrorCode} —— 线上只出现这几种码。
  */
 export interface WireError {
-  code: string
+  code: ErrorCode
   message: string
   retryable: boolean
 }
