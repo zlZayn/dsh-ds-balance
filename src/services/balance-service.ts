@@ -267,8 +267,9 @@ export class BalanceService {
 
 /** 从上游错误里抽 `Retry-After`；抽不到返回 `null`。 */
 function retryAfterOf(error: unknown, now: number): number | null {
-  const headers = (error as { headers?: Headers }).headers
-  if (headers === undefined) return null
+  if (typeof error !== 'object' || error === null || !('headers' in error)) return null
+  const headers = error.headers
+  if (!(headers instanceof Headers)) return null
   return parseRetryAfter(headers, now) ?? null
 }
 

@@ -239,7 +239,7 @@ export async function apply(ctx: Context, refs: ConfigRefs): Promise<void> {
     // 排程只看这几项。事件给的是「真的变了的路径」，比原来的全量 diff 更准，
     // 所以改阈值、改展示币种都不会顺带打一次官方接口。
     const stopWatching = ctx.on('loader/volatile-update', (paths) => {
-      if (paths.some((path) => path.length > 0 && (SCHEDULE_FIELDS as readonly string[]).includes(path[0]))) {
+      if (paths.some((path) => path.length > 0 && SCHEDULE_FIELDS.some((field) => field === path[0]))) {
         scheduler.reset()
       }
     })

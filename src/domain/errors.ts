@@ -173,7 +173,7 @@ export function classify(error: unknown): ErrorInfo {
     if (error.name === 'AbortError' || error.name === 'TimeoutError') {
       return { code: 'UPSTREAM_TIMEOUT', message: error.message, retryable: true }
     }
-    const code = (error as { code?: unknown }).code
+    const code = 'code' in error ? error.code : undefined
     if (typeof code === 'string' && /^(ECONN|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|UND_ERR)/.test(code)) {
       return { code: 'NO_NETWORK', message: error.message, retryable: true }
     }
