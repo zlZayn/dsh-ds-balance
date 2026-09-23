@@ -10,7 +10,7 @@
  * @module dsh-ds-balance/client/data
  */
 
-import type { BalanceResponse } from './api-types.ts'
+import type { BalanceResponse, BalanceState } from './api-types.ts'
 
 /** 余额端点。路径与宿主半边逐字一致，不带尾随斜杠。 */
 export const BALANCE_PATH = '/api/v1/balance'
@@ -51,7 +51,7 @@ export interface RefreshResult {
   triggered: boolean
   joined: boolean
   cooldownMs: number
-  state: string
+  state: BalanceState
 }
 
 /** 端点拿不到、或回的不是 JSON 时用的错误码。 */

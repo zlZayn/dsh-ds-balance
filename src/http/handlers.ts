@@ -158,7 +158,7 @@ export async function handleRefresh(request: Request, deps: HttpDeps): Promise<R
       triggered: false,
       joined: false,
       cooldownMs: 0,
-      state: 'error' as CacheState,
+      state: 'error',
       error: toWireError(classify(error)),
     })
   }

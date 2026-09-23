@@ -3,6 +3,9 @@
  * @module dsh-ds-balance/client/api-types
  */
 
+import type { ErrorCode } from '../domain/errors.ts'
+import type { UNREACHABLE_CODE } from './data.ts'
+
 /** 余额数据的状态维度。 */
 export type BalanceState = 'empty' | 'ok' | 'stale' | 'error'
 
@@ -30,9 +33,17 @@ export interface TodayUsage {
   range: [string, string] | null
 }
 
+/**
+ * 客户端可见的错误码：宿主闭集 ∪ 客户端本地合成的「端点不可达」。
+ *
+ * `UNREACHABLE_CODE` 只在客户端产生（端点拿不到、或回的不是 JSON），宿主侧不认识它，
+ * 所以是**显式扩展**而不是往宿主闭集里塞。
+ */
+export type BalanceErrorCode = ErrorCode | typeof UNREACHABLE_CODE
+
 /** 后端错误。 */
 export interface BalanceError {
-  code: string
+  code: BalanceErrorCode
   message: string
 }
 
