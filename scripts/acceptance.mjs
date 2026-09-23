@@ -124,4 +124,10 @@ if (!hasCredentials) {
   process.exit(2)
 }
 console.log('全部通过。')
-process.exit(0)
+// 这里只设 exitCode、不调 process.exit()：上游那一段读过响应体，undici 的 keep-alive
+// 套接字此刻仍在收尾，立刻强制退出会在 Windows + Node 24 上触发 libuv 断言
+// `!(handle->flags & UV_HANDLE_CLOSING)`，真实退出码变成崩溃码（0xC0000409）——
+// 把「全过」掩成非 0。自然退出等它收完，实测 0.37s。
+// 失败路径仍用 process.exit(1/2)：那两条只可能在没有存活套接字时走到（缺凭据时上游整段 SKIP），
+// 且即便崩溃也仍是非 0，不会把失败掩成成功。
+process.exitCode = 0
