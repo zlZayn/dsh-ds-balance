@@ -26,6 +26,7 @@ import { HttpDeepSeekClient } from './adapters/http-deepseek-client.js'
 import { SALT_BYTES, SALT_ENCODING, loadOrCreateSalt } from './adapters/salt-file.js'
 import { createConsoleLogger } from './adapters/console-logger.js'
 import { MemoryMetrics } from './adapters/memory-metrics.js'
+import { describeError } from './domain/errors.js'
 import { registerHttpRoutes } from './http/routes.js'
 import type { Clock } from './ports/clock.js'
 import type { Credentials } from './ports/credentials.js'
@@ -71,10 +72,6 @@ const systemClock: Clock = {
   timezone: () => 'Asia/Shanghai',
 }
 
-/** 把未知异常压成一行。 */
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 /**
  * 读服务端盐；读不出来就退回一份进程内临时盐。
  *
@@ -87,7 +84,7 @@ async function resolveSalt(logger: Logger): Promise<string> {
   try {
     return await loadOrCreateSalt({ path: dshHomePath(SALT_FILE_NAME) })
   } catch (error) {
-    logger.error('ds-balance: salt file unavailable, using an ephemeral salt', { error: describe(error) })
+    logger.error('ds-balance: salt file unavailable, using an ephemeral salt', { error: describeError(error) })
     return randomBytes(SALT_BYTES).toString(SALT_ENCODING)
   }
 }

@@ -182,3 +182,15 @@ export function classify(error: unknown): ErrorInfo {
 
   return { code: 'STORAGE_ERROR', message: String(error), retryable: true }
 }
+
+/**
+ * 把任意异常压成一行文本，供日志与错误消息使用。
+ *
+ * **绝不带凭据**：上游约定异常文本里不含密钥，所以它可以安全写进日志。
+ * 只取 `Error.message`；非 `Error` 的抛出值退回 `String()`。
+ * @param error - 任意抛出的值。
+ * @returns 单行错误文本。
+ */
+export function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}

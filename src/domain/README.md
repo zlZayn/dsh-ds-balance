@@ -10,7 +10,7 @@
 ## 文件
 
 - `money.ts`：定点金额。`Units` 是 `bigint` 最小单位；`parseMoney` 只接受十进制定点、超 8 位**截断不四舍五入**、失败抛 `ParseError`；`formatMoney(units, decimals)` 默认 8 位给 API、2 位给 UI。
-- `errors.ts`：错误码闭集、`AppError` 家族、`upstreamCodeOf`（状态码 → 错误码）、`parseRetryAfter`、`classify`（任意异常 → `ErrorInfo`）。
+- `errors.ts`：错误码闭集、`AppError` 家族、`upstreamCodeOf`（状态码 → 错误码）、`parseRetryAfter`、`classify`（任意异常 → `ErrorInfo`）、`describeError`（任意异常 → 单行文本）。
 - `balance.ts`：契约类型。`BalanceSnapshot` 是内部形状（金额为 `bigint`），`BalanceView` 是对外形状，`RawBalanceResponse` 是上游形状（字段名保持上游拼写）。
 - `severity.ts`：`thresholdsOf` / `thresholdsFor` / `severityOf`。**阈值只在这里被读**，前端不参与任何金额比较。
 - `select.ts`：`stableOrder`（CNY 提前、其余保序）与 `pickBalance`（后端权威的币种选择）。
@@ -18,7 +18,7 @@
 
 ## 关键导出与依赖方向
 
-- 只被 `src/ports/`、`src/adapters/`、`src/services/`、`src/http/` 依赖。
+- 只被 `src/ports/`、`src/adapters/`、`src/services/`、`src/http/`、`src/index.ts` 依赖。
 - **domain 不许反向依赖上层** —— 它连 `ports` 都不该 import。
 
 ## 改后必测
