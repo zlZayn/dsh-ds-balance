@@ -91,8 +91,9 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 
 ## 六、配置契约（后端要服务的命名空间）
 
-- 命名空间：`ds-balance`（宿主 schema 与浏览器半边用同一字符串配对）。
-- 落点：`$DSH_HOME/settings.yaml` 的顶层键 `ds-balance`。
+- 命名空间：`dsh-ds-balance`（宿主 schema 与浏览器半边用同一字符串配对；0.1.7 起它 = Loader 条目 id = `cordis.patch.yml` 的 insert 行 id）。
+- **它与包名今天同串，但不是宿主要求的同一个概念**：槽 key（`plugins.bundle.config`）取包名，`configForms.get()` / `settings.mutate` 取这个命名空间 —— 漂开的表现是「卡片在、表单永远只读」，不报错。由 `test/redlines.test.ts` 与 `test/artifacts.test.ts` 对账。
+- 落点：`$DSH_HOME/settings.yaml` 的顶层键 `dsh-ds-balance`（历史：0.1.7 迁移前是 `ds-balance`，旧值不自动迁移）。
 - 设置界面挂在 Plugins 页里该 bundle 的详情页：宿主按包名 `dsh-ds-balance` 取 `plugins.bundle.config` 这一格（原「设置 → 插件」入口已不存在）。
 
 | 字段 | 类型 | 默认 | 范围 |

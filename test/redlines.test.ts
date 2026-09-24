@@ -250,8 +250,9 @@ describe('构建链守卫', () => {
     expect(buildScript).toContain('__DSB_STYLE_INJECTION__')
   })
 
-  it('信封 id 必须等于包名', () => {
-    expect(buildScript).toContain(`const BUNDLE_ID = '${pkg.name}'`)
+  it('信封 id 必须从 package.json 的 name 读（不手抄包名）', () => {
+    expect(buildScript).toContain("readFileSync('package.json'")
+    expect(buildScript).toMatch(/const BUNDLE_ID = .*\.name/)
   })
 })
 
@@ -404,18 +405,22 @@ describe('设置接缝', () => {
     expect(client).not.toBe(hostEntryId)
   })
 
-  it('BUNDLE_CONFIG_KEY 逐字等于 ENTRY_ID（槽 key 取包名）', () => {
+  it('BUNDLE_CONFIG_KEY 字面量逐字等于 package.json 的 name（槽 key 取包名）', () => {
     // 宿主按包名索引这一格（slot-contract 对该槽的说明 + config-ledger.ts:51 的
     // keysOf('plugins.bundle.config') + PluginManagerPage.tsx:1269 的
     // configured={ledger.bundles.has(openPkg.name)}）。
-    // 客户端把它写成字面量（产物里要能照字面找到这个键，见 artifacts.test.ts），
-    // 所以这层相等关系得在这里对账 —— 光靠肉眼看不出两份字面量什么时候漂开。
+    // 客户端把它写成字面量（产物里要能照字面找到这个键，见 artifacts.test.ts；
+    // 浏览器半体不 import package.json），所以真源对账在这里做。
     //
-    // **这是本轮新引入的静默耦合点**：槽 key 取包名、ctx.configForms.get() 取 Loader
-    // 条目 id，两者今天同串。它们必须逐字相等，但**不是一个概念** ——
-    // 漂开的表现是「卡片在、表单永远只读」，不报错。
-    expect(readFileSync('src/client/index.tsx', 'utf8'))
-      .toContain(`export const BUNDLE_CONFIG_KEY = '${clientEntryId}'`)
+    // **与 ENTRY_ID 是两个概念**：槽 key 取包名、ctx.configForms.get() 取 Loader
+    // 条目 id，两者今天同串。漂开的表现是「卡片在、表单永远只读」，不报错。
+    const match = /export const BUNDLE_CONFIG_KEY = '([^']*)'/.exec(
+      readFileSync('src/client/index.tsx', 'utf8'),
+    )
+    expect(match, 'src/client/index.tsx 里找不到 export const BUNDLE_CONFIG_KEY').not.toBeNull()
+    expect(match?.[1]).toBe(pkg.name)
+    // 今天它还等于 ENTRY_ID（设置命名空间）—— 这是约定，不是宿主要求；两条都钉住。
+    expect(match?.[1]).toBe(clientEntryId)
   })
 
   it('卡片注册项用的就是 CONFIG_SLOT 与 BUNDLE_CONFIG_KEY', () => {

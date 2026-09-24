@@ -23,6 +23,7 @@
 ## 文件
 
 - `build-client.mjs`：用 esbuild 把 `src/client/` 打成 `lib/client.js`。
+  - **信封 id（`BUNDLE_ID`）读 `package.json` 的 `name`**，不在脚本里手抄包名；它必须等于包名（模块表以它作 key，HMR 按它清样式）。
   - 产物必须是 DSH 客户端模块系统的 lazy-CJS 信封：`window.__ModuleLoader__.load({ id, factory })`。
   - 官方预设 `packages/client/tsdown.client.ts` 未发布到 npm，仓库外必须自行复刻。
   - 两处非显然的配置：`loader: { '.css': 'local-css' }`（否则 CSS Modules 的类名全是 `undefined`），以及构建后把抽出的 CSS 内联回 factory（DSH 只服务 `lib/client.js`，不加载 `lib/client.css`）。

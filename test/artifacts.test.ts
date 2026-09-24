@@ -15,13 +15,18 @@ const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as {
 }
 
 /**
- * 本插件那一行的 Loader 条目 id —— 0.1.7 起它同时是设置命名空间。
- * 真源是 package.json 的 name，而 `cordis.patch.yml` 的行 id 必须与它逐字相同。
+ * `plugins.bundle.config` 的 key —— 宿主按**包名**索引这一格。真源是 package.json。
  */
-const ENTRY_ID = 'dsh-ds-balance'
+const BUNDLE_CONFIG_KEY = pkg.name
 
-/** `plugins.bundle.config` 的 key —— 宿主按**包名**索引这一格。 */
-const BUNDLE_CONFIG_KEY = ENTRY_ID
+/**
+ * 本插件那一行的 Loader 条目 id —— 0.1.7 起它同时是设置命名空间。
+ * 真源是 cordis.patch.yml 的 insert 行 id（与 package.json name 今天同串，
+ * 但概念独立 —— 见下方对账用例）。
+ */
+const patchSource = readFileSync('cordis.patch.yml', 'utf8')
+const ENTRY_ID = /^\s*-\s*id:\s*(\S+)\s*$/m.exec(patchSource)?.[1]
+if (ENTRY_ID === undefined) throw new Error('cordis.patch.yml 里找不到 insert 行的 id')
 
 const MISSING = 'lib/ 里没有产物：先跑 `npm run build`（`npm test` 自带这一步）'
 
@@ -47,9 +52,10 @@ describe('构建产物', () => {
     // 宿主半边写设置、浏览器半边读表单、plugins.bundle.config 的 key 都按它索引。
     // 漂开的表现分两种：槽 key 与包名错开 ⇒ 详情页里整段配置不出现；
     // 设置命名空间错开 ⇒ 卡片在、表单永远只读。两者都不报错。
+    // ENTRY_ID 已从 patch 行读出；这里钉的是「今天三者同串」这条约定。
     expect(pkg.name).toBe(ENTRY_ID)
-    const patch = readFileSync('cordis.patch.yml', 'utf8')
-    const rowId = /^\s*-\s*id:\s*(\S+)\s*$/m.exec(patch)?.[1]
+    expect(BUNDLE_CONFIG_KEY).toBe(ENTRY_ID)
+    const rowId = /^\s*-\s*id:\s*(\S+)\s*$/m.exec(patchSource)?.[1]
     expect(rowId, 'cordis.patch.yml 里找不到 insert 行的 id').toBe(ENTRY_ID)
   })
 

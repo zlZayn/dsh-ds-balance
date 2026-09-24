@@ -16,7 +16,7 @@
  *    `<style data-plugin="<包名>">` —— HMR 的 `removeOwnedStyles` 按该属性逐字匹配来清理。
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { build } from 'esbuild';
 
 // 路径冲突守卫：tsc 把 src/<name>.ts 编译到 lib/<name>.js，rootDir 是 src、outDir 是 lib。
@@ -31,8 +31,8 @@ for (const stale of ['src/client.ts', 'src/client.tsx']) {
   }
 }
 
-/** bundle id 必须等于包名：模块表以它作 key，HMR 也按它清理样式。 */
-const BUNDLE_ID = 'dsh-ds-balance';
+/** bundle id 必须等于包名：模块表以它作 key，HMR 也按它清理样式。真源是 package.json 的 name。 */
+const BUNDLE_ID = JSON.parse(readFileSync('package.json', 'utf8')).name;
 
 /** 样式标签的 id；前缀必须是包名，便于排查。 */
 const STYLE_TAG_ID = `${BUNDLE_ID}/client.css`;

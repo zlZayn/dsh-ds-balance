@@ -52,6 +52,8 @@ export const ENTRY_ID = 'dsh-ds-balance'
  * **Loader 条目 id**；两者今天同串，漂开的表现是卡片在、表单永远只读。
  * 这条静默耦合由 `test/redlines.test.ts` 与 `test/artifacts.test.ts` 对账。
  *
+ * **真源是 package.json 的 name**；本处手写一份字面量是因为浏览器半体不 import
+ * package.json（产物要能在信封里照字面找到这个键），由 redlines 断言与 `pkg.name` 逐字相等。
  * **写成独立具名常量而不是直接用 `ENTRY_ID`**：产物级断言要在打包后的信封里照字面
  * 找到这个键 —— 直接复用那个常量会让「键」与「命名空间」在产物里无从分辨。
  */

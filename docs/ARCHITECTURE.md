@@ -55,6 +55,16 @@
   **它与 `plugins.bundle.config` 的 key（包名）今天同串，但不是一个概念** —— 这是本轮引入的静默耦合点：
   槽 key 写成别的，整段配置不出现；`get()` 传错，卡片在、表单永远只读。两者都不报错，靠红线对账。
   它也与左下角条目的 slot id（`ds-balance`，纯 UI 身份）**是两个不同的值**，别合并成一个常量。
+
+  **`dsh-` 串的三层（本仓的命名耦合地图）**：
+
+  | 层 | 字符串 | 谁定的 | 单真源 |
+  | :--- | :--- | :--- | :--- |
+  | 宿主强制 = 包名 | `package.json.name` / `cordis.patch.yml` 的 `name` / 槽 key `BUNDLE_CONFIG_KEY` / 信封 `BUNDLE_ID` | 宿主按包名索引 | `package.json`（构建脚本读它；测试断言字面量 = `pkg.name`） |
+  | 自选同串 | 设置命名空间 = `ENTRY_ID` = patch 行 `id` | 我们选的约定 | **独立手写字面量**（两半各一份，红线对账 + 钉「今天 = 包名」） |
+  | 故意不同 | `SIDEBAR_ENTRY_ID`（`ds-balance`） | 纯 UI 身份 | 独立手写字面量 |
+
+  改名时：第一层跟着 `package.json` 走（构建自动）；第二层要**手动**改两处字面量并迁移用户设置（旧命名空间的值不会自动搬）；第三层与配置无关。
 - **配置值活在引用里，不活在 `apply` 的参数里**：11 个字段全是 `.volatile()`，`apply` 收到 `Volatile` 引用面，
   读值一律 `ref.get()`。收益是改配置**永不重挂** —— Loader 只把新值提交进引用并发一次 `loader/volatile-update`；
   代价是没有 setter，写回必须走宿主的设置域。
