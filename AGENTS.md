@@ -10,7 +10,7 @@
 - **本次发版决策**：8 条 UI 修缺里 **7 条完整**发出；**#5「浮层右上角 Plugins 图标」的落点只到 Plugins 面板**，到不了本插件的 bundle 详情页 —— 该条**搁置**（现状与证据见 [sidebar 手册](src/client/sidebar/README.md)）。
   为什么现在发：币种那条是**真 bug** —— 浮层「改用 X」写的是本地偏好、设置页不跟着变，组件重挂就丢，使用者正在用有问题的版本，**等不起**；其余几条一并随这个版本出去。
   发的是哪条线：先走 **alpha 线 `2.0.0-alpha.N`**（版本号带预发布段 → 发到同名 dist-tag，当时 `latest` 不动）；**正式 `2.0.0` 已发出、`latest` 已切到它**，`alpha` dist-tag 仍指 `2.0.0-alpha.2`；实际版本号与 dist-tag 现查 npm，机制见 [release.yml](.github/workflows/release.yml) 顶部注释与 [PUBLISHING.md](docs/PUBLISHING.md)。
-  触发条件：等宿主给出面板深链入口（`selectPanel` 带参数，或 ui-plugin-manager 暴露 `openBundle(name)` 一类客户端服务）后，**再发一个 patch 把图标落点改成直达**。
+  **条件已满足（2026-09-25）**：宿主在 rc 线（`next`）起于 ui-plugin-manager 里 provide 了 `pluginNavigation.openBundle(包名)`（`@deepseek-ai/dsh-client-ui-plugin-manager` 的 `index.d.ts`；alpha 线没有这条服务）。图标落点已改成直达：特征检测到该服务就 `openBundle(BUNDLE_CONFIG_KEY)`，服务缺席或调用抛错退回 Plugins 列表 —— 见 [src/client/index.tsx](src/client/index.tsx) 的 `pluginNavigation` 注入与 `pluginsNavigation` 那一次 attach。
   **这是有意的取舍，不是遗漏** —— 记在这里免得后人当成漏做的活。
 
 ## 全局规则
@@ -97,7 +97,7 @@
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
 - [x] 首次发布的手动配置：npm Trusted Publisher 已配、仓库 secret `DSH_CI_API_KEY` 已在、`v1.0.0` tag 与 Release 已建
 - [x] `release` environment 已由 release.yml 首次运行自动创建；想挂人工审批再加规则 → [发布手册](docs/PUBLISHING.md)
-- [ ] **等宿主给出面板深链入口**（`selectPanel` 带参数，或 ui-plugin-manager 暴露 `openBundle(name)` 之类的客户端服务）后，把浮层右上角图标的落点从 Plugins 列表补到本插件的 bundle 详情页 —— 现状、证据与触发条件见 [sidebar 手册](src/client/sidebar/README.md)，在此之前不在插件侧另造页面
+- [x] **面板深链已接上**（2026-09-25）：宿主 rc 线（`next`）的 ui-plugin-manager provide 了 `pluginNavigation.openBundle(包名)` → 浮层右上角图标直达本插件的配置格；服务缺席（alpha 线 / 旧宿主）或调用抛错时**退回 Plugins 列表**，两条都不通只 `console.warn` 一笔。判据与现象见 [sidebar 手册](src/client/sidebar/README.md)
 
 ## 活跃坑
 
