@@ -2,9 +2,9 @@
 
 ## 状态
 
-- **已发布 2.1.0**：npm `latest` = 2.1.0，tag `v2.1.0` → `7ded7f6`，[GitHub Release](https://github.com/zlZayn/dsh-ds-balance/releases/tag/v2.1.0) 已建；发布走 [release.yml](.github/workflows/release.yml)（Trusted Publishing，带 provenance）。
-- **2.1.0 的产物 = `7ded7f6` 那棵树**；npm 上的 shasum 与本地 `npm pack` 的比对，待 registry 可见后做（见待办）。
-- **本轮 2.1.1（patch，待发）**：浮层右上角图标的文案改成**按落点分档** —— 宿主有那条深链服务说「打开插件配置页」，缺席说「打开插件页」。定档 patch 的理由：只有界面文案变了，受影响的产物只有 `lib/client.js`。**发布态（tag / Release / dist-tag）发出去之后按现查回填，不写猜的值。**
+- **已发布 2.1.1**：npm `latest` = **2.1.1**，tag `v2.1.1` → `e2dc940`，[GitHub Release](https://github.com/zlZayn/dsh-ds-balance/releases/tag/v2.1.1) 已建（非 prerelease）；发布走 [release.yml](.github/workflows/release.yml)（Trusted Publishing，带 provenance）。**产物一致性已复验**：本地 `npm pack` 的 sha1 与 npm 上 `dist.shasum` 逐字节相同（`e2e4fafb…fded1`）。
+  **2.1.1（patch）改了什么**：浮层右上角图标的文案按**落点**分档 —— 宿主有那条深链服务说「打开插件配置页」，缺席或抛错说「打开插件页」。定档 patch 的理由：只有界面文案变了，受影响的产物只有 `lib/client.js`。
+- **上一版 2.1.0**：tag `v2.1.0` → `7ded7f6`，[Release](https://github.com/zlZayn/dsh-ds-balance/releases/tag/v2.1.0) 已建；产物 = `7ded7f6` 那棵树，shasum 比对已做过。
 - `npm run check:release` 当前 0 失败。
 - 装法只有一条：`dsh plugin --profile <profile> add dsh-ds-balance`（或源码路径）—— 包内声明了 bundle 层，安装器自己会写进 `dsh.profile.bundles`。**不要再手写 patch 行**，见下面的活跃坑。
 - 运行形态：装进某个 dsh profile 的 `node_modules`，由该 profile 的 `dsh.profile.bundles` 装载（bundle 层来自包内的 `cordis.patch.yml`）。
@@ -101,7 +101,7 @@
 - [x] 首次发布的手动配置：npm Trusted Publisher 已配、仓库 secret `DSH_CI_API_KEY` 已在、`v1.0.0` tag 与 Release 已建
 - [x] `release` environment 已由 release.yml 首次运行自动创建；想挂人工审批再加规则 → [发布手册](docs/PUBLISHING.md)
 - [x] **面板深链已接上**（2026-09-25）：宿主 `next` 线的 ui-plugin-manager provide 了 `pluginNavigation.openBundle(包名)` → 浮层右上角图标直达本插件的配置格；服务缺席（更早的宿主线）或调用抛错时**退回 Plugins 列表**，两条都不通只 `console.warn` 一笔。**措辞跟着落点分档**；判据、现象与本机宿主的那次勘误见[本轮记录](.agents/notes/2026-09-25-deep-link-needs-host-service.md)
-- [ ] **深链要在本机生效，得先把宿主换到 provide 了那条服务的线上**（三条 dist-tag 现查 `npm view @deepseek-ai/dsh dist-tags`）：本机主实例装的那条线没有它，插件侧改多少都不会生效；宿主升级要重启进程，重启后旧标签页的 token 失效（见自开发手册）
+- [x] **深链已在本机生效**（2026-09-25）：维护者把宿主换到 provide 了那条服务的线上并重启，图标直达本插件的配置格。判据仍是**服务在不在**（三条 dist-tag 现查 `npm view @deepseek-ai/dsh dist-tags`），不是版本号
 - [x] **npm `latest` 已回填**（2026-09-25）：`dist-tags` 已翻到 `2.1.0`；产物一致性复验通过 —— 本地 `npm pack`（`7ded7f6` 那棵树）的 sha1 与 npm 上 2.1.0 的 `dist.shasum` **逐字节相同**
 - [ ] **浮层图标行为变了 → 涉及它的门面截图需重拍**（`sidebar-popover*.png`）：判据见 [assets/AGENTS.md](assets/AGENTS.md)
 
