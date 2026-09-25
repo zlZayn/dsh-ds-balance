@@ -2,7 +2,7 @@
 
 ## 状态
 
-- **已发布 2.1.0**：npm `latest` 以 registry 为准（现查 `npm view dsh-ds-balance dist-tags` —— 2.1.0 发布后有一段 validating 窗口，回填见待办），tag `v2.1.0` → `7ded7f6`，[GitHub Release](https://github.com/zlZayn/dsh-ds-balance/releases/tag/v2.1.0) 已建；发布走 [release.yml](.github/workflows/release.yml)（Trusted Publishing，带 provenance）。
+- **已发布 2.1.0**：npm `latest` = 2.1.0，tag `v2.1.0` → `7ded7f6`，[GitHub Release](https://github.com/zlZayn/dsh-ds-balance/releases/tag/v2.1.0) 已建；发布走 [release.yml](.github/workflows/release.yml)（Trusted Publishing，带 provenance）。
 - **2.1.0 的产物 = `7ded7f6` 那棵树**；npm 上的 shasum 与本地 `npm pack` 的比对，待 registry 可见后做（见待办）。
 - `npm run check:release` 当前 0 失败。
 - 装法只有一条：`dsh plugin --profile <profile> add dsh-ds-balance`（或源码路径）—— 包内声明了 bundle 层，安装器自己会写进 `dsh.profile.bundles`。**不要再手写 patch 行**，见下面的活跃坑。
@@ -99,7 +99,7 @@
 - [x] 首次发布的手动配置：npm Trusted Publisher 已配、仓库 secret `DSH_CI_API_KEY` 已在、`v1.0.0` tag 与 Release 已建
 - [x] `release` environment 已由 release.yml 首次运行自动创建；想挂人工审批再加规则 → [发布手册](docs/PUBLISHING.md)
 - [x] **面板深链已接上**（2026-09-25）：宿主 rc 线（`next`）的 ui-plugin-manager provide 了 `pluginNavigation.openBundle(包名)` → 浮层右上角图标直达本插件的配置格；服务缺席（alpha 线 / 旧宿主）或调用抛错时**退回 Plugins 列表**，两条都不通只 `console.warn` 一笔。判据与现象见 [sidebar 手册](src/client/sidebar/README.md)
-- [ ] **npm `latest` 生效后回填状态段**（在那之前不写猜的值）：`dist-tags` 翻到 `2.1.0` 后补齐上面那一句，并用 shasum 复验「2.1.0 的产物 = `7ded7f6` 那棵树」
+- [x] **npm `latest` 已回填**（2026-09-25）：`dist-tags` 已翻到 `2.1.0`；产物一致性复验通过 —— 本地 `npm pack`（`7ded7f6` 那棵树）的 sha1 与 npm 上 2.1.0 的 `dist.shasum` **逐字节相同**
 - [ ] **浮层图标行为变了 → 涉及它的门面截图需重拍**（`sidebar-popover*.png`）：判据见 [assets/AGENTS.md](assets/AGENTS.md)
 
 ## 活跃坑
