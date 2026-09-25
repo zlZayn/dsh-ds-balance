@@ -328,6 +328,25 @@ export function apply(ctx: ClientContext): void {
   // 浮层右上角那个图标就不渲染：不留按不动的死按钮。
   // layout 刻意**不进顶层 inject**：缺服务会让整个插件不装载。
   const pluginsNavigation = createPluginsNavigation()
+  // 深链优先：宿主在 rc 线（next）起于 ui-plugin-manager 里 provide 了 pluginNavigation.openBundle(包名)
+  // （@deepseek-ai/dsh-client-ui-plugin-manager 的 index.d.ts），它自己先切面板再定位到那个 bundle 的
+  // 配置格 —— 所以它是加速器而不是替代品：alpha 线上没有这条服务，特征检测缺席就退回「切到 Plugins 列表」。
+  // 同样刻意不进顶层 inject（缺服务不能拖垮整插件装载）；也**不在这里 attach** —— 句柄只有一个槽，
+  // 第二次 attach 会把第一次顶掉，所以两条链共用下面那一次 attach，优先级在点击时判。
+  let openBundlePanel: ((packageName: string) => void) | undefined
+  ctx.inject(['pluginNavigation'], (navCtx) => {
+    // 鸭子类型收窄：旧宿主没这条服务、新宿主也可能换实现 —— 读不到就什么都不做（没图标好过点了会炸）。
+    const face = (navCtx as unknown as Record<string, unknown>)['pluginNavigation']
+    if (typeof face !== 'object' || face === null) return
+    const candidate = (face as Record<string, unknown>)['openBundle']
+    if (typeof candidate !== 'function') return
+    // 绑回服务对象：宿主实现内部要用 this（与 selectPanel 同理）。
+    const openBundle = (candidate as (packageName: string) => void).bind(face)
+    navCtx.effect(() => {
+      openBundlePanel = (packageName) => { openBundle(packageName) }
+      return () => { openBundlePanel = undefined }
+    }, 'ds-balance: bundle config deep link')
+  })
   ctx.inject(['layout'], (layoutCtx) => {
     // 鸭子类型收窄：宿主可能是旧版本或换了实现（本仓不装 ui-layout、不 import 它的类型），
     // 读不到 layout 或长得不对时同样什么都不做 —— 没图标，好过点了会炸。
@@ -338,6 +357,16 @@ export function apply(ctx: ClientContext): void {
     // 绑回服务对象：宿主的 selectPanel 内部要用 this（LayoutController 的 panels 与 navigation）。
     const selectPanel = face.selectPanel.bind(face)
     layoutCtx.effect(() => pluginsNavigation.attach(() => {
+      // 深链优先：服务在（rc 线）时直接落到本插件的配置格；它自己会先切面板。
+      // 抛错（面板未注册等）就退回列表页 —— 两条都不通只记一笔，浮层已经关了。
+      if (openBundlePanel !== undefined) {
+        try {
+          openBundlePanel(BUNDLE_CONFIG_KEY)
+          return
+        } catch (error) {
+          console.warn('[WARN] ds-balance: cannot open the bundle config page', error)
+        }
+      }
       try {
         selectPanel(PLUGINS_PANEL_ID)
       } catch (error) {

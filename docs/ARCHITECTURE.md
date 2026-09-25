@@ -165,4 +165,4 @@
 ## 阶段边界
 
 - 不做：Estimation（账本 / 投影 / 手工校正）、诊断层、独立页面、图表、多厂商模板、SSE。
-- **不做（宿主还没给这条缝）**：到某个 bundle 详情页的深链。浮层右上角图标只落在 Plugins 面板（列表页）—— 宿主没有公开的面板深链入口，等它给出（`selectPanel` 带参数或 `openBundle(name)` 一类的客户端服务）再补深；不在插件侧另造页面。现状与证据 → [../src/client/sidebar/README.md](../src/client/sidebar/README.md)。
+- **已做（2026-09-25）**：到本插件配置格的深链。宿主在 rc 线（`next`）起于 ui-plugin-manager 里 provide 了 `pluginNavigation.openBundle(包名)`，浮层右上角图标特征检测到它就直达该 bundle 的配置格，服务缺席或调用抛错退回 Plugins 列表（两条都不通只 `console.warn`，不留死按钮）。**判据不是版本号而是服务在不在** —— alpha 线上没有这条缝，同一份产物退回旧落点。现状与证据 → [../src/client/sidebar/README.md](../src/client/sidebar/README.md)。
