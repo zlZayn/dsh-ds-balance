@@ -40,7 +40,7 @@ The balance needs somewhere to live that does not take up room. A permanent stat
 | Surface | One line | Use it for |
 |---|---|---|
 | Sidebar ring | A status ring plus label at the bottom of the sidebar; **in the expanded state, hovering the entry reports the balance amount**, and **how full it is = how far the balance is from that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
-| Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown); **an icon at its top right jumps straight to the Plugins page** | Checking the exact figures, and how many minutes old they are |
+| Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown); **an icon at its top right opens this plugin's configuration page** (on a host without that cross-plugin deep link it falls back to the Plugins list, and its tooltip says so) | Checking the exact figures, and how many minutes old they are |
 | Settings card | Connection / Display / Thresholds / Refresh, **all collapsed by default**, expand a group from its header | Changing the endpoint, the currency, the warning lines, the cadence |
 
 The division of labour is fixed: **the ring answers "roughly how much is left", the popover answers "exactly how much", and the card answers "how is that computed".**

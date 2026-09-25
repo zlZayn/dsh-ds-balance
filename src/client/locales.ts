@@ -24,7 +24,10 @@ export const zh = {
   'popover.cooldown': '{value} 秒后可再次刷新',
   'popover.mismatch': '未找到 {wanted} 余额，当前显示 {shown}',
   'popover.action.useShown': '改用 {shown}',
+  // 右上角图标的两档措辞。落点由**宿主能力**决定（跨插件深链服务在不在），
+  // 措辞就跟着落点分档：一句含糊的话盖不住两种落点。见 BalancePopover 的 PluginsAction。
   'popover.action.openPlugins': '打开插件页',
+  'popover.action.openPluginConfig': '打开插件配置页',
 
   'state.unavailable': '账户不可用',
   'state.stale': '数据已过期',
@@ -122,6 +125,7 @@ export const en: Record<LocaleKey, string> = {
   'popover.mismatch': 'No {wanted} balance found; showing {shown}',
   'popover.action.useShown': 'Use {shown}',
   'popover.action.openPlugins': 'Open the Plugins page',
+  'popover.action.openPluginConfig': 'Open the plugin configuration page',
 
   'state.unavailable': 'Account unavailable',
   'state.stale': 'Data is stale',

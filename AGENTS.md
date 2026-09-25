@@ -4,13 +4,15 @@
 
 - **已发布 2.1.0**：npm `latest` = 2.1.0，tag `v2.1.0` → `7ded7f6`，[GitHub Release](https://github.com/zlZayn/dsh-ds-balance/releases/tag/v2.1.0) 已建；发布走 [release.yml](.github/workflows/release.yml)（Trusted Publishing，带 provenance）。
 - **2.1.0 的产物 = `7ded7f6` 那棵树**；npm 上的 shasum 与本地 `npm pack` 的比对，待 registry 可见后做（见待办）。
+- **本轮 2.1.1（patch，待发）**：浮层右上角图标的文案改成**按落点分档** —— 宿主有那条深链服务说「打开插件配置页」，缺席说「打开插件页」。定档 patch 的理由：只有界面文案变了，受影响的产物只有 `lib/client.js`。**发布态（tag / Release / dist-tag）发出去之后按现查回填，不写猜的值。**
 - `npm run check:release` 当前 0 失败。
 - 装法只有一条：`dsh plugin --profile <profile> add dsh-ds-balance`（或源码路径）—— 包内声明了 bundle 层，安装器自己会写进 `dsh.profile.bundles`。**不要再手写 patch 行**，见下面的活跃坑。
 - 运行形态：装进某个 dsh profile 的 `node_modules`，由该 profile 的 `dsh.profile.bundles` 装载（bundle 层来自包内的 `cordis.patch.yml`）。
 - **本次发版决策**：8 条 UI 修缺里 **7 条完整**发出；**#5「浮层右上角 Plugins 图标」的落点只到 Plugins 面板**，到不了本插件的 bundle 详情页 —— 该条**搁置**（现状与证据见 [sidebar 手册](src/client/sidebar/README.md)）。
   为什么现在发：币种那条是**真 bug** —— 浮层「改用 X」写的是本地偏好、设置页不跟着变，组件重挂就丢，使用者正在用有问题的版本，**等不起**；其余几条一并随这个版本出去。
   发的是哪条线：先走 **alpha 线 `2.0.0-alpha.N`**（版本号带预发布段 → 发到同名 dist-tag，当时 `latest` 不动）；**正式 `2.0.0` 已发出、`latest` 已切到它**，`alpha` dist-tag 仍指 `2.0.0-alpha.2`；实际版本号与 dist-tag 现查 npm，机制见 [release.yml](.github/workflows/release.yml) 顶部注释与 [PUBLISHING.md](docs/PUBLISHING.md)。
-  **条件已满足（2026-09-25）**：宿主在 rc 线（`next`）起于 ui-plugin-manager 里 provide 了 `pluginNavigation.openBundle(包名)`（`@deepseek-ai/dsh-client-ui-plugin-manager` 的 `index.d.ts`；alpha 线没有这条服务）。图标落点已改成直达：特征检测到该服务就 `openBundle(BUNDLE_CONFIG_KEY)`，服务缺席或调用抛错退回 Plugins 列表 —— 见 [src/client/index.tsx](src/client/index.tsx) 的 `pluginNavigation` 注入与 `pluginsNavigation` 那一次 attach。
+  **条件已满足、落点已接上（2026-09-25）**：宿主在 `next` 线起于 ui-plugin-manager 里 provide 了 `pluginNavigation.openBundle(包名)`（alpha 线至今没有这条服务）。图标落点已改成直达：特征检测到该服务就 `openBundle(BUNDLE_CONFIG_KEY)`，服务缺席或调用抛错退回 Plugins 列表 —— 见 [src/client/index.tsx](src/client/index.tsx) 的两个 `ctx.inject` 与 `createPluginsNavigation`。
+  **但「服务在不在」是运行期事实，不是仓库事实**：本机主实例当时装的是**更早的一条 rc**，那条服务不在 ⇒ 维护者实机点下去仍然只到列表页，悬浮文字也仍然说「打开插件页」。所以**措辞按落点分档**（能直达才说「打开插件配置页」）—— 勘误、判据与替代方案见[本轮记录](.agents/notes/2026-09-25-deep-link-needs-host-service.md)。
   **这是有意的取舍，不是遗漏** —— 记在这里免得后人当成漏做的活。
 
 ## 全局规则
@@ -98,7 +100,8 @@
 - [x] 两张设置卡片截图已从真实界面实拍（中英各一张）→ 重截判据见 [assets/AGENTS.md](assets/AGENTS.md)
 - [x] 首次发布的手动配置：npm Trusted Publisher 已配、仓库 secret `DSH_CI_API_KEY` 已在、`v1.0.0` tag 与 Release 已建
 - [x] `release` environment 已由 release.yml 首次运行自动创建；想挂人工审批再加规则 → [发布手册](docs/PUBLISHING.md)
-- [x] **面板深链已接上**（2026-09-25）：宿主 rc 线（`next`）的 ui-plugin-manager provide 了 `pluginNavigation.openBundle(包名)` → 浮层右上角图标直达本插件的配置格；服务缺席（alpha 线 / 旧宿主）或调用抛错时**退回 Plugins 列表**，两条都不通只 `console.warn` 一笔。判据与现象见 [sidebar 手册](src/client/sidebar/README.md)
+- [x] **面板深链已接上**（2026-09-25）：宿主 `next` 线的 ui-plugin-manager provide 了 `pluginNavigation.openBundle(包名)` → 浮层右上角图标直达本插件的配置格；服务缺席（更早的宿主线）或调用抛错时**退回 Plugins 列表**，两条都不通只 `console.warn` 一笔。**措辞跟着落点分档**；判据、现象与本机宿主的那次勘误见[本轮记录](.agents/notes/2026-09-25-deep-link-needs-host-service.md)
+- [ ] **深链要在本机生效，得先把宿主换到 provide 了那条服务的线上**（三条 dist-tag 现查 `npm view @deepseek-ai/dsh dist-tags`）：本机主实例装的那条线没有它，插件侧改多少都不会生效；宿主升级要重启进程，重启后旧标签页的 token 失效（见自开发手册）
 - [x] **npm `latest` 已回填**（2026-09-25）：`dist-tags` 已翻到 `2.1.0`；产物一致性复验通过 —— 本地 `npm pack`（`7ded7f6` 那棵树）的 sha1 与 npm 上 2.1.0 的 `dist.shasum` **逐字节相同**
 - [ ] **浮层图标行为变了 → 涉及它的门面截图需重拍**（`sidebar-popover*.png`）：判据见 [assets/AGENTS.md](assets/AGENTS.md)
 

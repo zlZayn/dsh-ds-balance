@@ -28,7 +28,7 @@ import {
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
 import { CONFIG_SLOT_WARNING, type ConfigSlotProbe, type ConfigSlotState } from '../config-slot.ts'
-import { BalancePopover } from './BalancePopover.tsx'
+import { BalancePopover, type PluginsAction } from './BalancePopover.tsx'
 import { PercentRing, type RingState } from './PercentRing.tsx'
 import css from './SidebarBalance.module.css'
 
@@ -71,13 +71,14 @@ function useConfigSlotState(probe: ConfigSlotProbe): ConfigSlotState {
 }
 
 /**
- * 「切到 Plugins 页」这个**可选**入口。宿主没提供 layout 服务时整条链不存在，
+ * 「打开本插件配置」这个**可选**入口。宿主没提供 layout 服务时整条链不存在，
  * 浮层右上角的图标因此不渲染 —— 不留按不动的死按钮。
  * 形态与 `configSlotProbe` 一样是个可订阅的小对象：服务可能晚到，图标要能自己出现、也能自己消失。
+ * 快照里带**落点**（见 BalancePopover 的 PluginsAction）：深链服务在不在，措辞跟着分档。
  */
 export interface PluginsNavigation {
-  /** 当前可用的导航回调；服务还没到位时是 undefined。 */
-  getSnapshot: () => (() => void) | undefined
+  /** 当前可用的动作与落点；宿主没有 layout 服务时是 undefined。 */
+  getSnapshot: () => PluginsAction | undefined
   /**
    * 订阅它的出现与消失。
    * @param listener - 变化回调。
@@ -87,24 +88,24 @@ export interface PluginsNavigation {
 }
 
 /**
- * 订阅「切到 Plugins 页」这个入口。
+ * 订阅「打开本插件配置」这个入口。
  * @param navigation - 父代理建好的入口；宿主缺 layout 服务时给 undefined。
- * @returns 当前可用的导航回调，或 undefined。
+ * @returns 当前可用的动作与落点，或 undefined。
  */
-function usePluginsNavigation(navigation: PluginsNavigation | undefined): (() => void) | undefined {
-  // 惰性初值：这个箭头函数是 useState 的 initializer，交出去的才是状态值（回调本身）。
-  const [openPlugins, setOpenPlugins] = useState(() => navigation?.getSnapshot())
+function usePluginsNavigation(navigation: PluginsNavigation | undefined): PluginsAction | undefined {
+  // 惰性初值：这个箭头函数是 useState 的 initializer，交出去的才是状态值（快照对象本身）。
+  const [action, setAction] = useState(() => navigation?.getSnapshot())
   useEffect(() => {
     if (navigation === undefined) {
-      setOpenPlugins(undefined)
+      setAction(undefined)
       return
     }
-    // **状态值本身是函数时必须走 updater 形式**：setOpenPlugins(navigation.getSnapshot())
-    // 会被 React 当成更新器调用，状态变成那个回调的返回值（undefined）—— 图标会永远不渲染。
-    setOpenPlugins(() => navigation.getSnapshot())
-    return navigation.subscribe(() => { setOpenPlugins(() => navigation.getSnapshot()) })
+    // 快照过去是**回调本身**，那时必须走 updater 形式才不会被 React 当成更新器调用；
+    // 现在是对象，直接 set 即可。（旧注释与理由见 git 历史，别照着旧写法把函数塞回来。）
+    setAction(navigation.getSnapshot())
+    return navigation.subscribe(() => { setAction(navigation.getSnapshot()) })
   }, [navigation])
-  return openPlugins
+  return action
 }
 
 /** 条目属性。 */
@@ -120,7 +121,7 @@ export interface SidebarBalanceProps {
    */
   configSlotProbe: ConfigSlotProbe
   /**
-   * 「切到 Plugins 页」的可选入口：有它才渲染浮层右上角那个图标按钮。
+   * 「打开本插件配置」的可选入口：有它才渲染浮层右上角那个图标按钮。
    * 宿主缺 layout 服务时整条链不存在，图标就不出现。
    */
   pluginsNavigation?: PluginsNavigation
@@ -386,13 +387,18 @@ export function SidebarBalance({
     void onSelectCurrency(current.currency)
   }, [selection, onSelectCurrency])
 
-  // 点右上角图标：先关浮层，再切页。切页失败（那个面板没注册）由父代理记一笔 ——
+  // 点右上角图标：先关浮层，再跳转。深链优先、失败退回列表，两笔 warn 都由父代理记 ——
   // 这里不吞成败，也不做降级动作：没地方可去时浮层已经关了，圆环与后端照常。
-  const openPlugins = usePluginsNavigation(pluginsNavigation)
-  const handleOpenPlugins = useCallback((): void => {
-    closeNow()
-    openPlugins?.()
-  }, [closeNow, openPlugins])
+  const pluginsAction = usePluginsNavigation(pluginsNavigation)
+  // 交给浮层的只有「动作 + 落点」；关浮层留在这里（浮层不知道自己的开合），
+  // 且引用要稳：每次渲染换一个新对象会让浮层那条 Tooltip 白重挂一次。
+  const popoverPluginsAction = useMemo(
+    () => (pluginsAction === undefined ? undefined : {
+      reachesConfig: pluginsAction.reachesConfig,
+      open: (): void => { closeNow(); pluginsAction.open() },
+    }),
+    [closeNow, pluginsAction],
+  )
 
   // 缺槽才提示；pending 与 available 都不提示（pending 期间不下结论）。
   const configSlotState = useConfigSlotState(configSlotProbe)
@@ -517,7 +523,7 @@ export function SidebarBalance({
           onRefresh={handleRefresh}
           onUseShown={handleUseShown}
           useShownDisabled={!config.writable}
-          onOpenPlugins={openPlugins === undefined ? undefined : handleOpenPlugins}
+          pluginsAction={popoverPluginsAction}
         />,
         document.body,
       ) : null}

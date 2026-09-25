@@ -97,10 +97,24 @@ export interface BalancePopoverProps {
    */
   useShownDisabled?: boolean
   /**
-   * 「切到 Plugins 页」回调。宿主没提供 layout 服务时给 undefined ——
-   * 这时右上角那个图标按钮**不渲染**：不留按不动的死按钮。
+   * 右上角图标：点下去做什么、落到哪里。宿主没提供 layout 服务时给 undefined ——
+   * 这时那个按钮**不渲染**：不留按不动的死按钮。
    */
-  onOpenPlugins?: () => void
+  pluginsAction?: PluginsAction
+}
+
+/**
+ * 浮层右上角图标点下去会发生什么。
+ *
+ * 落点由**宿主能力**决定：宿主提供跨插件深链服务时直达本插件的配置格，
+ * 服务缺席时只能到 Plugins 列表。所以措辞跟着落点分档 ——
+ * 「打开插件配置页」与「打开插件页」各说自己那一件事，不许用一句含糊的话盖住两种落点。
+ */
+export interface PluginsAction {
+  /** 执行跳转；「先关浮层」由父组件包在里面。 */
+  open: () => void
+  /** 落点是不是本插件的配置格。 */
+  reachesConfig: boolean
 }
 
 /**
@@ -111,7 +125,7 @@ export interface BalancePopoverProps {
 export function BalancePopover(props: BalancePopoverProps): JSX.Element {
   const {
     t, selection, displayCurrency, ageMs, refreshing, cooldownSeconds,
-    configSlotWarning, panelRef, style, onRefresh, onUseShown, useShownDisabled, onOpenPlugins,
+    configSlotWarning, panelRef, style, onRefresh, onUseShown, useShownDisabled, pluginsAction,
   } = props
 
   const shown = selection.shown
@@ -135,6 +149,12 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
 
   const refreshLabel = t('sidebar.aria.refresh')
 
+  // 右上角图标没有可见文字，名字只能来自 aria-label 与 tooltip —— 两处逐字同源，
+  // 且**按落点分档**：能直达配置格就说配置格，只能到列表就说列表（见 PluginsAction）。
+  const pluginsLabel = t(pluginsAction?.reachesConfig === true
+    ? 'popover.action.openPluginConfig'
+    : 'popover.action.openPlugins')
+
   return (
     <section
       ref={panelRef}
@@ -156,15 +176,16 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
           {t('popover.title')}
         </a>
 
-        {/* 右上角：无可见文字的图标按钮，点了把主区切到 Plugins 页（我们的配置卡片就在那一页）。
-            名字只能靠 aria-label 与 tooltip；回调缺席（宿主没有 layout 服务）时整块不渲染。 */}
-        {onOpenPlugins === undefined ? null : (
-          <Tooltip label={t('popover.action.openPlugins')} side="top" delayMs={500}>
+        {/* 右上角：无可见文字的图标按钮，点了去本插件的配置格；宿主没有那条深链服务时
+            退回 Plugins 列表 —— 措辞跟着落点走，不承诺到不了的地方。
+            名字只能靠 aria-label 与 tooltip；动作缺席（宿主没有 layout 服务）时整块不渲染。 */}
+        {pluginsAction === undefined ? null : (
+          <Tooltip label={pluginsLabel} side="top" delayMs={500}>
             <button
               type="button"
               className={css.iconButton}
-              aria-label={t('popover.action.openPlugins')}
-              onClick={onOpenPlugins}
+              aria-label={pluginsLabel}
+              onClick={pluginsAction.open}
             >
               <IconPluginPinwheelOutlineRegular size={16} />
             </button>

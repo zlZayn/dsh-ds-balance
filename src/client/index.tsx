@@ -27,6 +27,7 @@ import { BalanceSettingsCard } from './settings/BalanceSettingsCard.tsx'
 import { writeFieldValue } from './settings/use-config-form.ts'
 import type { ConfigFormOf } from './settings/use-config-form.ts'
 import { SidebarBalance, type PluginsNavigation } from './sidebar/SidebarBalance.tsx'
+import type { PluginsAction } from './sidebar/BalancePopover.tsx'
 // 副作用导入：修正宿主 .footerActions 的排版遗漏，见 .agents/notes/2026-09-17-footer-stack-override.md。
 import './sidebar/footer-stack.module.css'
 import { NS, en, zh, type LocaleKey } from './locales.ts'
@@ -273,40 +274,89 @@ function SettingsSeatComponent(props: { seat: SettingsSeat; form: ConfigFormOf }
  */
 const PLUGINS_PANEL_ID = 'plugins'
 
-/** apply 期的入口句柄：比座位拿到的 {@link PluginsNavigation} 多一个挂载点。 */
+/** apply 期的入口句柄：比座位拿到的 {@link PluginsNavigation} 多两个挂载点。 */
 interface PluginsNavigationHandle extends PluginsNavigation {
   /**
-   * 服务到位时挂上导航回调。
-   * @param open - 切到 Plugins 页的动作。
+   * 「切到 Plugins 面板」这个动作到位时挂上它。
+   * @param selectPanel - 切到 Plugins 面板的动作。
    * @returns 反注册；服务被卸载时图标跟着消失。
    */
-  attach: (open: () => void) => () => void
+  attachPanel: (selectPanel: () => void) => () => void
+  /**
+   * 「直达某个 bundle」这个动作到位时挂上它。
+   * @param openBundle - 深链动作；服务缺席就一直没人挂。
+   * @returns 反注册；服务被卸载时落点退回列表页。
+   */
+  attachDeepLink: (openBundle: (packageName: string) => void) => () => void
 }
 
 /**
- * 建一个可订阅的「切到 Plugins 页」入口。
+ * 建一个可订阅的「打开本插件配置」入口。
  *
- * 为什么要订阅而不是直接给个 prop：`ctx.inject(['layout'])` 的回调可能在座位注册之后才跑
+ * 为什么要订阅而不是直接给个 prop：`ctx.inject([...])` 的回调可能在座位注册之后才跑
  * （服务晚到），那时 prop 已经绑好了。订阅让图标随服务出现、也随它消失。
+ *
+ * 快照里除动作外还带**落点**：深链服务在不在，决定那句话承诺什么
+ * （见 BalancePopover 的 PluginsAction）。两个服务各自晚到，所以两个挂载点都触发重发。
  * @returns 入口句柄。
  */
 function createPluginsNavigation(): PluginsNavigationHandle {
-  let open: (() => void) | undefined
+  let selectPanel: (() => void) | undefined
+  let openBundle: ((packageName: string) => void) | undefined
+  let snapshot: PluginsAction | undefined
   const listeners = new Set<() => void>()
-  const publish = (next: (() => void) | undefined): void => {
-    if (next === open) return
-    open = next
+
+  /**
+   * 点下去做的事：深链优先，抛错退回列表页。
+   *
+   * 读的是**当下**这两个动作（不是快照里那份）：快照只描述落点，服务换过也照旧能用。
+   * 两条都不通只记一笔、不抛 —— 调用方已经关了浮层，圆环与后端照常。
+   */
+  const open = (): void => {
+    if (openBundle !== undefined) {
+      try {
+        openBundle(BUNDLE_CONFIG_KEY)
+        return
+      } catch (error) {
+        console.warn('[WARN] ds-balance: cannot open the bundle config page', error)
+      }
+    }
+    try {
+      selectPanel?.()
+    } catch (error) {
+      // 面板 id 未注册时 selectPanel 会抛（宿主 ui-layout 的 selectPanel）：profile 里没装
+      // plugin-manager 时那个 main 面板不存在，点了图标就没地方可去。
+      console.warn('[WARN] ds-balance: cannot switch to the plugins panel', error)
+    }
+  }
+
+  /** 按当下两个动作重发快照；「页签在不在」与「落点变没变」之外不惊动订阅者。 */
+  const publish = (): void => {
+    const reachesConfig = openBundle !== undefined
+    const next: PluginsAction | undefined = selectPanel === undefined ? undefined : { open, reachesConfig }
+    const unchanged = next === undefined
+      ? snapshot === undefined
+      : snapshot !== undefined && snapshot.reachesConfig === reachesConfig
+    if (unchanged) return
+    snapshot = next
     for (const listener of [...listeners]) listener()
   }
+
   return {
-    getSnapshot: () => open,
+    getSnapshot: () => snapshot,
     subscribe: (listener) => {
       listeners.add(listener)
       return () => { listeners.delete(listener) }
     },
-    attach: (callback) => {
-      publish(callback)
-      return () => { if (open === callback) publish(undefined) }
+    attachPanel: (callback) => {
+      selectPanel = callback
+      publish()
+      return () => { if (selectPanel === callback) { selectPanel = undefined; publish() } }
+    },
+    attachDeepLink: (callback) => {
+      openBundle = callback
+      publish()
+      return () => { if (openBundle === callback) { openBundle = undefined; publish() } }
     },
   }
 }
@@ -328,12 +378,11 @@ export function apply(ctx: ClientContext): void {
   // 浮层右上角那个图标就不渲染：不留按不动的死按钮。
   // layout 刻意**不进顶层 inject**：缺服务会让整个插件不装载。
   const pluginsNavigation = createPluginsNavigation()
-  // 深链优先：宿主在 rc 线（next）起于 ui-plugin-manager 里 provide 了 pluginNavigation.openBundle(包名)
+  // 深链优先：宿主在 `next` 线起于 ui-plugin-manager 里 provide 了 pluginNavigation.openBundle(包名)
   // （@deepseek-ai/dsh-client-ui-plugin-manager 的 index.d.ts），它自己先切面板再定位到那个 bundle 的
-  // 配置格 —— 所以它是加速器而不是替代品：alpha 线上没有这条服务，特征检测缺席就退回「切到 Plugins 列表」。
-  // 同样刻意不进顶层 inject（缺服务不能拖垮整插件装载）；也**不在这里 attach** —— 句柄只有一个槽，
-  // 第二次 attach 会把第一次顶掉，所以两条链共用下面那一次 attach，优先级在点击时判。
-  let openBundlePanel: ((packageName: string) => void) | undefined
+  // 配置格 —— 所以它是加速器而不是替代品：更早的线上没有这条服务，特征检测缺席就退回
+  // 「切到 Plugins 列表」，**措辞也跟着退回**（落点进了快照，见 createPluginsNavigation）。
+  // 同样刻意不进顶层 inject（缺服务不能拖垮整插件装载）；两个动作各有挂载点，谁先到都不影响另一个。
   ctx.inject(['pluginNavigation'], (navCtx) => {
     // 鸭子类型收窄：旧宿主没这条服务、新宿主也可能换实现 —— 读不到就什么都不做（没图标好过点了会炸）。
     const face = (navCtx as unknown as Record<string, unknown>)['pluginNavigation']
@@ -342,10 +391,7 @@ export function apply(ctx: ClientContext): void {
     if (typeof candidate !== 'function') return
     // 绑回服务对象：宿主实现内部要用 this（与 selectPanel 同理）。
     const openBundle = (candidate as (packageName: string) => void).bind(face)
-    navCtx.effect(() => {
-      openBundlePanel = (packageName) => { openBundle(packageName) }
-      return () => { openBundlePanel = undefined }
-    }, 'ds-balance: bundle config deep link')
+    navCtx.effect(() => pluginsNavigation.attachDeepLink(openBundle), 'ds-balance: bundle config deep link')
   })
   ctx.inject(['layout'], (layoutCtx) => {
     // 鸭子类型收窄：宿主可能是旧版本或换了实现（本仓不装 ui-layout、不 import 它的类型），
@@ -356,26 +402,11 @@ export function apply(ctx: ClientContext): void {
     if (!('selectPanel' in face) || typeof face.selectPanel !== 'function') return
     // 绑回服务对象：宿主的 selectPanel 内部要用 this（LayoutController 的 panels 与 navigation）。
     const selectPanel = face.selectPanel.bind(face)
-    layoutCtx.effect(() => pluginsNavigation.attach(() => {
-      // 深链优先：服务在（rc 线）时直接落到本插件的配置格；它自己会先切面板。
-      // 抛错（面板未注册等）就退回列表页 —— 两条都不通只记一笔，浮层已经关了。
-      if (openBundlePanel !== undefined) {
-        try {
-          openBundlePanel(BUNDLE_CONFIG_KEY)
-          return
-        } catch (error) {
-          console.warn('[WARN] ds-balance: cannot open the bundle config page', error)
-        }
-      }
-      try {
-        selectPanel(PLUGINS_PANEL_ID)
-      } catch (error) {
-        // 面板 id 未注册时 selectPanel 会抛（宿主 `ui-layout/src/client/service.ts:69-71`）：
-        // profile 里没装 plugin-manager 时那个 main 面板不存在，点了图标就没地方可去。
-        // 只记一笔，不做别的：浮层已经关了，圆环与后端照常。
-        console.warn('[WARN] ds-balance: cannot switch to the plugins panel', error)
-      }
-    }), 'ds-balance: plugins panel navigation')
+    // 这一层只挂动作：深链优先与两笔 warn 都在 createPluginsNavigation 的 open 里。
+    layoutCtx.effect(
+      () => pluginsNavigation.attachPanel(() => { selectPanel(PLUGINS_PANEL_ID) }),
+      'ds-balance: plugins panel navigation',
+    )
   })
 
   // 配置是**可选服务**：用嵌套 inject 把门，服务缺席时这一段不跑（探测那条计时器照跑，
