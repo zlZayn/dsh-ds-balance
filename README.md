@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="icon.svg" alt="dsh-ds-balance" width="80" height="80">
+</p>
+
+<p align="center">
   <h1 align="center">dsh-ds-balance</h1>
 </p>
 
