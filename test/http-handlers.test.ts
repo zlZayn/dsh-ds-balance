@@ -75,7 +75,9 @@ function post(path: string, body?: unknown): Request {
 }
 
 /** 读 JSON 响应体。字段名在测试里动态取，所以放宽到 any。 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- 各端点响应形状不同；试过 `Record<string, unknown>`（~20 处嵌套访问全报错）与递归 loose 类型（`.toContain` 不成立），要改代码就得给每处调用点写一次泛型实参，与测试可读性不成比例。
 async function readJson(response: Response): Promise<Record<string, any>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 同上：类型收口在返回类型那一行，这里只是它的实现。
   return (await response.json()) as Record<string, any>
 }
 
@@ -480,7 +482,7 @@ describe('配置响应里的凭据事实', () => {
     }
     const response = await handleConfigGet(get('/api/v1/config'), withCredentials)
     const text = await response.clone().text()
-    const json = JSON.parse(text) as Record<string, any>
+    const json = JSON.parse(text) as { credential: unknown }
     expect(json.credential).toEqual({
       ref: 'DEEPSEEK_API_KEY',
       configured: true,

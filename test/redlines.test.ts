@@ -7,7 +7,20 @@ import { describe, expect, it } from 'vitest'
  * 每条都对应一次真实事故或一次已裁决的决定；改红线等于改约定，要单独说明理由。
  */
 
-const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as Record<string, any>
+const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as {
+  name: string
+  private?: boolean
+  files: string[]
+  dependencies: Record<string, string>
+  peerDependencies: Record<string, string>
+  devDependencies: Record<string, string>
+  engines: { dsh: string; node: string }
+  exports?: Record<string, { default?: string }>
+  dsh?: {
+    bundle?: { patch?: string }
+    client?: { platform?: string; inject?: string[] }
+  }
+}
 
 /** 去掉块注释与行注释，避免注释里的字样触发守卫。 */
 function stripComments(source: string): string {
@@ -524,7 +537,7 @@ describe('设置接缝', () => {
     // 契约是「engines.dsh 与所有 dsh-* 同形状」：不一致时使用者按我们给的区间装不出可用的宿主。
     // 形状也算 —— 一条写成 ^、另一条写成 >= 就是漂。
     const ranges = new Set<string>()
-    for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    for (const field of ['dependencies', 'devDependencies', 'peerDependencies'] as const) {
       for (const [name, range] of Object.entries(pkg[field] ?? {})) {
         if (name.startsWith('@deepseek-ai/dsh-')) ranges.add(range as string)
       }

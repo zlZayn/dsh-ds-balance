@@ -33,12 +33,5 @@ export default [
       ],
     },
   },
-  {
-    // 测试里要动态读 JSON 字段（字段名运行时才定），no-explicit-any 在这一档放开。
-    files: ['test/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-    },
-  },
   eslintConfigPrettier,
 ]

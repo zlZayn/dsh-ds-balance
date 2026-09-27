@@ -206,15 +206,12 @@ describe('Scheduler', () => {
   })
 
   it('tick 期间被 stop 就不再排下一轮', async () => {
-    // eslint-disable-next-line prefer-const -- mock 实现里要回调 scheduler，而 h 由该 mock 构造，只能先声明后赋值。
-    let scheduler: Scheduler
     const h = harness({
       getView: vi.fn().mockImplementation(async () => {
-        scheduler.stop()
+        h.scheduler.stop()
         return {}
       }),
     })
-    scheduler = h.scheduler
     h.scheduler.start()
     await h.clock.advance(INITIAL_DELAY_MS)
     expect(h.clock.pending()).toEqual([])
