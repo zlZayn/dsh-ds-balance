@@ -37,8 +37,14 @@ export interface SaltFileOptions {
  */
 export async function loadOrCreateSalt(options: SaltFileOptions): Promise<string> {
   const read = options.read ?? (async (path: string) => readFile(path, 'utf8'))
-  const write = options.write ?? (async (path: string, data: string, mode: number) => writeFile(path, data, { mode }))
-  const makeDir = options.makeDir ?? (async (path: string) => { await mkdir(path, { recursive: true }) })
+  const write =
+    options.write ??
+    (async (path: string, data: string, mode: number) => writeFile(path, data, { mode }))
+  const makeDir =
+    options.makeDir ??
+    (async (path: string) => {
+      await mkdir(path, { recursive: true })
+    })
   const random = options.random ?? ((bytes: number) => randomBytes(bytes).toString(SALT_ENCODING))
 
   try {

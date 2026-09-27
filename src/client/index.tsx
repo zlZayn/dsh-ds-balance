@@ -204,20 +204,19 @@ interface SidebarSeat {
  * 注册常驻，不做动态注销：重新注册会换掉 React key，导致整棵子树重挂、局部状态丢失。
  * 「启用左下角」开关已删除：左下角是本插件唯一的展示位，关掉它等于关掉全部功能。
  */
-function SidebarSeatComponent(
-  props: {
-    seat: SidebarSeat
-    form: ConfigFormOf
-    configSlotProbe: ConfigSlotProbe
-    pluginsNavigation: PluginsNavigation
-  },
-): ReactNode {
+function SidebarSeatComponent(props: {
+  seat: SidebarSeat
+  form: ConfigFormOf
+  configSlotProbe: ConfigSlotProbe
+  pluginsNavigation: PluginsNavigation
+}): ReactNode {
   const value = useScopeValue(props.form)
   const writable = useScopeWritable(props.form)
   // 与设置卡片共用同一条写路径：写进本插件那一行的设置命名空间。
   // 成败由 writeFieldValue 的返回值直接给出，不再读回 user 层猜。
   const selectCurrency = useCallback(
-    (currency: string): Promise<boolean> => writeFieldValue(props.form, 'displayCurrency', currency),
+    (currency: string): Promise<boolean> =>
+      writeFieldValue(props.form, 'displayCurrency', currency),
     [props.form],
   )
   return (
@@ -333,10 +332,12 @@ function createPluginsNavigation(): PluginsNavigationHandle {
   /** 按当下两个动作重发快照；「页签在不在」与「落点变没变」之外不惊动订阅者。 */
   const publish = (): void => {
     const reachesConfig = openBundle !== undefined
-    const next: PluginsAction | undefined = selectPanel === undefined ? undefined : { open, reachesConfig }
-    const unchanged = next === undefined
-      ? snapshot === undefined
-      : snapshot !== undefined && snapshot.reachesConfig === reachesConfig
+    const next: PluginsAction | undefined =
+      selectPanel === undefined ? undefined : { open, reachesConfig }
+    const unchanged =
+      next === undefined
+        ? snapshot === undefined
+        : snapshot !== undefined && snapshot.reachesConfig === reachesConfig
     if (unchanged) return
     snapshot = next
     for (const listener of [...listeners]) listener()
@@ -346,17 +347,29 @@ function createPluginsNavigation(): PluginsNavigationHandle {
     getSnapshot: () => snapshot,
     subscribe: (listener) => {
       listeners.add(listener)
-      return () => { listeners.delete(listener) }
+      return () => {
+        listeners.delete(listener)
+      }
     },
     attachPanel: (callback) => {
       selectPanel = callback
       publish()
-      return () => { if (selectPanel === callback) { selectPanel = undefined; publish() } }
+      return () => {
+        if (selectPanel === callback) {
+          selectPanel = undefined
+          publish()
+        }
+      }
     },
     attachDeepLink: (callback) => {
       openBundle = callback
       publish()
-      return () => { if (openBundle === callback) { openBundle = undefined; publish() } }
+      return () => {
+        if (openBundle === callback) {
+          openBundle = undefined
+          publish()
+        }
+      }
     },
   }
 }
@@ -391,7 +404,10 @@ export function apply(ctx: ClientContext): void {
     if (typeof candidate !== 'function') return
     // 绑回服务对象：宿主实现内部要用 this（与 selectPanel 同理）。
     const openBundle = (candidate as (packageName: string) => void).bind(face)
-    navCtx.effect(() => pluginsNavigation.attachDeepLink(openBundle), 'ds-balance: bundle config deep link')
+    navCtx.effect(
+      () => pluginsNavigation.attachDeepLink(openBundle),
+      'ds-balance: bundle config deep link',
+    )
   })
   ctx.inject(['layout'], (layoutCtx) => {
     // 鸭子类型收窄：宿主可能是旧版本或换了实现（本仓不装 ui-layout、不 import 它的类型），
@@ -404,7 +420,10 @@ export function apply(ctx: ClientContext): void {
     const selectPanel = face.selectPanel.bind(face)
     // 这一层只挂动作：深链优先与两笔 warn 都在 createPluginsNavigation 的 open 里。
     layoutCtx.effect(
-      () => pluginsNavigation.attachPanel(() => { selectPanel(PLUGINS_PANEL_ID) }),
+      () =>
+        pluginsNavigation.attachPanel(() => {
+          selectPanel(PLUGINS_PANEL_ID)
+        }),
       'ds-balance: plugins panel navigation',
     )
   })
@@ -426,7 +445,8 @@ export function apply(ctx: ClientContext): void {
       ctx.slots.register(
         { name: CONFIG_SLOT, key: BUNDLE_CONFIG_KEY, locale: NS },
         (seat: SettingsSeat) => <SettingsSeatComponent seat={seat} form={form} />,
-      ))
+      ),
+    )
 
     ctx.slots.inject('sidebar.footer.action', () =>
       ctx.slots.register(
@@ -439,6 +459,7 @@ export function apply(ctx: ClientContext): void {
             pluginsNavigation={pluginsNavigation}
           />
         ),
-      ))
+      ),
+    )
   })
 }

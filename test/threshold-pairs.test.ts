@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { Config, THRESHOLD_PAIRS as HOST_PAIRS, validateThresholds, type Config as ConfigShape } from '../src/config.ts'
 import {
-  THRESHOLD_PAIRS, thresholdsOk, writeFieldValue, type ConfigFormOf, type FieldState,
+  Config,
+  THRESHOLD_PAIRS as HOST_PAIRS,
+  validateThresholds,
+  type Config as ConfigShape,
+} from '../src/config.ts'
+import {
+  THRESHOLD_PAIRS,
+  thresholdsOk,
+  writeFieldValue,
+  type ConfigFormOf,
+  type FieldState,
 } from '../src/client/settings/use-config-form.ts'
 
 /**
@@ -14,7 +23,13 @@ import {
 /** 造一个字段状态；只覆写关心的字段。 */
 function state(patch: Partial<FieldState> = {}): FieldState {
   return {
-    text: '', value: undefined, effective: undefined, stored: false, overridden: false, dirty: false, invalid: false,
+    text: '',
+    value: undefined,
+    effective: undefined,
+    stored: false,
+    overridden: false,
+    dirty: false,
+    invalid: false,
     ...patch,
   }
 }
@@ -28,14 +43,16 @@ function state(patch: Partial<FieldState> = {}): FieldState {
  */
 const base = (): ConfigShape => {
   const refs = Config({}) as unknown as Record<string, { get(): unknown }>
-  return Object.fromEntries(Object.entries(refs).map(([key, ref]) => [key, ref.get()])) as unknown as ConfigShape
+  return Object.fromEntries(
+    Object.entries(refs).map(([key, ref]) => [key, ref.get()]),
+  ) as unknown as ConfigShape
 }
 
 describe('阈值成对：默认值', () => {
   it('两个半体抄的是同一份默认值', () => {
     const resolved = base()
     for (const pair of THRESHOLD_PAIRS) {
-      const host = HOST_PAIRS.find(item => item.currency === pair.currency)
+      const host = HOST_PAIRS.find((item) => item.currency === pair.currency)
       expect(host, pair.currency + ' 在宿主表里缺席').toBeTruthy()
       if (host === undefined) continue
       expect(resolved[host.warn], pair.currency + ' 的预警默认值').toBe(pair.defaultWarn)
@@ -47,35 +64,54 @@ describe('阈值成对：默认值', () => {
     for (const pair of THRESHOLD_PAIRS) {
       expect(pair.defaultWarn > pair.defaultCritical, pair.currency).toBe(true)
     }
-    expect(() => { validateThresholds(base()) }).not.toThrow()
+    expect(() => {
+      validateThresholds(base())
+    }).not.toThrow()
   })
 })
 
 describe('宿主跨字段校验', () => {
   it('告急严格低于预警才通过', () => {
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 10, cnyCritical: 5 }) }).not.toThrow()
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 10, cnyCritical: 5 })
+    }).not.toThrow()
     // 相等也拒绝：压线时余额会被同时判成 warn 与 critical，「预警」这一档就不存在了。
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 5, cnyCritical: 5 }) }).toThrow()
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 4, cnyCritical: 5 }) }).toThrow()
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 5, cnyCritical: 5 })
+    }).toThrow()
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 4, cnyCritical: 5 })
+    }).toThrow()
   })
 
   it('告急可以是 0，预警不行', () => {
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 0 }) }).not.toThrow()
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 0, cnyCritical: 0 }) }).toThrow()
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 0 })
+    }).not.toThrow()
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 0, cnyCritical: 0 })
+    }).toThrow()
   })
 
   it('错误信息指向具体币种，措辞锚在告急上', () => {
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 1 }) }).toThrow(/CNY/)
-    expect(() => { validateThresholds({ ...base(), usdWarn: 1, usdCritical: 1 }) }).toThrow(/USD/)
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 1 }) })
-      .toThrow(/告急必须低于预警/)
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 1 })
+    }).toThrow(/CNY/)
+    expect(() => {
+      validateThresholds({ ...base(), usdWarn: 1, usdCritical: 1 })
+    }).toThrow(/USD/)
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 1 })
+    }).toThrow(/告急必须低于预警/)
   })
 
   it('两个币种互不连坐', () => {
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 1, usdWarn: 9, usdCritical: 1 }) })
-      .toThrow(/CNY/)
-    expect(() => { validateThresholds({ ...base(), cnyWarn: 9, cnyCritical: 1, usdWarn: 1, usdCritical: 1 }) })
-      .toThrow(/USD/)
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 1, cnyCritical: 1, usdWarn: 9, usdCritical: 1 })
+    }).toThrow(/CNY/)
+    expect(() => {
+      validateThresholds({ ...base(), cnyWarn: 9, cnyCritical: 1, usdWarn: 1, usdCritical: 1 })
+    }).toThrow(/USD/)
   })
 })
 
@@ -124,7 +160,10 @@ describe('写回落盘判定', () => {
    * `accept` 为 false 时模拟宿主拒绝：返回 false 而不抛错 —— 官方契约就是这样
    * （只有传输失败才 reject）。`deferred` 模拟真实宿主那条异步路。
    */
-  function formOf(accept: boolean, deferred = false): { form: ConfigFormOf; writes: Array<{ field: string; value: unknown }> } {
+  function formOf(
+    accept: boolean,
+    deferred = false,
+  ): { form: ConfigFormOf; writes: Array<{ field: string; value: unknown }> } {
     const writes: Array<{ field: string; value: unknown }> = []
     const snapshot = {
       status: 'ready' as const,
@@ -145,9 +184,14 @@ describe('写回落盘判定', () => {
         getSnapshot: () => snapshot,
         subscribe: () => () => {},
         mutate: async () => accept,
-        set: (field, value) => (deferred
-          ? new Promise<boolean>((resolve) => { queueMicrotask(() => { resolve(settle(field, value)) }) })
-          : Promise.resolve(settle(field, value))),
+        set: (field, value) =>
+          deferred
+            ? new Promise<boolean>((resolve) => {
+                queueMicrotask(() => {
+                  resolve(settle(field, value))
+                })
+              })
+            : Promise.resolve(settle(field, value)),
         unset: async () => accept,
       },
     }

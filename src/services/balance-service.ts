@@ -7,7 +7,13 @@
  */
 
 import type { BalanceSnapshot, BalanceView, CacheState } from '../domain/balance.js'
-import { classify, describeError, parseRetryAfter, type ErrorCode, type ErrorInfo } from '../domain/errors.js'
+import {
+  classify,
+  describeError,
+  parseRetryAfter,
+  type ErrorCode,
+  type ErrorInfo,
+} from '../domain/errors.js'
 import { normalize } from '../domain/normalize.js'
 import { pickBalance } from '../domain/select.js'
 import { severityOf, thresholdsFor } from '../domain/severity.js'
@@ -120,7 +126,9 @@ export class BalanceService {
       this.state = this.withinWindow() ? 'ok' : 'stale'
       this.publishGauge()
     } catch (error) {
-      this.options.logger?.debug('ds-balance: no snapshot restored', { error: describeError(error) })
+      this.options.logger?.debug('ds-balance: no snapshot restored', {
+        error: describeError(error),
+      })
     }
   }
 
@@ -133,7 +141,9 @@ export class BalanceService {
     if (this.inflight !== null) return this.inflight
     if (options.force !== true && this.canServeCache()) return this.toView(options.currency)
 
-    const run = this.fetchOnce(options.currency).finally(() => { this.inflight = null })
+    const run = this.fetchOnce(options.currency).finally(() => {
+      this.inflight = null
+    })
     this.inflight = run
     return run
   }
@@ -188,7 +198,11 @@ export class BalanceService {
         apiKey,
         timeoutMs: this.options.config.timeoutMs(),
       })
-      const snapshot = normalize(raw, computeAccountTag(this.options.salt, apiKey), this.options.clock.now())
+      const snapshot = normalize(
+        raw,
+        computeAccountTag(this.options.salt, apiKey),
+        this.options.clock.now(),
+      )
       // 落盘失败不算这次抓取失败：快照留在内存里，界面照常显示，
       // 代价只是重启后不恢复。存储是可降级的一层。
       await this.persist(snapshot)
@@ -219,7 +233,9 @@ export class BalanceService {
     } catch (error) {
       if (this.persistWarned) return
       this.persistWarned = true
-      this.options.logger?.warn('ds-balance: snapshot not persisted, continuing in memory', { error: describeError(error) })
+      this.options.logger?.warn('ds-balance: snapshot not persisted, continuing in memory', {
+        error: describeError(error),
+      })
     }
   }
 
@@ -254,11 +270,18 @@ export class BalanceService {
       state: this.state,
       stale: this.state === 'stale',
       fetchedAt: this.snapshot?.fetchedAt ?? null,
-      ageMs: this.snapshot === null ? null : Math.max(0, this.options.clock.now() - this.snapshot.fetchedAt),
+      ageMs:
+        this.snapshot === null
+          ? null
+          : Math.max(0, this.options.clock.now() - this.snapshot.fetchedAt),
       isAvailable: this.snapshot?.isAvailable ?? null,
       balances: this.snapshot?.balances ?? [],
       selected: selected === null ? null : { currency: selected.currency, total: selected.total },
-      severity: severityOf(selected, this.snapshot?.isAvailable ?? false, thresholdsFor(selected?.currency ?? '', thresholds)),
+      severity: severityOf(
+        selected,
+        this.snapshot?.isAvailable ?? false,
+        thresholdsFor(selected?.currency ?? '', thresholds),
+      ),
       thresholds,
       error: this.state === 'ok' ? null : this.error,
     }

@@ -8,7 +8,11 @@ const base = { apiKey: '', apiKeyRef: 'DEEPSEEK_API_KEY' }
 describe('解析链优先级', () => {
   it('配置里的 apiKey 最优先', async () => {
     const credentials: Credentials = { resolve: vi.fn(), describe: vi.fn() }
-    const resolver = new KeyResolver({ readConfig: () => ({ ...base, apiKey: 'sk-override' }), credentials, env: {} })
+    const resolver = new KeyResolver({
+      readConfig: () => ({ ...base, apiKey: 'sk-override' }),
+      credentials,
+      env: {},
+    })
     await expect(resolver.resolve()).resolves.toBe('sk-override')
     expect(credentials.resolve).not.toHaveBeenCalled()
   })
@@ -18,7 +22,11 @@ describe('解析链优先级', () => {
       resolve: vi.fn().mockResolvedValue({ value: 'sk-from-store', source: 'env' }),
       describe: vi.fn(),
     }
-    const resolver = new KeyResolver({ readConfig: () => base, credentials, env: { DEEPSEEK_API_KEY: 'sk-env' } })
+    const resolver = new KeyResolver({
+      readConfig: () => base,
+      credentials,
+      env: { DEEPSEEK_API_KEY: 'sk-env' },
+    })
     await expect(resolver.resolve()).resolves.toBe('sk-from-store')
   })
 
@@ -27,7 +35,11 @@ describe('解析链优先级', () => {
       resolve: vi.fn().mockResolvedValue({ value: '   ', source: 'env' }),
       describe: vi.fn(),
     }
-    const resolver = new KeyResolver({ readConfig: () => base, credentials, env: { DEEPSEEK_API_KEY: 'sk-env' } })
+    const resolver = new KeyResolver({
+      readConfig: () => base,
+      credentials,
+      env: { DEEPSEEK_API_KEY: 'sk-env' },
+    })
     await expect(resolver.resolve()).resolves.toBe('sk-env')
   })
 
@@ -37,13 +49,21 @@ describe('解析链优先级', () => {
       describe: vi.fn(),
     }
     const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-    const resolver = new KeyResolver({ readConfig: () => base, credentials, env: { DEEPSEEK_API_KEY: 'sk-env' }, logger })
+    const resolver = new KeyResolver({
+      readConfig: () => base,
+      credentials,
+      env: { DEEPSEEK_API_KEY: 'sk-env' },
+      logger,
+    })
     await expect(resolver.resolve()).resolves.toBe('sk-env')
     expect(logger.debug).toHaveBeenCalledTimes(1)
   })
 
   it('完全没有 credentials 服务时不报错，直接走环境变量', async () => {
-    const resolver = new KeyResolver({ readConfig: () => base, env: { DEEPSEEK_API_KEY: 'sk-env' } })
+    const resolver = new KeyResolver({
+      readConfig: () => base,
+      env: { DEEPSEEK_API_KEY: 'sk-env' },
+    })
     await expect(resolver.resolve()).resolves.toBe('sk-env')
   })
 })
@@ -55,7 +75,10 @@ describe('失败路径', () => {
   })
 
   it('两端都空也抛 NoKeyError', async () => {
-    const resolver = new KeyResolver({ readConfig: () => ({ apiKey: '  ', apiKeyRef: '  ' }), env: {} })
+    const resolver = new KeyResolver({
+      readConfig: () => ({ apiKey: '  ', apiKeyRef: '  ' }),
+      env: {},
+    })
     await expect(resolver.resolve()).rejects.toBeInstanceOf(NoKeyError)
   })
 

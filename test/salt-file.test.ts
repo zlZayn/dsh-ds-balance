@@ -20,7 +20,9 @@ describe('loadOrCreateSalt', () => {
     const makeDir = vi.fn().mockResolvedValue(undefined)
     const salt = await loadOrCreateSalt({
       path: PATH,
-      read: async () => { throw new Error('ENOENT') },
+      read: async () => {
+        throw new Error('ENOENT')
+      },
       write,
       makeDir,
       random: () => 'a'.repeat(SALT_BYTES * 2),
@@ -32,14 +34,24 @@ describe('loadOrCreateSalt', () => {
 
   it('落盘权限是 0600', async () => {
     const write = vi.fn().mockResolvedValue(undefined)
-    await loadOrCreateSalt({ path: PATH, read: async () => '', write, makeDir: async () => {}, random: () => 'ff' })
+    await loadOrCreateSalt({
+      path: PATH,
+      read: async () => '',
+      write,
+      makeDir: async () => {},
+      random: () => 'ff',
+    })
     expect(write.mock.calls[0]![2]).toBe(0o600)
   })
 
   it('空白内容视为缺失', async () => {
     const write = vi.fn().mockResolvedValue(undefined)
     const salt = await loadOrCreateSalt({
-      path: PATH, read: async () => '   \n  ', write, makeDir: async () => {}, random: () => 'beef',
+      path: PATH,
+      read: async () => '   \n  ',
+      write,
+      makeDir: async () => {},
+      random: () => 'beef',
     })
     expect(salt).toBe('beef')
     expect(write).toHaveBeenCalledTimes(1)
@@ -47,7 +59,13 @@ describe('loadOrCreateSalt', () => {
 
   it('把盐写到给定路径', async () => {
     const write = vi.fn().mockResolvedValue(undefined)
-    await loadOrCreateSalt({ path: PATH, read: async () => '', write, makeDir: async () => {}, random: () => 'ab' })
+    await loadOrCreateSalt({
+      path: PATH,
+      read: async () => '',
+      write,
+      makeDir: async () => {},
+      random: () => 'ab',
+    })
     expect(write.mock.calls[0]![0]).toBe(PATH)
   })
 
@@ -56,7 +74,9 @@ describe('loadOrCreateSalt', () => {
     const deps = {
       path: PATH,
       read: async () => stored,
-      write: async (_path: string, data: string) => { stored = data },
+      write: async (_path: string, data: string) => {
+        stored = data
+      },
       makeDir: async () => {},
       random: () => 'c0ffee',
     }

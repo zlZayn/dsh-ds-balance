@@ -203,7 +203,13 @@ export interface ThresholdPair {
  * 两边各存一份是因为**宿主与浏览器两个半体不许值导入**；约定本身由测试对着本表兜底。
  */
 export const THRESHOLD_PAIRS = [
-  { currency: 'CNY', warn: 'cnyWarn', critical: 'cnyCritical', defaultWarn: 10, defaultCritical: 5 },
+  {
+    currency: 'CNY',
+    warn: 'cnyWarn',
+    critical: 'cnyCritical',
+    defaultWarn: 10,
+    defaultCritical: 5,
+  },
   { currency: 'USD', warn: 'usdWarn', critical: 'usdCritical', defaultWarn: 2, defaultCritical: 1 },
 ] as const satisfies readonly ThresholdPair[]
 
@@ -236,7 +242,9 @@ export function validateThresholds(value: Config): void {
     const warn = value[pair.warn]
     const critical = value[pair.critical]
     if (critical < warn) continue
-    throw new Error(`${pair.currency} 告急必须低于预警（当前 预警 ${String(warn)} / 告急 ${String(critical)}）`)
+    throw new Error(
+      `${pair.currency} 告急必须低于预警（当前 预警 ${String(warn)} / 告急 ${String(critical)}）`,
+    )
   }
 }
 
@@ -252,7 +260,10 @@ export function validateThresholds(value: Config): void {
  * @param value - 现读到的纯值配置。
  * @returns 修正后的配置，以及被回落过的币种（供调用方各记一次 warn）。
  */
-export function resolveThresholdPairs(value: Config): { config: Config; violations: readonly string[] } {
+export function resolveThresholdPairs(value: Config): {
+  config: Config
+  violations: readonly string[]
+} {
   const violations: string[] = []
   let config = value
   for (const pair of THRESHOLD_PAIRS) {

@@ -47,7 +47,7 @@ describe('CONFIG_FIELDS', () => {
  */
 describe('volatile 面', () => {
   it('11 个字段一个不漏，全部带 volatile', () => {
-    const missing = [...CONFIG_FIELDS].filter(field => !isVolatile(field))
+    const missing = [...CONFIG_FIELDS].filter((field) => !isVolatile(field))
     expect(missing, `这些字段没加 .volatile()：${missing.join(', ')}`).toEqual([])
   })
 
@@ -62,7 +62,9 @@ describe('阈值对的默认值', () => {
     // 抄错了会把用户静默带到一个他没见过的工作点。
     // Config({}) 给的是引用面（全字段 volatile），所以先逐字段 .get() 解出来。
     const refs = (Config as unknown as (input: unknown) => Record<string, { get(): unknown }>)({})
-    const defaults = Object.fromEntries(Object.entries(refs).map(([key, ref]) => [key, ref.get()])) as Record<string, number>
+    const defaults = Object.fromEntries(
+      Object.entries(refs).map(([key, ref]) => [key, ref.get()]),
+    ) as Record<string, number>
     for (const pair of THRESHOLD_PAIRS) {
       expect(defaults[pair.warn], pair.currency + ' 的预警默认值').toBe(pair.defaultWarn)
       expect(defaults[pair.critical], pair.currency + ' 的告急默认值').toBe(pair.defaultCritical)

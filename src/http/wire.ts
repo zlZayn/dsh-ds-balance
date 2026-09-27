@@ -7,7 +7,13 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import type { BalanceView, CacheState, Currency, Severity, ThresholdPair } from '../domain/balance.js'
+import type {
+  BalanceView,
+  CacheState,
+  Currency,
+  Severity,
+  ThresholdPair,
+} from '../domain/balance.js'
 import type { ErrorCode, ErrorInfo } from '../domain/errors.js'
 import { formatMoney } from '../domain/money.js'
 import { SCHEMA_VERSION } from '../version.js'
@@ -126,9 +132,10 @@ export function toWireBalanceView(
       granted: amount(item.granted),
       toppedUp: amount(item.toppedUp),
     })),
-    selected: view.selected === null
-      ? null
-      : { currency: view.selected.currency, total: amount(view.selected.total) },
+    selected:
+      view.selected === null
+        ? null
+        : { currency: view.selected.currency, total: amount(view.selected.total) },
     severity: view.severity,
     thresholds,
     todayUsage: null,

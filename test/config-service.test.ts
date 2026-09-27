@@ -31,7 +31,9 @@ function source(config: Config): ConfigSource & { set(next: Config): void } {
     get: () => current,
     watch: (listener) => {
       listeners.add(listener)
-      return () => { listeners.delete(listener) }
+      return () => {
+        listeners.delete(listener)
+      }
     },
   }
 }

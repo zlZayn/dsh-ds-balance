@@ -102,7 +102,7 @@ export function unreachableView(message: string): BalanceResponse {
 async function readJson<T>(response: Response, path: string): Promise<T> {
   if (!response.ok) throw new Error(`${path} responded ${response.status}`)
   try {
-    return await response.json() as T
+    return (await response.json()) as T
   } catch {
     throw new Error(`${path} did not return JSON`)
   }
@@ -160,7 +160,9 @@ function readCredential(value: unknown): CredentialInfo | null {
  * @returns 配置响应里本插件消费的那部分。
  * @throws 端点不可达、非 2xx 或响应不是 JSON。
  */
-export async function requestConfig(options: { fetchImpl?: FetchLike } = {}): Promise<ConfigResponse> {
+export async function requestConfig(
+  options: { fetchImpl?: FetchLike } = {},
+): Promise<ConfigResponse> {
   const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init))
   const response = await fetchImpl(CONFIG_PATH, { headers: { accept: 'application/json' } })
   const body = await readJson<ConfigResponse>(response, CONFIG_PATH)
@@ -175,7 +177,9 @@ export async function requestConfig(options: { fetchImpl?: FetchLike } = {}): Pr
  * @returns 后端的刷新结果。
  * @throws 端点不可达、非 2xx 或响应不是 JSON。
  */
-export async function requestRefresh(options: { reason?: string; fetchImpl?: FetchLike } = {}): Promise<RefreshResult> {
+export async function requestRefresh(
+  options: { reason?: string; fetchImpl?: FetchLike } = {},
+): Promise<RefreshResult> {
   const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init))
   const response = await fetchImpl(REFRESH_PATH, {
     method: 'POST',

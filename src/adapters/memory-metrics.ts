@@ -53,15 +53,18 @@ export class MemoryMetrics implements Metrics {
   histogram(name: string, labels: Record<string, string>, value: number): void {
     const key = metricKey(name, labels)
     const current = this.histograms.get(key)
-    this.histograms.set(key, current === undefined
-      ? { count: 1, sum: value, min: value, max: value, last: value }
-      : {
-        count: current.count + 1,
-        sum: current.sum + value,
-        min: Math.min(current.min, value),
-        max: Math.max(current.max, value),
-        last: value,
-      })
+    this.histograms.set(
+      key,
+      current === undefined
+        ? { count: 1, sum: value, min: value, max: value, last: value }
+        : {
+            count: current.count + 1,
+            sum: current.sum + value,
+            min: Math.min(current.min, value),
+            max: Math.max(current.max, value),
+            last: value,
+          },
+    )
   }
 
   /** 当前聚合值的一份拷贝。 */

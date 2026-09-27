@@ -40,6 +40,8 @@ export function resolveContractKey(env: Record<string, string | undefined>): str
  * @returns 报错文案。
  */
 export function contractKeyMissingMessage(): string {
-  return `缺 ${CONTRACT_KEY_VARS[0]}，本机也没配 ${CONTRACT_KEY_VARS[1]}：`
-    + '契约测试打真实上游，需要一把能查余额的 key。它只从环境变量读，不从仓库里的任何文件读。'
+  return (
+    `缺 ${CONTRACT_KEY_VARS[0]}，本机也没配 ${CONTRACT_KEY_VARS[1]}：` +
+    '契约测试打真实上游，需要一把能查余额的 key。它只从环境变量读，不从仓库里的任何文件读。'
+  )
 }

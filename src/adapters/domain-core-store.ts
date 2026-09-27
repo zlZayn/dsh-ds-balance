@@ -54,7 +54,9 @@ export const DS_BALANCE_DOMAIN = defineDomain({
   name: 'ds_balance',
   version: 1,
   tables: {
-    [SNAPSHOT_TABLE]: domainTable<string, StoredSnapshot>(storedSnapshotSchema as unknown as z.ZodType<StoredSnapshot>),
+    [SNAPSHOT_TABLE]: domainTable<string, StoredSnapshot>(
+      storedSnapshotSchema as unknown as z.ZodType<StoredSnapshot>,
+    ),
   },
 })
 
@@ -155,7 +157,9 @@ export class DomainCoreStore implements CoreStore {
         this.ready = null
         if (!this.openFailureLogged) {
           this.openFailureLogged = true
-          this.options.logger?.error('ds-balance: storage domain unavailable, running degraded', { error: describeError(error) })
+          this.options.logger?.error('ds-balance: storage domain unavailable, running degraded', {
+            error: describeError(error),
+          })
         }
       })
       this.ready = attempt
@@ -174,7 +178,9 @@ export class DomainCoreStore implements CoreStore {
   private async requireTable(): Promise<KvTableLike> {
     await this.ensureOpen()
     if (this.openError !== undefined) {
-      throw new StorageError(`storage domain unavailable: ${describeError(this.openError)}`, { cause: this.openError })
+      throw new StorageError(`storage domain unavailable: ${describeError(this.openError)}`, {
+        cause: this.openError,
+      })
     }
     if (this.table === null) throw new StorageError('storage domain is not open')
     return this.table
@@ -205,7 +211,9 @@ export class DomainCoreStore implements CoreStore {
   async health(): Promise<StoreHealth> {
     if (this.closed) return { ok: false, detail: 'closed' }
     await this.ensureOpen()
-    return this.openError === undefined ? { ok: true } : { ok: false, detail: describeError(this.openError) }
+    return this.openError === undefined
+      ? { ok: true }
+      : { ok: false, detail: describeError(this.openError) }
   }
 
   /** 幂等关闭。**必须挂在 `ctx.effect` 的 disposer 上。** */

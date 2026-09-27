@@ -41,7 +41,8 @@ const MANIFEST_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies']
  * 换成「一个版本号」都会丢信息，而「每周巡检悄悄改坏声明面」比「巡检红一次」贵得多。
  * 所以要求版本号是**完整的** `x.y.z`（可带预发布段）。
  */
-const RANGE_SHAPE = /^(>=|<=|>|<|=|\^|~)?\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/
+const RANGE_SHAPE =
+  /^(>=|<=|>|<|=|\^|~)?\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/
 
 /**
  * 保形换版：保留原有运算符，只替换版本号。
@@ -57,7 +58,9 @@ const RANGE_SHAPE = /^(>=|<=|>|<|=|\^|~)?\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?
 function swapRange(declared, version) {
   const shape = RANGE_SHAPE.exec(declared.trim())
   if (shape === null) {
-    throw new Error(`不认识的区间形状：${declared}（换版只支持「可选运算符 + 版本号」，请手工改这一条）`)
+    throw new Error(
+      `不认识的区间形状：${declared}（换版只支持「可选运算符 + 版本号」，请手工改这一条）`,
+    )
   }
   return `${shape[1] ?? ''}${version}`
 }
@@ -129,7 +132,9 @@ async function check() {
   }
 
   const width = Math.max(...rows.map((row) => row.name.length), 4)
-  console.log(`${'包'.padEnd(width)}  ${'声明'.padEnd(18)} ${LINES.map((l) => l.padEnd(18)).join('')}`)
+  console.log(
+    `${'包'.padEnd(width)}  ${'声明'.padEnd(18)} ${LINES.map((l) => l.padEnd(18)).join('')}`,
+  )
   for (const row of rows) {
     const cells = LINES.map((line) => String(row[line] ?? '-').padEnd(18)).join('')
     console.log(`${row.name.padEnd(width)}  ${row.declared.padEnd(18)} ${cells}`)
@@ -157,7 +162,9 @@ async function swap(line) {
     plan.push({ name, version })
   }
   if (skipped.length > 0) {
-    console.log(`跳过 ${skipped.length} 个仅 dev 声明的包（${line} 线上没有版本）：${skipped.join(', ')}`)
+    console.log(
+      `跳过 ${skipped.length} 个仅 dev 声明的包（${line} 线上没有版本）：${skipped.join(', ')}`,
+    )
   }
 
   let touched = 0
@@ -179,10 +186,14 @@ async function swap(line) {
     console.log(`已经是 ${line} 线的版本，package.json 未改动。`)
   } else {
     writeFileSync('package.json', JSON.stringify(manifest, null, 2) + '\n')
-    console.log(`\npackage.json 改了 ${touched} 处。回滚：git checkout package.json package-lock.json`)
+    console.log(
+      `\npackage.json 改了 ${touched} 处。回滚：git checkout package.json package-lock.json`,
+    )
   }
 
-  console.log(`\n跑裸 npm install（shell: true 只是为了在 Windows 上找到 npm.cmd，没有用 shell 特性）……`)
+  console.log(
+    `\n跑裸 npm install（shell: true 只是为了在 Windows 上找到 npm.cmd，没有用 shell 特性）……`,
+  )
   // 换线 = **从零装**。实测两道障碍，全是"旧线残留"：
   //   1. 锁文件记着换线前的解析 —— alpha 锁 + rc.2 manifest 直接 ERESOLVE。
   //   2. 已装的 node_modules 也是旧线的树 —— npm 拿已装的 dsh-brand@alpha 对抗要装的
@@ -235,7 +246,9 @@ async function verify(line) {
     const installed = JSON.parse(readFileSync(installedPath, 'utf8')).version
     const suffix = manifest.peerDependencies?.[name] ?? manifest.devDependencies?.[name] ?? ''
     if (installed !== expected) {
-      console.log(`FAIL  ${name} —— 声明 ${suffix}，实际装到 ${installed}，${line} 线上是 ${expected}`)
+      console.log(
+        `FAIL  ${name} —— 声明 ${suffix}，实际装到 ${installed}，${line} 线上是 ${expected}`,
+      )
       failed += 1
       continue
     }
@@ -247,7 +260,9 @@ async function verify(line) {
     console.error(`${failed} 个包没有落在 ${line} 线上 —— 这次换版是假绿，别信它跑出来的绿。`)
     return 1
   }
-  console.log(`${names.length - skipped} 个包全部落在 ${line} 线上${skipped > 0 ? `（另 ${skipped} 个仅 dev 声明，已跳过）` : ''}。`)
+  console.log(
+    `${names.length - skipped} 个包全部落在 ${line} 线上${skipped > 0 ? `（另 ${skipped} 个仅 dev 声明，已跳过）` : ''}。`,
+  )
   return 0
 }
 

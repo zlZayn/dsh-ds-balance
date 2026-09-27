@@ -19,19 +19,25 @@ function fakeTable(): KvTableLike & { rows: Map<string, StoredSnapshot> } {
     rows,
     get: (key) => rows.get(key),
     keys: () => rows.keys(),
-    put: async (key, value) => { rows.set(key, value) },
+    put: async (key, value) => {
+      rows.set(key, value)
+    },
   }
 }
 
 function fakeDomain(table: KvTableLike): DomainLike & { closed: boolean } {
   let closed = false
   return {
-    get closed() { return closed },
+    get closed() {
+      return closed
+    },
     table: (name) => {
       if (name !== SNAPSHOT_TABLE) throw new Error(`unexpected table ${name}`)
       return table
     },
-    close: async () => { closed = true },
+    close: async () => {
+      closed = true
+    },
   }
 }
 
@@ -41,7 +47,14 @@ function snapshot(patch: Partial<BalanceSnapshot> = {}): BalanceSnapshot {
     accountTag: 'tag-a',
     fetchedAt: 1000,
     isAvailable: true,
-    balances: [{ currency: 'CNY', total: parseMoney('110'), granted: parseMoney('10'), toppedUp: parseMoney('100') }],
+    balances: [
+      {
+        currency: 'CNY',
+        total: parseMoney('110'),
+        granted: parseMoney('10'),
+        toppedUp: parseMoney('100'),
+      },
+    ],
     source: 'deepseek-http',
     raw: { anything: true },
     ...patch,
@@ -52,7 +65,10 @@ describe('记录往返', () => {
   it('金额序列化成字符串最小单位', () => {
     const stored = toStored(snapshot())
     expect(stored.balances[0]).toEqual({
-      currency: 'CNY', total: '110.00000000', granted: '10.00000000', toppedUp: '100.00000000',
+      currency: 'CNY',
+      total: '110.00000000',
+      granted: '10.00000000',
+      toppedUp: '100.00000000',
     })
   })
 
@@ -88,7 +104,7 @@ describe('DomainCoreStore', () => {
     await store.saveSnapshot(snapshot({ snapshotId: 'id-1', accountTag: 'tag-a' }))
     await store.saveSnapshot(snapshot({ snapshotId: 'id-2', accountTag: 'tag-b' }))
     expect((await store.loadLatestSnapshot('tag-b'))?.snapshotId).toBe('id-2')
-    expect((await store.loadLatestSnapshot('tag-c'))).toBeNull()
+    expect(await store.loadLatestSnapshot('tag-c')).toBeNull()
   })
 
   it('取新建的那条，与写入顺序无关', async () => {
@@ -119,24 +135,41 @@ describe('DomainCoreStore', () => {
 
 describe('降级模式', () => {
   it('打开失败不抛错，health 报 not ok', async () => {
-    const store = new DomainCoreStore({ open: async () => { throw new Error('already-open') } })
+    const store = new DomainCoreStore({
+      open: async () => {
+        throw new Error('already-open')
+      },
+    })
     await expect(store.health()).resolves.toEqual({ ok: false, detail: 'already-open' })
   })
 
   it('降级时每次操作抛 StorageError 而不是未观察的 rejection', async () => {
-    const store = new DomainCoreStore({ open: async () => { throw new Error('already-open') } })
+    const store = new DomainCoreStore({
+      open: async () => {
+        throw new Error('already-open')
+      },
+    })
     await expect(store.saveSnapshot(snapshot())).rejects.toBeInstanceOf(StorageError)
     await expect(store.loadLatestSnapshot('tag-a')).rejects.toBeInstanceOf(StorageError)
   })
 
   it('降级时 close 不抛错', async () => {
-    const store = new DomainCoreStore({ open: async () => { throw new Error('boom') } })
+    const store = new DomainCoreStore({
+      open: async () => {
+        throw new Error('boom')
+      },
+    })
     await expect(store.close()).resolves.toBeUndefined()
   })
 
   it('打开失败会记一条 error 日志', async () => {
     const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-    const store = new DomainCoreStore({ open: async () => { throw new Error('already-open') }, logger })
+    const store = new DomainCoreStore({
+      open: async () => {
+        throw new Error('already-open')
+      },
+      logger,
+    })
     await store.health()
     expect(logger.error).toHaveBeenCalledTimes(1)
     expect(logger.error.mock.calls[0]![1]).toEqual({ error: 'already-open' })
@@ -171,7 +204,12 @@ describe('懒打开与重试', () => {
 
   it('打开失败只记一次 error 日志，不随每次操作刷屏', async () => {
     const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-    const store = new DomainCoreStore({ open: async () => { throw new Error('nope') }, logger })
+    const store = new DomainCoreStore({
+      open: async () => {
+        throw new Error('nope')
+      },
+      logger,
+    })
     await store.health()
     await store.health()
     await expect(store.saveSnapshot(snapshot())).rejects.toBeInstanceOf(StorageError)

@@ -93,11 +93,13 @@ describe('registerHttpRoutes', () => {
     expect(route).toBeDefined()
     const read = await route!.fetch(new Request(ORIGIN + '/api/v1/config'))
     expect(read.status).toBe(200)
-    const write = await route!.fetch(new Request(ORIGIN + '/api/v1/config', {
-      method: 'POST',
-      body: JSON.stringify({ nope: 1 }),
-      headers: { 'content-type': 'application/json' },
-    }))
+    const write = await route!.fetch(
+      new Request(ORIGIN + '/api/v1/config', {
+        method: 'POST',
+        body: JSON.stringify({ nope: 1 }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
     expect(write.status).toBe(422)
   })
 })

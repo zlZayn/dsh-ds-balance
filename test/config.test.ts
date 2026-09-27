@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { endpointOf } from '../src/config.ts'
 import {
-  DEFAULT_TIMEOUT_MS, TIMEOUT_ENV, resolveThresholdPairs, resolveTimeoutMs, type Config,
+  DEFAULT_TIMEOUT_MS,
+  TIMEOUT_ENV,
+  resolveThresholdPairs,
+  resolveTimeoutMs,
+  type Config,
 } from '../src/config.ts'
 import { DEFAULT_BASE_URL } from '../src/ports/deepseek-client.ts'
 
@@ -81,7 +85,9 @@ describe('resolveThresholdPairs', () => {
   })
 
   it('回落之后一定合法 —— 否则守卫会把用户带进另一个非法状态', () => {
-    const result = resolveThresholdPairs(configOf({ usdWarn: 0, usdCritical: 7, cnyWarn: 1, cnyCritical: 9 }))
+    const result = resolveThresholdPairs(
+      configOf({ usdWarn: 0, usdCritical: 7, cnyWarn: 1, cnyCritical: 9 }),
+    )
     expect([...result.violations].sort()).toEqual(['CNY', 'USD'])
     expect(result.config.cnyCritical).toBeLessThan(result.config.cnyWarn)
     expect(result.config.usdCritical).toBeLessThan(result.config.usdWarn)

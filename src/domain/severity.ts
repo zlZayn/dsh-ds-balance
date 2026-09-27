@@ -30,7 +30,10 @@ export function thresholdsOf(config: ThresholdConfig): Record<Currency, Threshol
  * @param thresholds - {@link thresholdsOf} 的产物。
  * @returns 该币种的阈值；没有配置时返回全零，使该币种永远判为 `ok`。
  */
-export function thresholdsFor(currency: Currency, thresholds: Record<Currency, ThresholdPair>): ThresholdPair {
+export function thresholdsFor(
+  currency: Currency,
+  thresholds: Record<Currency, ThresholdPair>,
+): ThresholdPair {
   return thresholds[currency] ?? { warn: 0n, critical: 0n }
 }
 
@@ -43,7 +46,11 @@ export function thresholdsFor(currency: Currency, thresholds: Record<Currency, T
  * @param thresholds - 该币种的阈值。
  * @returns 闭集内的严重度。
  */
-export function severityOf(selected: BalanceInfo | null, isAvailable: boolean, thresholds: ThresholdPair): Severity {
+export function severityOf(
+  selected: BalanceInfo | null,
+  isAvailable: boolean,
+  thresholds: ThresholdPair,
+): Severity {
   if (selected === null) return 'unknown'
   if (!isAvailable) return 'unavailable'
   if (cmpMoney(selected.total, thresholds.critical) <= 0) return 'critical'

@@ -56,9 +56,12 @@ export class KeyResolver {
     const ref = config.apiKeyRef.trim()
     if (ref === '') throw new NoKeyError('no API key: both apiKey and apiKeyRef are empty')
 
-    const isValid = this.options.isValidRef ?? ((value: string): boolean => CREDENTIAL_REF_PATTERN.test(value))
+    const isValid =
+      this.options.isValidRef ?? ((value: string): boolean => CREDENTIAL_REF_PATTERN.test(value))
     if (!isValid(ref)) {
-      throw new NoKeyError(`no API key: apiKeyRef ${JSON.stringify(ref)} is not a valid credential reference`)
+      throw new NoKeyError(
+        `no API key: apiKeyRef ${JSON.stringify(ref)} is not a valid credential reference`,
+      )
     }
 
     if (this.options.credentials !== undefined) {
@@ -68,10 +71,13 @@ export class KeyResolver {
         if (value !== '') return value
       } catch (error) {
         // 没有 seam、引用名不存在、远程拒绝 —— 都只是「这一档没取到」，继续往下走。
-        this.options.logger?.debug('ds-balance: credentials.resolve did not yield a key, falling back to env', {
-          ref,
-          error: describeError(error),
-        })
+        this.options.logger?.debug(
+          'ds-balance: credentials.resolve did not yield a key, falling back to env',
+          {
+            ref,
+            error: describeError(error),
+          },
+        )
       }
     }
 

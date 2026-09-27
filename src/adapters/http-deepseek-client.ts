@@ -4,9 +4,20 @@
  */
 
 import type { RawBalanceResponse } from '../domain/balance.js'
-import { NetworkError, ParseError, TimeoutError, UpstreamError, classify, describeError } from '../domain/errors.js'
+import {
+  NetworkError,
+  ParseError,
+  TimeoutError,
+  UpstreamError,
+  classify,
+  describeError,
+} from '../domain/errors.js'
 import { parseErrorBody } from '../domain/normalize.js'
-import type { DeepSeekCallOptions, DeepSeekClient, TestConnectionResult } from '../ports/deepseek-client.js'
+import type {
+  DeepSeekCallOptions,
+  DeepSeekClient,
+  TestConnectionResult,
+} from '../ports/deepseek-client.js'
 
 /** 可替换的 fetch，便于测试注入。 */
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
@@ -58,12 +69,20 @@ export class HttpDeepSeekClient implements DeepSeekClient {
       const raw = await this.fetchBalance(options)
       const latencyMs = this.now() - startedAt
       const balances = Array.isArray(raw?.balance_infos)
-        ? raw.balance_infos.map((item) => ({ currency: String(item.currency), total: String(item.total_balance) }))
+        ? raw.balance_infos.map((item) => ({
+            currency: String(item.currency),
+            total: String(item.total_balance),
+          }))
         : []
       return { ok: true, latencyMs, isAvailable: raw?.is_available === true, balances }
     } catch (error) {
       const info = classify(error)
-      return { ok: false, latencyMs: this.now() - startedAt, code: info.code, message: info.message }
+      return {
+        ok: false,
+        latencyMs: this.now() - startedAt,
+        code: info.code,
+        message: info.message,
+      }
     }
   }
 
@@ -80,7 +99,9 @@ export class HttpDeepSeekClient implements DeepSeekClient {
       timedOut = true
       controller.abort()
     }, options.timeoutMs)
-    const forwardAbort = (): void => { controller.abort() }
+    const forwardAbort = (): void => {
+      controller.abort()
+    }
     options.signal?.addEventListener('abort', forwardAbort, { once: true })
 
     let response: Response
@@ -94,7 +115,8 @@ export class HttpDeepSeekClient implements DeepSeekClient {
         signal: controller.signal,
       })
     } catch (error) {
-      if (timedOut) throw new TimeoutError(`upstream timeout after ${options.timeoutMs}ms`, { cause: error })
+      if (timedOut)
+        throw new TimeoutError(`upstream timeout after ${options.timeoutMs}ms`, { cause: error })
       if (options.signal?.aborted === true) throw error
       if (error instanceof Error && error.name === 'AbortError') {
         throw new TimeoutError(`upstream aborted after ${options.timeoutMs}ms`, { cause: error })
@@ -108,9 +130,13 @@ export class HttpDeepSeekClient implements DeepSeekClient {
     if (!response.ok) {
       const text = await response.text().catch(() => '')
       const parsed = parseErrorBody(text)
-      throw new UpstreamError(response.status, parsed.message ?? parsed.code ?? `upstream ${response.status}`, {
-        headers: response.headers,
-      })
+      throw new UpstreamError(
+        response.status,
+        parsed.message ?? parsed.code ?? `upstream ${response.status}`,
+        {
+          headers: response.headers,
+        },
+      )
     }
     return response
   }

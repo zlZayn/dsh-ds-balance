@@ -6,7 +6,12 @@ import { formatMoney } from '../src/domain/money.ts'
 const good = {
   is_available: true,
   balance_infos: [
-    { currency: 'CNY', total_balance: '110.00000000', granted_balance: '10.00000000', topped_up_balance: '100.00000000' },
+    {
+      currency: 'CNY',
+      total_balance: '110.00000000',
+      granted_balance: '10.00000000',
+      topped_up_balance: '100.00000000',
+    },
   ],
 }
 
@@ -36,12 +41,19 @@ describe('normalize', () => {
     expect(() => normalize({ balance_infos: [] }, 't', 1)).toThrow(ShapeError)
     expect(() => normalize({ is_available: 'yes', balance_infos: [] }, 't', 1)).toThrow(ShapeError)
     expect(() => normalize({ is_available: true }, 't', 1)).toThrow(ShapeError)
-    expect(() => normalize({ is_available: true, balance_infos: [null] }, 't', 1)).toThrow(ShapeError)
-    expect(() => normalize({ is_available: true, balance_infos: [{ currency: '' }] }, 't', 1)).toThrow(ShapeError)
+    expect(() => normalize({ is_available: true, balance_infos: [null] }, 't', 1)).toThrow(
+      ShapeError,
+    )
+    expect(() =>
+      normalize({ is_available: true, balance_infos: [{ currency: '' }] }, 't', 1),
+    ).toThrow(ShapeError)
   })
 
   it('金额坏掉抛 ParseError 并指出字段', () => {
-    const bad = { is_available: true, balance_infos: [{ ...good.balance_infos[0], total_balance: 'abc' }] }
+    const bad = {
+      is_available: true,
+      balance_infos: [{ ...good.balance_infos[0], total_balance: 'abc' }],
+    }
     expect(() => normalize(bad, 't', 1)).toThrow(ParseError)
     expect(() => normalize(bad, 't', 1)).toThrow(/total_balance/)
   })
@@ -68,12 +80,16 @@ describe('nextSnapshotId', () => {
 
 describe('parseErrorBody', () => {
   it('嵌套 error.type', () => {
-    expect(parseErrorBody('{"error":{"type":"invalid_request_error","message":"bad key"}}'))
-      .toEqual({ code: 'invalid_request_error', message: 'bad key' })
+    expect(
+      parseErrorBody('{"error":{"type":"invalid_request_error","message":"bad key"}}'),
+    ).toEqual({ code: 'invalid_request_error', message: 'bad key' })
   })
 
   it('嵌套 error.code', () => {
-    expect(parseErrorBody('{"error":{"code":"401","message":"nope"}}')).toEqual({ code: '401', message: 'nope' })
+    expect(parseErrorBody('{"error":{"code":"401","message":"nope"}}')).toEqual({
+      code: '401',
+      message: 'nope',
+    })
   })
 
   it('detail 形状', () => {

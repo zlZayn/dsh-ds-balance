@@ -18,10 +18,18 @@ import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import type { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 import type {} from '@deepseek-ai/dsh-settings'
 import {
-  ENTRY_ID, THRESHOLD_PAIRS, readConfig, resolveThresholdPairs,
-  type Config as ConfigShape, type ConfigRefs,
+  ENTRY_ID,
+  THRESHOLD_PAIRS,
+  readConfig,
+  resolveThresholdPairs,
+  type Config as ConfigShape,
+  type ConfigRefs,
 } from './config.js'
-import { DomainCoreStore, type DomainLike, type DomainOpener } from './adapters/domain-core-store.js'
+import {
+  DomainCoreStore,
+  type DomainLike,
+  type DomainOpener,
+} from './adapters/domain-core-store.js'
 import { HttpDeepSeekClient } from './adapters/http-deepseek-client.js'
 import { SALT_BYTES, SALT_ENCODING, loadOrCreateSalt } from './adapters/salt-file.js'
 import { createConsoleLogger } from './adapters/console-logger.js'
@@ -84,7 +92,9 @@ async function resolveSalt(logger: Logger): Promise<string> {
   try {
     return await loadOrCreateSalt({ path: dshHomePath(SALT_FILE_NAME) })
   } catch (error) {
-    logger.error('ds-balance: salt file unavailable, using an ephemeral salt', { error: describeError(error) })
+    logger.error('ds-balance: salt file unavailable, using an ephemeral salt', {
+      error: describeError(error),
+    })
     return randomBytes(SALT_BYTES).toString(SALT_ENCODING)
   }
 }
@@ -116,10 +126,15 @@ function createConfigSource(ctx: Context, refs: ConfigRefs, logger: Logger): Con
       }
       if (warned.has(pair.currency)) continue
       warned.add(pair.currency)
-      logger.warn('ds-balance: ' + pair.currency + ' critical must stay below warn; this pair fell back to its defaults', {
-        warn: pair.defaultWarn,
-        critical: pair.defaultCritical,
-      })
+      logger.warn(
+        'ds-balance: ' +
+          pair.currency +
+          ' critical must stay below warn; this pair fell back to its defaults',
+        {
+          warn: pair.defaultWarn,
+          critical: pair.defaultCritical,
+        },
+      )
     }
     return config
   }
@@ -136,9 +151,10 @@ function createConfigSource(ctx: Context, refs: ConfigRefs, logger: Logger): Con
     },
     // 写回走宿主的设置域：path 操作按 Loader 条目 id 寻址 —— 0.1.7 起它**就是**设置命名空间。
     update: async (patch) => {
-      await ctx.settings.mutate(ENTRY_ID, Object.entries(patch).map(([key, value]) => (
-        { op: 'set' as const, path: [key], value }
-      )))
+      await ctx.settings.mutate(
+        ENTRY_ID,
+        Object.entries(patch).map(([key, value]) => ({ op: 'set' as const, path: [key], value })),
+      )
     },
   }
 }
@@ -163,7 +179,9 @@ function credentialsPort(ctx: Context): Credentials | undefined {
     async resolve(ref) {
       const resolved = await service.resolve(credentialRef(ref))
       // 未配置时官方回 `undefined`；端口的约定是「值可能为空串」，交给上游判空。
-      return resolved === undefined ? { value: '', source: 'unset' } : { value: resolved.value, source: resolved.source }
+      return resolved === undefined
+        ? { value: '', source: 'unset' }
+        : { value: resolved.value, source: resolved.source }
     },
     describe: (ref) => service.describe(credentialRef(ref)),
   }
@@ -187,13 +205,15 @@ function connectStorage(ctx: Context): DomainOpener {
   ctx.inject(['storageDomain'], (storageCtx) => {
     storageCtx.effect(() => {
       handle.facility = storageCtx.storageDomain
-      return () => { handle.facility = undefined }
+      return () => {
+        handle.facility = undefined
+      }
     }, 'ds-balance: storage facility')
   })
   return async (spec) => {
     const facility = handle.facility
     if (facility === undefined) throw new Error('storageDomain service is unavailable')
-    return await facility.open(spec) as unknown as DomainLike
+    return (await facility.open(spec)) as unknown as DomainLike
   }
 }
 /**
@@ -228,7 +248,14 @@ export async function apply(ctx: Context, refs: ConfigRefs): Promise<void> {
   // 由 healthz 的 metrics 段暴露（见 .agents/notes 的决策）。
   const metrics = new MemoryMetrics()
   const service = new BalanceService({
-    client, store, keys, config: configService, clock: systemClock, salt, logger, metrics,
+    client,
+    store,
+    keys,
+    config: configService,
+    clock: systemClock,
+    salt,
+    logger,
+    metrics,
   })
   const scheduler = new Scheduler({ target: service, logger })
 
@@ -236,7 +263,9 @@ export async function apply(ctx: Context, refs: ConfigRefs): Promise<void> {
     // 排程只看这几项。事件给的是「真的变了的路径」，比原来的全量 diff 更准，
     // 所以改阈值、改展示币种都不会顺带打一次官方接口。
     const stopWatching = ctx.on('loader/volatile-update', (paths) => {
-      if (paths.some((path) => path.length > 0 && SCHEDULE_FIELDS.some((field) => field === path[0]))) {
+      if (
+        paths.some((path) => path.length > 0 && SCHEDULE_FIELDS.some((field) => field === path[0]))
+      ) {
         scheduler.reset()
       }
     })
@@ -257,9 +286,19 @@ export async function apply(ctx: Context, refs: ConfigRefs): Promise<void> {
   ctx.inject(['connection'], (connectionCtx) => {
     connectionCtx.effect(() => {
       const disposeRoutes = registerHttpRoutes(connectionCtx, {
-        service, config: configService, keys, client, store, scheduler, logger, metrics, credentials,
+        service,
+        config: configService,
+        keys,
+        client,
+        store,
+        scheduler,
+        logger,
+        metrics,
+        credentials,
       })
-      return () => { void disposeRoutes() }
+      return () => {
+        void disposeRoutes()
+      }
     }, 'ds-balance: http routes')
   })
 }

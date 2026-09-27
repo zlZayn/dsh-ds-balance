@@ -12,18 +12,24 @@
  * @module dsh-ds-balance/client/sidebar/SidebarBalance
  */
 
-import {
-  useCallback, useEffect, useMemo, useRef, useState, type CSSProperties,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  IconWarningOutlineRegular, Tooltip, useAnchoredPosition, useDismissOnOutsidePointer,
+  IconWarningOutlineRegular,
+  Tooltip,
+  useAnchoredPosition,
+  useDismissOnOutsidePointer,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BalanceResponse, Severity } from '../api-types.ts'
 import { interpolate, type LocaleKey } from '../locales.ts'
 import {
-  currentAgeMs, formatMoney, ringRatioOf, ringSpecOf, selectionOf,
-  type CurrencySelection, type RingMarker,
+  currentAgeMs,
+  formatMoney,
+  ringRatioOf,
+  ringSpecOf,
+  selectionOf,
+  type CurrencySelection,
+  type RingMarker,
 } from '../model.ts'
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
@@ -65,7 +71,9 @@ function useConfigSlotState(probe: ConfigSlotProbe): ConfigSlotState {
   const [state, setState] = useState(() => probe.getSnapshot())
   useEffect(() => {
     setState(probe.getSnapshot())
-    return probe.subscribe(() => { setState(probe.getSnapshot()) })
+    return probe.subscribe(() => {
+      setState(probe.getSnapshot())
+    })
   }, [probe])
   return state
 }
@@ -92,7 +100,9 @@ export interface PluginsNavigation {
  * @param navigation - 父代理建好的入口；宿主缺 layout 服务时给 undefined。
  * @returns 当前可用的动作与落点，或 undefined。
  */
-function usePluginsNavigation(navigation: PluginsNavigation | undefined): PluginsAction | undefined {
+function usePluginsNavigation(
+  navigation: PluginsNavigation | undefined,
+): PluginsAction | undefined {
   // 惰性初值：这个箭头函数是 useState 的 initializer，交出去的才是状态值（快照对象本身）。
   const [action, setAction] = useState(() => navigation?.getSnapshot())
   useEffect(() => {
@@ -103,7 +113,9 @@ function usePluginsNavigation(navigation: PluginsNavigation | undefined): Plugin
     // 快照过去是**回调本身**，那时必须走 updater 形式才不会被 React 当成更新器调用；
     // 现在是对象，直接 set 即可。（旧注释与理由见 git 历史，别照着旧写法把函数塞回来。）
     setAction(navigation.getSnapshot())
-    return navigation.subscribe(() => { setAction(navigation.getSnapshot()) })
+    return navigation.subscribe(() => {
+      setAction(navigation.getSnapshot())
+    })
   }, [navigation])
   return action
 }
@@ -169,8 +181,10 @@ export interface SidebarBalanceProps {
  * @returns 词典键，或 null 表示正常。
  */
 function stateLabelKey(response: BalanceResponse, selection: CurrencySelection): LocaleKey | null {
-  if (response.state === 'error') return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.error'
-  if (response.state === 'empty') return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.empty'
+  if (response.state === 'error')
+    return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.error'
+  if (response.state === 'empty')
+    return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.empty'
   if (response.state === 'stale') return 'state.stale'
   if (!response.isAvailable) return 'state.unavailable'
   if (selection.shown === null) return 'state.noBalance'
@@ -196,7 +210,12 @@ function ringSpecFor(severity: Severity): { state: RingState; marker: RingMarker
  * @returns 条目元素。
  */
 export function SidebarBalance({
-  wide, t, config, configSlotProbe, onSelectCurrency, pluginsNavigation,
+  wide,
+  t,
+  config,
+  configSlotProbe,
+  onSelectCurrency,
+  pluginsNavigation,
 }: SidebarBalanceProps): JSX.Element | null {
   /**
    * 余额视图与它的**年龄基准**。
@@ -256,16 +275,20 @@ export function SidebarBalance({
   // 开发场景切换时换数据。subscribeScenario 会立刻回调一次，用 key 比对跳过它。
   // 每次回调都重判来源：`?dsb=live` 打开后会把 localStorage 里的场景清掉，
   // 于是这里从 mock 切回真实端点。
-  useEffect(() => subscribeScenario((key) => {
-    const active = resolveScenario() !== null
-    setMock(active)
-    if (!active || lastScenario.current === key) return
-    lastScenario.current = key
-    acceptBalance(currentBalance())
-    setRefreshing(false)
-    setCooldownUntil(0)
-    setOpen(false)
-  }), [acceptBalance])
+  useEffect(
+    () =>
+      subscribeScenario((key) => {
+        const active = resolveScenario() !== null
+        setMock(active)
+        if (!active || lastScenario.current === key) return
+        lastScenario.current = key
+        acceptBalance(currentBalance())
+        setRefreshing(false)
+        setCooldownUntil(0)
+        setOpen(false)
+      }),
+    [acceptBalance],
+  )
 
   // 真实数据：首拉一次，然后按 clientPollSeconds 轮询。
   // 轮询读的是后端缓存，不穿透到上游 —— 上游节奏由 serverRefreshSeconds 决定。
@@ -284,7 +307,12 @@ export function SidebarBalance({
       }
     }
     void load()
-    const id = window.setInterval(() => { void load() }, Math.max(5, config.clientPollSeconds) * MS_PER_SECOND)
+    const id = window.setInterval(
+      () => {
+        void load()
+      },
+      Math.max(5, config.clientPollSeconds) * MS_PER_SECOND,
+    )
     return () => {
       cancelled = true
       window.clearInterval(id)
@@ -293,11 +321,21 @@ export function SidebarBalance({
     // - preference：设置里换了币种（含浮层的「改用 X」）必须立刻按新币种重问一次后端。
     // - configSignature：改阈值要当场看到圆环变色，不能等下一轮轮询。
     // 两条都不穿透上游 —— 后端从缓存快照按新阈值重算，只有 state 不是 ok 时才会真去拉。
-  }, [mock, preference, config.clientPollSeconds, config.configSignature, acceptBalance, showUnreachable])
+  }, [
+    mock,
+    preference,
+    config.clientPollSeconds,
+    config.configSignature,
+    acceptBalance,
+    showUnreachable,
+  ])
 
-  useEffect(() => () => {
-    if (refreshTimer.current !== undefined) window.clearTimeout(refreshTimer.current)
-  }, [])
+  useEffect(
+    () => () => {
+      if (refreshTimer.current !== undefined) window.clearTimeout(refreshTimer.current)
+    },
+    [],
+  )
 
   const closeNow = useCallback((): void => {
     setOpen(false)
@@ -327,8 +365,12 @@ export function SidebarBalance({
   useEffect(() => {
     if (!open) return
     setNow(Date.now())
-    const id = window.setInterval(() => { setNow(Date.now()) }, TICK_MS)
-    return () => { window.clearInterval(id) }
+    const id = window.setInterval(() => {
+      setNow(Date.now())
+    }, TICK_MS)
+    return () => {
+      window.clearInterval(id)
+    }
   }, [open])
 
   useEffect(() => {
@@ -337,7 +379,9 @@ export function SidebarBalance({
       if (event.key === 'Escape') closeNow()
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => { document.removeEventListener('keydown', onKeyDown) }
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [open, closeNow])
 
   // 面板 portal 到了 body，不再是 rootRef 的 DOM 后代，
@@ -353,7 +397,9 @@ export function SidebarBalance({
     // 真实路径读回的那份 ageMs 已经归零，mock 路径由 markFresh 就地拨。
     const finish = (): void => {
       setRefreshing(false)
-      setCooldownUntil(Date.now() + Math.max(0, config.manualRefreshCooldownSeconds) * MS_PER_SECOND)
+      setCooldownUntil(
+        Date.now() + Math.max(0, config.manualRefreshCooldownSeconds) * MS_PER_SECOND,
+      )
     }
     // mock 旁路没有上游可打，用一次短延迟模拟往返，让刷新态仍然可见。
     if (mock) {
@@ -377,7 +423,16 @@ export function SidebarBalance({
         finish()
       }
     })()
-  }, [cooldownUntil, config.manualRefreshCooldownSeconds, mock, preference, refreshing, acceptBalance, showUnreachable, markFresh])
+  }, [
+    cooldownUntil,
+    config.manualRefreshCooldownSeconds,
+    mock,
+    preference,
+    refreshing,
+    acceptBalance,
+    showUnreachable,
+    markFresh,
+  ])
 
   // 「改用 X」的语义不变：写回的是后端实际给的那个币种。落盘判定在父代理那边读回 user 层，
   // 这里不做乐观更新 —— 没写进去就什么都不变，提示留着让用户直接重试。
@@ -393,10 +448,16 @@ export function SidebarBalance({
   // 交给浮层的只有「动作 + 落点」；关浮层留在这里（浮层不知道自己的开合），
   // 且引用要稳：每次渲染换一个新对象会让浮层那条 Tooltip 白重挂一次。
   const popoverPluginsAction = useMemo(
-    () => (pluginsAction === undefined ? undefined : {
-      reachesConfig: pluginsAction.reachesConfig,
-      open: (): void => { closeNow(); pluginsAction.open() },
-    }),
+    () =>
+      pluginsAction === undefined
+        ? undefined
+        : {
+            reachesConfig: pluginsAction.reachesConfig,
+            open: (): void => {
+              closeNow()
+              pluginsAction.open()
+            },
+          },
     [closeNow, pluginsAction],
   )
 
@@ -443,7 +504,8 @@ export function SidebarBalance({
 
   // 折叠态只有环、没有任何可见文字，用原生 title 补一条悬停提示；
   // 展开态轮到 Tooltip 承担「悬浮看到余额」这件事（下面那层包装）。
-  const ringTitle = !wide && stateText !== null ? `${t('sidebar.aria.ring')} ${stateText}` : undefined
+  const ringTitle =
+    !wide && stateText !== null ? `${t('sidebar.aria.ring')} ${stateText}` : undefined
 
   // 悬浮气泡的内容：只放「Balance 那一条」的金额（浮层第一行同一份数据，同一个 formatMoney）。
   // 没有金额时回落到已有的状态文案 —— 不留一个空气泡；两者都没有就不挂 Tooltip。
@@ -483,18 +545,19 @@ export function SidebarBalance({
           )}
         </>
       ) : (
-        <PercentRing state={ring.state} marker={ring.marker} ratio={ringRatio} size={18} title={ringTitle} />
+        <PercentRing
+          state={ring.state}
+          marker={ring.marker}
+          ratio={ringRatio}
+          size={18}
+          title={ringTitle}
+        />
       )}
     </button>
   )
 
   return (
-    <div
-      ref={rootRef}
-      className={css.root}
-      data-mode={wide ? 'wide' : 'rail'}
-      tabIndex={-1}
-    >
+    <div ref={rootRef} className={css.root} data-mode={wide ? 'wide' : 'rail'} tabIndex={-1}>
       {/* 展开态：整条按钮包一层官方 Tooltip 原语来承担「悬浮看余额」——
           底色就是官方 tooltip token，所以不许自己画黑底（自绘会跟主题脱节）。
           标记自己那层 Tooltip 嵌在里面：原语用 TooltipSuppression 上下文，
@@ -503,30 +566,36 @@ export function SidebarBalance({
           而且点开浮层后指针通常还停在条目上，两个面会同时挂在视口里。
           rail 不挂：那里已经有原生 title，再叠一层就成了两层提示。 */}
       {wide && hoverLabel !== null ? (
-        <Tooltip label={hoverLabel} side="right" delayMs={500} disabled={open}>{trigger}</Tooltip>
-      ) : trigger}
+        <Tooltip label={hoverLabel} side="right" delayMs={500} disabled={open}>
+          {trigger}
+        </Tooltip>
+      ) : (
+        trigger
+      )}
 
       {/* 关闭时整个浮层卸载：DOM 里不留任何可命中区域。
           浮层向上展开、正压在左邻条目上，所以只有点击才会打开它 —— 悬停打开会让
           指针只是路过我们这一行时就把邻居的图标顶掉。 */}
-      {open ? createPortal(
-        <BalancePopover
-          t={t}
-          selection={selection}
-          displayCurrency={preference}
-          ageMs={ageMs}
-          refreshing={refreshing}
-          cooldownSeconds={cooldownSeconds}
-          configSlotWarning={configSlotState === 'missing' ? CONFIG_SLOT_WARNING : null}
-          panelRef={panelRef}
-          style={pos ?? MEASURE_STYLE}
-          onRefresh={handleRefresh}
-          onUseShown={handleUseShown}
-          useShownDisabled={!config.writable}
-          pluginsAction={popoverPluginsAction}
-        />,
-        document.body,
-      ) : null}
+      {open
+        ? createPortal(
+            <BalancePopover
+              t={t}
+              selection={selection}
+              displayCurrency={preference}
+              ageMs={ageMs}
+              refreshing={refreshing}
+              cooldownSeconds={cooldownSeconds}
+              configSlotWarning={configSlotState === 'missing' ? CONFIG_SLOT_WARNING : null}
+              panelRef={panelRef}
+              style={pos ?? MEASURE_STYLE}
+              onRefresh={handleRefresh}
+              onUseShown={handleUseShown}
+              useShownDisabled={!config.writable}
+              pluginsAction={popoverPluginsAction}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

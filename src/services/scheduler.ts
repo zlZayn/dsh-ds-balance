@@ -81,7 +81,10 @@ export function jitter(base: number, ratio: number, random: () => number): numbe
  * @param options - 随机源。
  * @returns 毫秒数。
  */
-export function nextDelayMs(status: BalanceStatus, options: { random?: () => number } = {}): number {
+export function nextDelayMs(
+  status: BalanceStatus,
+  options: { random?: () => number } = {},
+): number {
   const random = options.random ?? Math.random
 
   if (status.retryAfterMs !== null && status.retryAfterMs > 0) {
@@ -103,7 +106,9 @@ export function nextDelayMs(status: BalanceStatus, options: { random?: () => num
 /** 真正的默认定时器。 */
 const defaultTimers: SchedulerTimers = {
   set: (callback, ms) => setTimeout(callback, ms),
-  clear: (handle) => { clearTimeout(handle as ReturnType<typeof setTimeout>) },
+  clear: (handle) => {
+    clearTimeout(handle as ReturnType<typeof setTimeout>)
+  },
 }
 
 /**
@@ -167,7 +172,9 @@ export class Scheduler {
   private schedule(delay: number): void {
     if (!this.running) return
     this.nextAt = this.now() + delay
-    this.handle = this.timers.set(() => { void this.tick() }, delay)
+    this.handle = this.timers.set(() => {
+      void this.tick()
+    }, delay)
   }
 
   /** 跑一轮并按状态排下一轮。 */

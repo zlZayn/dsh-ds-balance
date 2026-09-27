@@ -52,7 +52,8 @@ function parseAmount(value: unknown, field: string): bigint {
   try {
     return parseMoney(value)
   } catch (error) {
-    if (error instanceof ParseError) throw new ParseError(`${field}: ${error.message}`, { cause: error })
+    if (error instanceof ParseError)
+      throw new ParseError(`${field}: ${error.message}`, { cause: error })
     throw error
   }
 }

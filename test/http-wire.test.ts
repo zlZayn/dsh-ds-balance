@@ -13,7 +13,14 @@ function view(patch: Partial<BalanceView> = {}): BalanceView {
     fetchedAt: 1_760_000_000_000,
     ageMs: 12_000,
     isAvailable: true,
-    balances: [{ currency: 'CNY', total: parseMoney('110'), granted: parseMoney('10'), toppedUp: parseMoney('100') }],
+    balances: [
+      {
+        currency: 'CNY',
+        total: parseMoney('110'),
+        granted: parseMoney('10'),
+        toppedUp: parseMoney('100'),
+      },
+    ],
     selected: { currency: 'CNY', total: parseMoney('110') },
     severity: 'ok',
     thresholds: { CNY: { warn: parseMoney('10'), critical: parseMoney('5') } },
@@ -44,7 +51,15 @@ describe('toWireBalanceView', () => {
 
   it('没有快照时 fetchedAt 与 ageMs 记 0，isAvailable 记 false', () => {
     const body = toWireBalanceView(
-      view({ state: 'empty', fetchedAt: null, ageMs: null, isAvailable: null, balances: [], selected: null, severity: 'unknown' }),
+      view({
+        state: 'empty',
+        fetchedAt: null,
+        ageMs: null,
+        isAvailable: null,
+        balances: [],
+        selected: null,
+        severity: 'unknown',
+      }),
       '',
       'req_test',
     )
@@ -57,7 +72,15 @@ describe('toWireBalanceView', () => {
 
   it('错误带 code / message / retryable，details 不外传', () => {
     const body = toWireBalanceView(
-      view({ state: 'error', error: { code: 'NO_KEY', message: 'no api key', retryable: false, details: { ref: 'DEEPSEEK_API_KEY' } } }),
+      view({
+        state: 'error',
+        error: {
+          code: 'NO_KEY',
+          message: 'no api key',
+          retryable: false,
+          details: { ref: 'DEEPSEEK_API_KEY' },
+        },
+      }),
       '',
       'req_test',
     )
@@ -72,8 +95,14 @@ describe('toWireBalanceView', () => {
 
 describe('toWireError', () => {
   it('只保留 code / message / retryable', () => {
-    expect(toWireError({ code: 'UPSTREAM_429', message: 'slow down', retryable: true, details: { retryAfterMs: 1000 } }))
-      .toEqual({ code: 'UPSTREAM_429', message: 'slow down', retryable: true })
+    expect(
+      toWireError({
+        code: 'UPSTREAM_429',
+        message: 'slow down',
+        retryable: true,
+        details: { retryAfterMs: 1000 },
+      }),
+    ).toEqual({ code: 'UPSTREAM_429', message: 'slow down', retryable: true })
   })
 })
 

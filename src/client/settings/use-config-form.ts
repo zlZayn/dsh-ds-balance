@@ -31,8 +31,7 @@ type MutateValue = Extract<MutateOp, { op: 'set' }>['value']
 
 /** 一次字段写入。 */
 export type FieldWrite =
-  | { readonly kind: 'set'; readonly value: unknown }
-  | { readonly kind: 'clear' }
+  { readonly kind: 'set'; readonly value: unknown } | { readonly kind: 'clear' }
 
 /** 字段控件类型。 */
 export type FieldKind = 'text' | 'secret' | 'number' | 'select'
@@ -70,7 +69,7 @@ export function textField(field: string, kind: 'text' | 'secret' = 'text'): Text
   return {
     field,
     kind,
-    format: value => (typeof value === 'string' ? value : ''),
+    format: (value) => (typeof value === 'string' ? value : ''),
     parse: (text) => {
       const trimmed = text.trim()
       return trimmed === '' ? { kind: 'clear' } : { kind: 'set', value: trimmed }
@@ -83,7 +82,7 @@ export function numberField(field: string): TextFieldSpec {
   return {
     field,
     kind: 'number',
-    format: value => (typeof value === 'number' && Number.isFinite(value) ? String(value) : ''),
+    format: (value) => (typeof value === 'number' && Number.isFinite(value) ? String(value) : ''),
     parse: (text) => {
       const trimmed = text.trim()
       if (trimmed === '') return { kind: 'clear' }
@@ -122,7 +121,13 @@ export interface ThresholdPair {
 
 /** 阈值成对的清单；字段名沿用宿主 schema 的「币种代码小写 + Warn / Critical」。 */
 export const THRESHOLD_PAIRS = [
-  { currency: 'CNY', warn: 'cnyWarn', critical: 'cnyCritical', defaultWarn: 10, defaultCritical: 5 },
+  {
+    currency: 'CNY',
+    warn: 'cnyWarn',
+    critical: 'cnyCritical',
+    defaultWarn: 10,
+    defaultCritical: 5,
+  },
   { currency: 'USD', warn: 'usdWarn', critical: 'usdCritical', defaultWarn: 2, defaultCritical: 1 },
 ] as const satisfies readonly ThresholdPair[]
 
@@ -184,7 +189,7 @@ export const CONFIG_FIELDS: readonly AnyFieldSpec[] = [
 
 /** 字段名到规格的索引。 */
 export const SPEC_BY_FIELD: ReadonlyMap<string, AnyFieldSpec> = new Map(
-  CONFIG_FIELDS.map(spec => [spec.field, spec]),
+  CONFIG_FIELDS.map((spec) => [spec.field, spec]),
 )
 
 /** 一个字段渲染所需的状态。 */
@@ -280,8 +285,10 @@ export const TEST_LATENCY_MS = 800
  */
 export function probeFailure(baseUrl: string, apiKey: string, apiKeyRef: string): string | null {
   const url = baseUrl.trim()
-  if (url !== '' && !/^https?:\/\//i.test(url)) return 'base URL must start with http:// or https://'
-  if (apiKey.trim() === '' && apiKeyRef.trim() === '') return 'no API key or credential reference configured'
+  if (url !== '' && !/^https?:\/\//i.test(url))
+    return 'base URL must start with http:// or https://'
+  if (apiKey.trim() === '' && apiKeyRef.trim() === '')
+    return 'no API key or credential reference configured'
   return null
 }
 
@@ -406,26 +413,85 @@ function fieldStateOf(
   const stored = Object.hasOwn(snapshot.user, spec.field)
   if (edit === undefined) {
     return isTextSpec(spec)
-      ? { text: spec.format(effective), value: undefined, effective, stored, overridden: stored, dirty: false, invalid: false }
-      : { text: '', value: effective, effective, stored, overridden: stored, dirty: false, invalid: false }
+      ? {
+          text: spec.format(effective),
+          value: undefined,
+          effective,
+          stored,
+          overridden: stored,
+          dirty: false,
+          invalid: false,
+        }
+      : {
+          text: '',
+          value: effective,
+          effective,
+          stored,
+          overridden: stored,
+          dirty: false,
+          invalid: false,
+        }
   }
   if (edit.kind === 'clear') {
     return isTextSpec(spec)
-      ? { text: '', value: undefined, effective, stored, overridden: false, dirty: stored, invalid: false }
-      : { text: '', value: effective, effective, stored, overridden: false, dirty: stored, invalid: false }
+      ? {
+          text: '',
+          value: undefined,
+          effective,
+          stored,
+          overridden: false,
+          dirty: stored,
+          invalid: false,
+        }
+      : {
+          text: '',
+          value: effective,
+          effective,
+          stored,
+          overridden: false,
+          dirty: stored,
+          invalid: false,
+        }
   }
   if (!isTextSpec(spec)) {
     return edit.kind === 'value'
-      ? { text: '', value: edit.value, effective, stored, overridden: true, dirty: edit.value !== effective, invalid: false }
-      : { text: '', value: effective, effective, stored, overridden: stored, dirty: false, invalid: false }
+      ? {
+          text: '',
+          value: edit.value,
+          effective,
+          stored,
+          overridden: true,
+          dirty: edit.value !== effective,
+          invalid: false,
+        }
+      : {
+          text: '',
+          value: effective,
+          effective,
+          stored,
+          overridden: stored,
+          dirty: false,
+          invalid: false,
+        }
   }
   if (edit.kind !== 'text') {
-    return { text: '', value: undefined, effective, stored, overridden: stored, dirty: false, invalid: false }
+    return {
+      text: '',
+      value: undefined,
+      effective,
+      stored,
+      overridden: stored,
+      dirty: false,
+      invalid: false,
+    }
   }
   const write = spec.parse(edit.text)
-  const dirty = write === undefined
-    ? true
-    : write.kind === 'clear' ? stored : edit.text !== spec.format(effective)
+  const dirty =
+    write === undefined
+      ? true
+      : write.kind === 'clear'
+        ? stored
+        : edit.text !== spec.format(effective)
   return {
     text: edit.text,
     value: undefined,
@@ -438,11 +504,21 @@ function fieldStateOf(
 }
 
 /** 取一个字段的渲染状态；字段不在规格表里时给一份全空的保守值。 */
-function fieldOf(snapshot: NormalizedSnapshot, name: string, edit: StagedEdit | undefined): FieldState {
+function fieldOf(
+  snapshot: NormalizedSnapshot,
+  name: string,
+  edit: StagedEdit | undefined,
+): FieldState {
   const spec = SPEC_BY_FIELD.get(name)
   if (spec === undefined) {
     return {
-      text: '', value: undefined, effective: undefined, stored: false, overridden: false, dirty: false, invalid: false,
+      text: '',
+      value: undefined,
+      effective: undefined,
+      stored: false,
+      overridden: false,
+      dirty: false,
+      invalid: false,
     }
   }
   return fieldStateOf(snapshot, spec, edit)
@@ -472,11 +548,13 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
     const writable = raw.writable !== false
     const available = raw.status === 'ready'
     const cache = cacheRef.current
-    if (cache !== null
-      && cache.writable === writable
-      && cache.available === available
-      && (cache.value === value || shallowEqual(cache.value, value))
-      && (cache.user === user || shallowEqual(cache.user, user))) {
+    if (
+      cache !== null &&
+      cache.writable === writable &&
+      cache.available === available &&
+      (cache.value === value || shallowEqual(cache.value, value)) &&
+      (cache.user === user || shallowEqual(cache.user, user))
+    ) {
       return cache.snapshot
     }
     const snapshot: NormalizedSnapshot = { value, user, writable, available }
@@ -484,10 +562,7 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
     return snapshot
   }, [form])
 
-  const subscribe = useCallback(
-    (listener: () => void) => form.subscribe(listener),
-    [form],
-  )
+  const subscribe = useCallback((listener: () => void) => form.subscribe(listener), [form])
   const snapshot = useSyncExternalStore(subscribe, readSnapshot)
   const [staged, setStaged] = useState<ReadonlyMap<string, StagedEdit>>(() => new Map())
   const [saving, setSaving] = useState(false)
@@ -499,24 +574,31 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
   const testTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const testRunningRef = useRef(false)
 
-  useEffect(() => () => {
-    if (testTimerRef.current !== null) clearTimeout(testTimerRef.current)
-    testTimerRef.current = null
-    testRunningRef.current = false
-  }, [])
+  useEffect(
+    () => () => {
+      if (testTimerRef.current !== null) clearTimeout(testTimerRef.current)
+      testTimerRef.current = null
+      testRunningRef.current = false
+    },
+    [],
+  )
 
   const plan = useMemo(() => planWrites(snapshot, staged), [snapshot, staged])
   // 成对校验按**草稿**判，所以必须和 field() 看同一份状态；它也算进整体 invalid，
   // 「有非法项就置灰保存」这条才对这个跨字段规则成立。
   const pairsInvalid = useMemo(
-    () => THRESHOLD_PAIRS.some(pair => !thresholdsOk(
-      pair,
-      fieldOf(snapshot, pair.warn, staged.get(pair.warn)),
-      fieldOf(snapshot, pair.critical, staged.get(pair.critical)),
-    )),
+    () =>
+      THRESHOLD_PAIRS.some(
+        (pair) =>
+          !thresholdsOk(
+            pair,
+            fieldOf(snapshot, pair.warn, staged.get(pair.warn)),
+            fieldOf(snapshot, pair.critical, staged.get(pair.critical)),
+          ),
+      ),
     [snapshot, staged],
   )
-  const invalid = plan.some(item => item.write === undefined) || pairsInvalid
+  const invalid = plan.some((item) => item.write === undefined) || pairsInvalid
 
   const stage = useCallback((field: string, edit: StagedEdit | null) => {
     setStaged((current) => {
@@ -532,22 +614,31 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
       testTimerRef.current = null
     }
     testRunningRef.current = false
-    setTest((current) => (current.running || current.ok !== null
-      ? { running: false, ok: null, message: '' }
-      : current))
+    setTest((current) =>
+      current.running || current.ok !== null ? { running: false, ok: null, message: '' } : current,
+    )
   }, [])
 
-  const edit = useCallback((field: string, text: string) => {
-    stage(field, { kind: 'text', text })
-  }, [stage])
+  const edit = useCallback(
+    (field: string, text: string) => {
+      stage(field, { kind: 'text', text })
+    },
+    [stage],
+  )
 
-  const setValue = useCallback((field: string, value: unknown) => {
-    stage(field, { kind: 'value', value })
-  }, [stage])
+  const setValue = useCallback(
+    (field: string, value: unknown) => {
+      stage(field, { kind: 'value', value })
+    },
+    [stage],
+  )
 
-  const resetField = useCallback((field: string) => {
-    stage(field, { kind: 'clear' })
-  }, [stage])
+  const resetField = useCallback(
+    (field: string) => {
+      stage(field, { kind: 'clear' })
+    },
+    [stage],
+  )
 
   const discard = useCallback(() => {
     setStaged((current) => (current.size === 0 ? current : new Map()))
@@ -558,16 +649,16 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
       testTimerRef.current = null
     }
     testRunningRef.current = false
-    setTest((current) => (current.running || current.ok !== null
-      ? { running: false, ok: null, message: '' }
-      : current))
+    setTest((current) =>
+      current.running || current.ok !== null ? { running: false, ok: null, message: '' } : current,
+    )
   }, [])
 
   const save = useCallback(async (): Promise<void> => {
     if (savingRef.current) return
     const writes = planWrites(readSnapshot(), staged)
     if (writes.length === 0) return
-    if (writes.some(item => item.write === undefined)) return
+    if (writes.some((item) => item.write === undefined)) return
     savingRef.current = true
     setSaving(true)
     setFailed(false)
@@ -577,9 +668,11 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
     for (const item of writes) {
       const write = item.write
       if (write === undefined) continue
-      ops.push(write.kind === 'clear'
-        ? { op: 'unset', path: [item.field] }
-        : { op: 'set', path: [item.field], value: write.value as MutateValue })
+      ops.push(
+        write.kind === 'clear'
+          ? { op: 'unset', path: [item.field] }
+          : { op: 'set', path: [item.field], value: write.value as MutateValue },
+      )
     }
     let landed: boolean
     try {
@@ -608,9 +701,11 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
     testTimerRef.current = setTimeout(() => {
       testTimerRef.current = null
       testRunningRef.current = false
-      setTest(failure === null
-        ? { running: false, ok: true, message: '' }
-        : { running: false, ok: false, message: failure })
+      setTest(
+        failure === null
+          ? { running: false, ok: true, message: '' }
+          : { running: false, ok: false, message: failure },
+      )
     }, TEST_LATENCY_MS)
   }, [readSnapshot, staged])
 
@@ -621,7 +716,7 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
 
   const thresholdPairOk = useCallback(
     (currency: string): boolean => {
-      const pair = THRESHOLD_PAIRS.find(item => item.currency === currency)
+      const pair = THRESHOLD_PAIRS.find((item) => item.currency === currency)
       if (pair === undefined) return true
       return thresholdsOk(
         pair,
@@ -636,7 +731,7 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
    * 记一次失焦。集合只增不减：提示一旦出现过就不该在下次敲键时消失。
    */
   const touch = useCallback((name: string): void => {
-    setBlurred(current => (current.has(name) ? current : new Set(current).add(name)))
+    setBlurred((current) => (current.has(name) ? current : new Set(current).add(name)))
   }, [])
 
   const touched = useCallback((name: string): boolean => blurred.has(name), [blurred])

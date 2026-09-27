@@ -38,30 +38,31 @@ const ISSUE_TITLE = '[compat] the weekly compatibility patrol is red'
 const ISSUE_LABEL = 'compat'
 
 const LABEL_COLOR = 'B60205'
-const LABEL_DESCRIPTION = 'compat.yml patrol is red; closed automatically is not supported, close by hand when green'
+const LABEL_DESCRIPTION =
+  'compat.yml patrol is red; closed automatically is not supported, close by hand when green'
 
 /** 每个检查的判据。 */
 const CRITERION = {
   declaration:
-    'The ranges declared in `package.json` — `engines.dsh` and every `@deepseek-ai/dsh-*` edge — must '
-    + 'cover the version the tracked dist-tag line points at. A range that cannot install the version on the '
-    + 'line is red even when the installed code happens to work: the manifest is what an installer obeys.',
+    'The ranges declared in `package.json` — `engines.dsh` and every `@deepseek-ai/dsh-*` edge — must ' +
+    'cover the version the tracked dist-tag line points at. A range that cannot install the version on the ' +
+    'line is red even when the installed code happens to work: the manifest is what an installer obeys.',
   swap:
-    'Swapping the `@deepseek-ai/dsh-*` ranges onto the line must still typecheck and pass the full test '
-    + 'suite, and `compat-swap.mjs verify` must confirm the install actually landed on the line. '
-    + '`npm install` can fail while `node_modules` stays on the old versions, and the tests then report '
-    + 'the opposite of the truth.',
+    'Swapping the `@deepseek-ai/dsh-*` ranges onto the line must still typecheck and pass the full test ' +
+    'suite, and `compat-swap.mjs verify` must confirm the install actually landed on the line. ' +
+    '`npm install` can fail while `node_modules` stays on the old versions, and the tests then report ' +
+    'the opposite of the truth.',
 }
 
 /** 每个检查的恢复条件。 */
 const RECOVERY = {
   declaration:
-    'Update the declared ranges in `package.json` to a version you actually tested, or move the tracked '
-    + 'line. The tracked line is the one the README version-compatibility section names.',
+    'Update the declared ranges in `package.json` to a version you actually tested, or move the tracked ' +
+    'line. The tracked line is the one the README version-compatibility section names.',
   swap:
-    'Read the failing line in the run log. Which line is mandatory is still undecided on purpose: a red line '
-    + 'is recorded, never blocking. The decision and its recovery conditions live in '
-    + '`.agents/notes/2026-09-17-compat-lines-advisory.md`.',
+    'Read the failing line in the run log. Which line is mandatory is still undecided on purpose: a red line ' +
+    'is recorded, never blocking. The decision and its recovery conditions live in ' +
+    '`.agents/notes/2026-09-17-compat-lines-advisory.md`.',
 }
 
 const LINES = ['alpha', 'next', 'latest']
@@ -79,7 +80,8 @@ exit codes: 0 = recorded / 1 = could not record / 2 = usage or precondition erro
 export function issueBody(input) {
   const criterion = CRITERION[input.check]
   const recovery = RECOVERY[input.check]
-  if (criterion === undefined || recovery === undefined) throw new Error(`unknown check: ${input.check}`)
+  if (criterion === undefined || recovery === undefined)
+    throw new Error(`unknown check: ${input.check}`)
   return [
     'The weekly compatibility patrol (`.github/workflows/compat.yml`) is red.',
     '',
@@ -98,8 +100,8 @@ export function issueBody(input) {
     '',
     recovery,
     '',
-    `Dispatch after pushing: \`gh workflow run compat.yml\`. See docs/PUBLISHING.md (compatibility) for where these `
-      + 'criterion texts are documented.',
+    `Dispatch after pushing: \`gh workflow run compat.yml\`. See docs/PUBLISHING.md (compatibility) for where these ` +
+      'criterion texts are documented.',
     '',
     'This issue is updated in place: a repeat of the same failure adds no comment.',
   ].join('\n')
@@ -133,22 +135,55 @@ function report(options) {
     return 0
   }
 
-  const listed = gh(['issue', 'list', '--state', 'all', '--limit', '200', '--json', 'number,state,title,url'])
-  if (listed.status !== 0) throw new Error(`gh issue list failed: ${listed.stderr.trim().split('\n')[0]}`)
+  const listed = gh([
+    'issue',
+    'list',
+    '--state',
+    'all',
+    '--limit',
+    '200',
+    '--json',
+    'number,state,title,url',
+  ])
+  if (listed.status !== 0)
+    throw new Error(`gh issue list failed: ${listed.stderr.trim().split('\n')[0]}`)
   const existing = JSON.parse(listed.stdout).find((issue) => issue.title === ISSUE_TITLE)
 
   if (!existing) {
     // 标签不存在时 gh issue create --label 会直接失败，所以先幂等地建/更新它。
-    const labeled = gh(['label', 'create', ISSUE_LABEL, '--force', '--color', LABEL_COLOR, '--description', LABEL_DESCRIPTION])
-    if (labeled.status !== 0) console.log(`[NOTE] could not ensure label ${ISSUE_LABEL}: ${labeled.stderr.trim().split('\n')[0]}`)
-    const created = gh(['issue', 'create', '--title', ISSUE_TITLE, '--label', ISSUE_LABEL, '--body', body])
-    if (created.status !== 0) throw new Error(`gh issue create failed: ${created.stderr.trim().split('\n')[0]}`)
+    const labeled = gh([
+      'label',
+      'create',
+      ISSUE_LABEL,
+      '--force',
+      '--color',
+      LABEL_COLOR,
+      '--description',
+      LABEL_DESCRIPTION,
+    ])
+    if (labeled.status !== 0)
+      console.log(
+        `[NOTE] could not ensure label ${ISSUE_LABEL}: ${labeled.stderr.trim().split('\n')[0]}`,
+      )
+    const created = gh([
+      'issue',
+      'create',
+      '--title',
+      ISSUE_TITLE,
+      '--label',
+      ISSUE_LABEL,
+      '--body',
+      body,
+    ])
+    if (created.status !== 0)
+      throw new Error(`gh issue create failed: ${created.stderr.trim().split('\n')[0]}`)
     console.log(`[NOTE] opened the tracking issue: ${created.stdout.trim()}`)
     return 0
   }
 
   const viewed = gh(['issue', 'view', String(existing.number), '--json', 'state,comments'])
-  if (viewed.status !== 0) throw new Error(`gh issue view failed: ${viewed.stderr.trim().split('\n')[0]}`)
+  if (viewed.status !== 0)
+    throw new Error(`gh issue view failed: ${viewed.stderr.trim().split('\n')[0]}`)
   const detail = JSON.parse(viewed.stdout)
   const last = detail.comments?.at(-1)?.body
   if (last === body) {
@@ -158,11 +193,13 @@ function report(options) {
 
   if (detail.state === 'CLOSED') {
     const reopened = gh(['issue', 'reopen', String(existing.number)])
-    if (reopened.status !== 0) throw new Error(`gh issue reopen failed: ${reopened.stderr.trim().split('\n')[0]}`)
+    if (reopened.status !== 0)
+      throw new Error(`gh issue reopen failed: ${reopened.stderr.trim().split('\n')[0]}`)
     console.log(`[NOTE] reopened issue #${existing.number}`)
   }
   const commented = gh(['issue', 'comment', String(existing.number), '--body', body])
-  if (commented.status !== 0) throw new Error(`gh issue comment failed: ${commented.stderr.trim().split('\n')[0]}`)
+  if (commented.status !== 0)
+    throw new Error(`gh issue comment failed: ${commented.stderr.trim().split('\n')[0]}`)
   console.log(`[NOTE] added this failure to issue #${existing.number}`)
   return 0
 }

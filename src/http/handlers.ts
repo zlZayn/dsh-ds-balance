@@ -91,7 +91,11 @@ async function readJsonObject(request: Request): Promise<Record<string, unknown>
  * @param state - 要报告的状态；余额端点固定 `error`。
  * @returns 契约 §8.3 的响应体。
  */
-function failureView(requestId: string, error: unknown, state: CacheState = 'error'): WireBalanceResponse {
+function failureView(
+  requestId: string,
+  error: unknown,
+  state: CacheState = 'error',
+): WireBalanceResponse {
   return {
     requestId,
     schemaVersion: SCHEMA_VERSION,
@@ -133,10 +137,15 @@ export async function handleBalance(request: Request, deps: HttpDeps): Promise<R
   const requestId = newRequestId()
   try {
     const currency = queryParam(request, 'currency')
-    const view = await deps.service.getView(currency === null || currency === '' ? {} : { currency })
+    const view = await deps.service.getView(
+      currency === null || currency === '' ? {} : { currency },
+    )
     return json(toWireBalanceView(view, deps.service.accountTag8() ?? '', requestId))
   } catch (error) {
-    deps.logger?.error('ds-balance: balance handler failed', { requestId, error: describeError(error) })
+    deps.logger?.error('ds-balance: balance handler failed', {
+      requestId,
+      error: describeError(error),
+    })
     return json(failureView(requestId, error))
   }
 }
@@ -151,7 +160,10 @@ export async function handleRefresh(request: Request, deps: HttpDeps): Promise<R
     const result = await deps.service.forceRefresh(reason)
     return json({ requestId, schemaVersion: SCHEMA_VERSION, ...result, error: null })
   } catch (error) {
-    deps.logger?.error('ds-balance: refresh handler failed', { requestId, error: describeError(error) })
+    deps.logger?.error('ds-balance: refresh handler failed', {
+      requestId,
+      error: describeError(error),
+    })
     return json({
       requestId,
       schemaVersion: SCHEMA_VERSION,
@@ -184,7 +196,10 @@ async function credentialInfo(deps: HttpDeps, ref: string): Promise<WireCredenti
       writable: described.writable === true,
     }
   } catch (error) {
-    deps.logger?.debug('ds-balance: credential describe failed', { ref, error: describeError(error) })
+    deps.logger?.debug('ds-balance: credential describe failed', {
+      ref,
+      error: describeError(error),
+    })
     return null
   }
 }
@@ -209,7 +224,10 @@ export async function handleConfigGet(_request: Request, deps: HttpDeps): Promis
   try {
     return json(await configBody(requestId, deps))
   } catch (error) {
-    deps.logger?.error('ds-balance: config read handler failed', { requestId, error: describeError(error) })
+    deps.logger?.error('ds-balance: config read handler failed', {
+      requestId,
+      error: describeError(error),
+    })
     return json({ requestId, schemaVersion: SCHEMA_VERSION, error: toWireError(classify(error)) })
   }
 }
@@ -220,10 +238,27 @@ export async function handleConfigUpdate(request: Request, deps: HttpDeps): Prom
   let patch: Record<string, unknown>
   try {
     const body = await readJsonObject(request)
-    if (body === null) return json({ requestId, error: { code: 'VALIDATION', message: 'body must be a JSON object', retryable: false } }, 422)
+    if (body === null)
+      return json(
+        {
+          requestId,
+          error: { code: 'VALIDATION', message: 'body must be a JSON object', retryable: false },
+        },
+        422,
+      )
     const unknown = Object.keys(body).filter((key) => !CONFIG_FIELDS.some((field) => field === key))
     if (unknown.length > 0) {
-      return json({ requestId, error: { code: 'VALIDATION', message: `unknown config field: ${unknown.join(', ')}`, retryable: false } }, 422)
+      return json(
+        {
+          requestId,
+          error: {
+            code: 'VALIDATION',
+            message: `unknown config field: ${unknown.join(', ')}`,
+            retryable: false,
+          },
+        },
+        422,
+      )
     }
     patch = body
     if (Object.keys(patch).length > 0) {
@@ -236,14 +271,20 @@ export async function handleConfigUpdate(request: Request, deps: HttpDeps): Prom
       await deps.config.update(patch)
     }
   } catch (error) {
-    deps.logger?.warn('ds-balance: config write rejected', { requestId, error: describeError(error) })
+    deps.logger?.warn('ds-balance: config write rejected', {
+      requestId,
+      error: describeError(error),
+    })
     return json({ requestId, error: toWireError(classify(error)) }, 422)
   }
   // 写完立刻回读，让调用方看到落盘后的真实值（掩码同上）。
   try {
     return json(await configBody(requestId, deps))
   } catch (error) {
-    deps.logger?.error('ds-balance: config readback failed', { requestId, error: describeError(error) })
+    deps.logger?.error('ds-balance: config readback failed', {
+      requestId,
+      error: describeError(error),
+    })
     return json({ requestId, schemaVersion: SCHEMA_VERSION, error: toWireError(classify(error)) })
   }
 }
@@ -255,22 +296,40 @@ export async function handleTestConnection(request: Request, deps: HttpDeps): Pr
     const body = await readJsonObject(request)
     const config = deps.config.current()
     const rawBaseUrl = body?.baseUrl
-    const baseUrl = typeof rawBaseUrl === 'string' && rawBaseUrl.trim() !== '' ? rawBaseUrl.trim() : endpointOf(config)
+    const baseUrl =
+      typeof rawBaseUrl === 'string' && rawBaseUrl.trim() !== ''
+        ? rawBaseUrl.trim()
+        : endpointOf(config)
     const rawTimeout = Number(body?.timeoutMs)
-    const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout >= TEST_TIMEOUT_RANGE.min && rawTimeout <= TEST_TIMEOUT_RANGE.max
-      ? Math.trunc(rawTimeout)
-      : deps.config.timeoutMs()
+    const timeoutMs =
+      Number.isFinite(rawTimeout) &&
+      rawTimeout >= TEST_TIMEOUT_RANGE.min &&
+      rawTimeout <= TEST_TIMEOUT_RANGE.max
+        ? Math.trunc(rawTimeout)
+        : deps.config.timeoutMs()
     const rawApiKey = body?.apiKey
-    const apiKey = typeof rawApiKey === 'string' && rawApiKey.trim() !== ''
-      ? rawApiKey.trim()
-      : await deps.keys.resolve().catch((): null => null)
-    if (apiKey === null) return json({ requestId, ok: false, latencyMs: 0, code: 'NO_KEY', message: NO_KEY_MESSAGE })
+    const apiKey =
+      typeof rawApiKey === 'string' && rawApiKey.trim() !== ''
+        ? rawApiKey.trim()
+        : await deps.keys.resolve().catch((): null => null)
+    if (apiKey === null)
+      return json({ requestId, ok: false, latencyMs: 0, code: 'NO_KEY', message: NO_KEY_MESSAGE })
     const result = await deps.client.testConnection({ baseUrl, apiKey, timeoutMs })
     return json({ requestId, schemaVersion: SCHEMA_VERSION, ...result })
   } catch (error) {
-    deps.logger?.warn('ds-balance: test-connection handler failed', { requestId, error: describeError(error) })
+    deps.logger?.warn('ds-balance: test-connection handler failed', {
+      requestId,
+      error: describeError(error),
+    })
     const info = classify(error)
-    return json({ requestId, schemaVersion: SCHEMA_VERSION, ok: false, latencyMs: 0, code: info.code, message: info.message })
+    return json({
+      requestId,
+      schemaVersion: SCHEMA_VERSION,
+      ok: false,
+      latencyMs: 0,
+      code: info.code,
+      message: info.message,
+    })
   }
 }
 

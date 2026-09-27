@@ -71,11 +71,11 @@ export const CONFIG_SLOT_TIMEOUT_MS = 15000
  * 常量名保留 `CONFIG_SLOT_WARNING`：改名对读者没有增量，而它已经在若干处被引用。
  */
 export const CONFIG_SLOT_WARNING =
-  '[WARN] This dsh host gives this plugin no configuration form: the Host does not provide the '
-  + 'configForms client service (or the Plugins page is not mounted in this profile), so the '
-  + 'configuration card cannot be shown. The balance ring and its popover keep working. To get the '
-  + 'configuration page, upgrade dsh to the version this plugin declares in engines.dsh of '
-  + 'package.json -- see the "Version compatibility" section in the README.'
+  '[WARN] This dsh host gives this plugin no configuration form: the Host does not provide the ' +
+  'configForms client service (or the Plugins page is not mounted in this profile), so the ' +
+  'configuration card cannot be shown. The balance ring and its popover keep working. To get the ' +
+  'configuration page, upgrade dsh to the version this plugin declares in engines.dsh of ' +
+  'package.json -- see the "Version compatibility" section in the README.'
 
 /** 探测的三态。 */
 export type ConfigSlotState = 'pending' | 'available' | 'missing'
@@ -116,10 +116,14 @@ export interface ConfigSlotProbeOptions {
  */
 export function createConfigSlotProbe(options: ConfigSlotProbeOptions = {}): ConfigSlotProbe {
   const timeoutMs = options.timeoutMs ?? CONFIG_SLOT_TIMEOUT_MS
-  const schedule = options.schedule ?? ((fire: () => void, ms: number): (() => void) => {
-    const id = setTimeout(fire, ms)
-    return () => { clearTimeout(id) }
-  })
+  const schedule =
+    options.schedule ??
+    ((fire: () => void, ms: number): (() => void) => {
+      const id = setTimeout(fire, ms)
+      return () => {
+        clearTimeout(id)
+      }
+    })
 
   let state: ConfigSlotState = 'pending'
   let disposed = false
@@ -133,14 +137,18 @@ export function createConfigSlotProbe(options: ConfigSlotProbeOptions = {}): Con
     for (const listener of [...listeners]) listener()
   }
 
-  cancel = schedule(() => { publish('missing') }, timeoutMs)
+  cancel = schedule(() => {
+    publish('missing')
+  }, timeoutMs)
 
   return {
     getSnapshot: () => state,
     subscribe: (listener) => {
       if (disposed) return () => {}
       listeners.add(listener)
-      return () => { listeners.delete(listener) }
+      return () => {
+        listeners.delete(listener)
+      }
     },
     markDeclared: () => {
       cancel()

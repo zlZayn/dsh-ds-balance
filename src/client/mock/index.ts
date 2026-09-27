@@ -98,7 +98,9 @@ export function isDevMode(): boolean {
 export function subscribeScenario(listener: (key: ScenarioKey) => void): () => void {
   listeners.add(listener)
   listener(currentScenario())
-  return () => { listeners.delete(listener) }
+  return () => {
+    listeners.delete(listener)
+  }
 }
 
 const listeners = new Set<(key: ScenarioKey) => void>()

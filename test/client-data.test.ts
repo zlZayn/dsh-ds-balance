@@ -17,7 +17,10 @@ function recorder(payload: unknown, init: { ok?: boolean; status?: number; body?
   const fetchImpl = async (input: string, options?: RequestInit): Promise<Response> => {
     calls.push({ input, init: options })
     if (init.ok === false) return new Response(init.body ?? 'nope', { status: init.status ?? 500 })
-    return new Response(JSON.stringify(payload), { status: 200, headers: { 'content-type': 'application/json' } })
+    return new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
   }
   return { calls, fetchImpl }
 }
@@ -55,13 +58,20 @@ describe('requestBalance', () => {
 
   it('响应不是 JSON 也抛错', async () => {
     const fetchImpl = async (): Promise<Response> => new Response('not json', { status: 200 })
-    await expect(requestBalance({ currency: 'auto', fetchImpl })).rejects.toThrow('did not return JSON')
+    await expect(requestBalance({ currency: 'auto', fetchImpl })).rejects.toThrow(
+      'did not return JSON',
+    )
   })
 })
 
 describe('requestRefresh', () => {
   it('POST 到刷新端点并带上 reason', async () => {
-    const { calls, fetchImpl } = recorder({ triggered: true, joined: false, cooldownMs: 0, state: 'ok' })
+    const { calls, fetchImpl } = recorder({
+      triggered: true,
+      joined: false,
+      cooldownMs: 0,
+      state: 'ok',
+    })
     const result = await requestRefresh({ reason: 'manual', fetchImpl })
     expect(calls[0]?.input).toBe(REFRESH_PATH)
     expect(calls[0]?.init?.method).toBe('POST')
@@ -70,7 +80,12 @@ describe('requestRefresh', () => {
   })
 
   it('省略 reason 时回落 manual', async () => {
-    const { calls, fetchImpl } = recorder({ triggered: false, joined: false, cooldownMs: 1000, state: 'ok' })
+    const { calls, fetchImpl } = recorder({
+      triggered: false,
+      joined: false,
+      cooldownMs: 1000,
+      state: 'ok',
+    })
     await requestRefresh({ fetchImpl })
     expect(calls[0]?.init?.body).toBe(JSON.stringify({ reason: 'manual' }))
   })
@@ -109,7 +124,12 @@ describe('requestConfig', () => {
   })
 
   it('凭据端口缺席时 credential 是 null，界面据此退化成只读', async () => {
-    const { fetchImpl } = recorder({ config: {}, apiKeyMasked: '', credential: null, timeoutMs: 8000 })
+    const { fetchImpl } = recorder({
+      config: {},
+      apiKeyMasked: '',
+      credential: null,
+      timeoutMs: 8000,
+    })
     expect((await requestConfig({ fetchImpl })).credential).toBeNull()
   })
 
@@ -122,20 +142,32 @@ describe('requestConfig', () => {
 describe('requestConfig 对抗旧宿主', () => {
   it('响应里根本没有 credential 字段时规整成 null，而不是漏 undefined 给组件', async () => {
     // 客户端由 HMR 立刻换新，宿主模块要重启才换：新客户端会读到旧宿主的响应。
-    const { fetchImpl } = recorder({ config: { apiKeyRef: 'DEEPSEEK_API_KEY' }, apiKeyMasked: '', timeoutMs: 8000 })
+    const { fetchImpl } = recorder({
+      config: { apiKeyRef: 'DEEPSEEK_API_KEY' },
+      apiKeyMasked: '',
+      timeoutMs: 8000,
+    })
     expect((await requestConfig({ fetchImpl })).credential).toBeNull()
   })
 
   it('形状不对的 credential 也规整成 null', async () => {
     for (const broken of [null, 42, 'nope', [], {}, { ref: '' }, { writable: false }]) {
-      const { fetchImpl } = recorder({ config: {}, apiKeyMasked: '', credential: broken, timeoutMs: 8000 })
+      const { fetchImpl } = recorder({
+        config: {},
+        apiKeyMasked: '',
+        credential: broken,
+        timeoutMs: 8000,
+      })
       expect((await requestConfig({ fetchImpl })).credential, JSON.stringify(broken)).toBeNull()
     }
   })
 
   it('缺 writable 时保守地当成不可写', async () => {
     const { fetchImpl } = recorder({
-      config: {}, apiKeyMasked: '', credential: { ref: 'DEEPSEEK_API_KEY', configured: true }, timeoutMs: 8000,
+      config: {},
+      apiKeyMasked: '',
+      credential: { ref: 'DEEPSEEK_API_KEY', configured: true },
+      timeoutMs: 8000,
     })
     const info = (await requestConfig({ fetchImpl })).credential
     expect(info?.writable).toBe(false)

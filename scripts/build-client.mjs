@@ -16,8 +16,8 @@
  *    `<style data-plugin="<包名>">` —— HMR 的 `removeOwnedStyles` 按该属性逐字匹配来清理。
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { build } from 'esbuild';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { build } from 'esbuild'
 
 // 路径冲突守卫：tsc 把 src/<name>.ts 编译到 lib/<name>.js，rootDir 是 src、outDir 是 lib。
 // 若存在 src/client.ts，它会与本脚本的 outfile 同名 —— 后跑的一方静默覆盖另一方。
@@ -27,21 +27,27 @@ for (const stale of ['src/client.ts', 'src/client.tsx']) {
   if (existsSync(stale)) {
     throw new Error(
       `${stale} 与浏览器半体的输出路径 lib/client.js 冲突：请把它改名或移进 src/client/。`,
-    );
+    )
   }
 }
 
 /** bundle id 必须等于包名：模块表以它作 key，HMR 也按它清理样式。真源是 package.json 的 name。 */
-const BUNDLE_ID = JSON.parse(readFileSync('package.json', 'utf8')).name;
+const BUNDLE_ID = JSON.parse(readFileSync('package.json', 'utf8')).name
 
 /** 样式标签的 id；前缀必须是包名，便于排查。 */
-const STYLE_TAG_ID = `${BUNDLE_ID}/client.css`;
+const STYLE_TAG_ID = `${BUNDLE_ID}/client.css`
 
 /** 宿主基线模块与同侪包，一律不打包进去。 */
-const HOST_PROVIDED = ['react', 'react-dom', 'react/jsx-runtime', 'react-dom/client', '@deepseek-ai/*'];
+const HOST_PROVIDED = [
+  'react',
+  'react-dom',
+  'react/jsx-runtime',
+  'react-dom/client',
+  '@deepseek-ai/*',
+]
 
 /** 构建期占位符，构建后替换成真正的样式注入代码。 */
-const CSS_PLACEHOLDER = '/*__DSB_STYLE_INJECTION__*/';
+const CSS_PLACEHOLDER = '/*__DSB_STYLE_INJECTION__*/'
 
 /**
  * 生成样式注入代码。形状照 `packages/client/tsdown.client.ts:37-56`：
@@ -59,7 +65,7 @@ function styleInjection(cssText) {
     `  __dsbTag.textContent = __dsbCss;`,
     `  document.head.appendChild(__dsbTag);`,
     `}`,
-  ].join('\n');
+  ].join('\n')
 }
 
 const result = await build({
@@ -84,21 +90,19 @@ const result = await build({
     ].join('\n'),
   },
   footer: { js: `\t\t${CSS_PLACEHOLDER}\n\t\treturn module.exports;\n\t}\n});` },
-});
+})
 
-const jsOutput = result.outputFiles.find((file) => file.path.endsWith('.js'));
-const cssOutput = result.outputFiles.find((file) => file.path.endsWith('.css'));
-if (jsOutput === undefined) throw new Error('esbuild 没有产出 JS 文件。');
+const jsOutput = result.outputFiles.find((file) => file.path.endsWith('.js'))
+const cssOutput = result.outputFiles.find((file) => file.path.endsWith('.css'))
+if (jsOutput === undefined) throw new Error('esbuild 没有产出 JS 文件。')
 if (!jsOutput.text.includes(CSS_PLACEHOLDER)) {
-  throw new Error('footer 占位符丢失：esbuild 的 footer 行为变了，请检查构建脚本。');
+  throw new Error('footer 占位符丢失：esbuild 的 footer 行为变了，请检查构建脚本。')
 }
 
-const cssText = cssOutput?.text ?? '';
-const bundle = jsOutput.text.replace(CSS_PLACEHOLDER, styleInjection(cssText));
+const cssText = cssOutput?.text ?? ''
+const bundle = jsOutput.text.replace(CSS_PLACEHOLDER, styleInjection(cssText))
 
-mkdirSync('lib', { recursive: true });
-writeFileSync('lib/client.js', bundle);
+mkdirSync('lib', { recursive: true })
+writeFileSync('lib/client.js', bundle)
 
-console.log(
-  `built lib/client.js as module ${BUNDLE_ID} (styles inlined: ${cssText.length} bytes)`,
-);
+console.log(`built lib/client.js as module ${BUNDLE_ID} (styles inlined: ${cssText.length} bytes)`)

@@ -12,23 +12,42 @@ import { NetworkError, UpstreamError } from '../src/domain/errors.ts'
 const SALT = 'test-salt'
 
 const defaults: Config = {
-  apiKey: '', apiKeyRef: 'DEEPSEEK_API_KEY', baseUrl: 'https://api.deepseek.com',
-  serverRefreshSeconds: 60, clientPollSeconds: 30, manualRefreshCooldownSeconds: 30,
-  displayCurrency: 'auto', cnyWarn: 10, cnyCritical: 5, usdWarn: 2, usdCritical: 1,
+  apiKey: '',
+  apiKeyRef: 'DEEPSEEK_API_KEY',
+  baseUrl: 'https://api.deepseek.com',
+  serverRefreshSeconds: 60,
+  clientPollSeconds: 30,
+  manualRefreshCooldownSeconds: 30,
+  displayCurrency: 'auto',
+  cnyWarn: 10,
+  cnyCritical: 5,
+  usdWarn: 2,
+  usdCritical: 1,
 }
 
 const goodRaw = {
   is_available: true,
   balance_infos: [
-    { currency: 'CNY', total_balance: '110.00000000', granted_balance: '10.00000000', topped_up_balance: '100.00000000' },
+    {
+      currency: 'CNY',
+      total_balance: '110.00000000',
+      granted_balance: '10.00000000',
+      topped_up_balance: '100.00000000',
+    },
   ],
 }
 
 function harness(configPatch: Partial<Config> = {}, key = 'sk-test') {
   let now = 1_000_000
   const clock: Clock = { now: () => now, timezone: () => 'Asia/Shanghai' }
-  const config = new ConfigService({ source: { get: () => ({ ...defaults, ...configPatch }), watch: () => () => {} }, env: {} })
-  const keys = new KeyResolver({ readConfig: () => ({ apiKey: key, apiKeyRef: 'DEEPSEEK_API_KEY' }), env: {} })
+  const config = new ConfigService({
+    source: { get: () => ({ ...defaults, ...configPatch }), watch: () => () => {} },
+    env: {},
+  })
+  const keys = new KeyResolver({
+    readConfig: () => ({ apiKey: key, apiKeyRef: 'DEEPSEEK_API_KEY' }),
+    env: {},
+  })
   const client: DeepSeekClient = {
     fetchBalance: vi.fn().mockResolvedValue(goodRaw),
     testConnection: vi.fn(),
@@ -40,7 +59,16 @@ function harness(configPatch: Partial<Config> = {}, key = 'sk-test') {
     close: vi.fn().mockResolvedValue(undefined),
   }
   const service = new BalanceService({ client, store, keys, config, clock, salt: SALT })
-  return { service, client, store, clock, setNow: (value: number) => { now = value }, getNow: () => now }
+  return {
+    service,
+    client,
+    store,
+    clock,
+    setNow: (value: number) => {
+      now = value
+    },
+    getNow: () => now,
+  }
 }
 
 describe('成功路径', () => {
@@ -102,7 +130,9 @@ describe('成功路径', () => {
 describe('失败路径', () => {
   it('没有快照时是 error', async () => {
     const h = harness()
-    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValue(new NetworkError('offline'))
+    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new NetworkError('offline'),
+    )
     const view = await h.service.getView()
     expect(view.state).toBe('error')
     expect(view.stale).toBe(false)
@@ -114,7 +144,9 @@ describe('失败路径', () => {
   it('有快照时转 stale，severity 仍按快照算', async () => {
     const h = harness()
     await h.service.getView()
-    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValue(new NetworkError('offline'))
+    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new NetworkError('offline'),
+    )
     const view = await h.service.getView({ force: true })
     expect(view.state).toBe('stale')
     expect(view.stale).toBe(true)
@@ -132,7 +164,9 @@ describe('失败路径', () => {
 
   it('连续失败会累加计数', async () => {
     const h = harness()
-    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValue(new NetworkError('offline'))
+    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new NetworkError('offline'),
+    )
     await h.service.getView()
     await h.service.getView({ force: true })
     expect(h.service.status().consecutiveFailures).toBe(2)
@@ -140,7 +174,9 @@ describe('失败路径', () => {
 
   it('成功后计数归零', async () => {
     const h = harness()
-    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new NetworkError('offline'))
+    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new NetworkError('offline'),
+    )
     await h.service.getView()
     expect(h.service.status().consecutiveFailures).toBe(1)
     await h.service.getView({ force: true })
@@ -185,7 +221,9 @@ describe('forceRefresh', () => {
 
   it('没有快照时不受冷却限制', async () => {
     const h = harness()
-    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new NetworkError('offline'))
+    ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new NetworkError('offline'),
+    )
     await h.service.getView()
     const result = await h.service.forceRefresh('manual')
     expect(result.triggered).toBe(true)
@@ -194,9 +232,13 @@ describe('forceRefresh', () => {
 
 describe('restore', () => {
   const snapshot: BalanceSnapshot = {
-    snapshotId: 'x', accountTag: 'whatever', fetchedAt: 1_000_000, isAvailable: true,
+    snapshotId: 'x',
+    accountTag: 'whatever',
+    fetchedAt: 1_000_000,
+    isAvailable: true,
     balances: [{ currency: 'CNY', total: 1n, granted: 0n, toppedUp: 1n }],
-    source: 'deepseek-http', raw: undefined,
+    source: 'deepseek-http',
+    raw: undefined,
   }
 
   it('命中且在窗口内是 ok', async () => {

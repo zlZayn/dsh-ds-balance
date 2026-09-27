@@ -72,7 +72,8 @@ export function registerHttpRoutes(ctx: Context, deps: HttpDeps): () => Promise<
       methods: route.methods,
       requestBody: 'buffered',
       fetch: (request) => route.handle(request, deps),
-    }))
+    }),
+  )
   return async () => {
     await Promise.all(disposers.map((dispose) => dispose()))
   }

@@ -52,9 +52,15 @@ export function useCredentialState(ref: string): CredentialInfo | null {
     // 两层防御：`requestConfig` 已经把形状不对的值规整成 null，
     // 这里再取一次属性，宿主旧版本、请求失败、字段缺失都只是退化成 null。
     void requestConfig()
-      .then((body) => { if (!cancelled) setState(body?.credential ?? null) })
-      .catch(() => { if (!cancelled) setState(null) })
-    return () => { cancelled = true }
+      .then((body) => {
+        if (!cancelled) setState(body?.credential ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setState(null)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [ref])
   return state
 }

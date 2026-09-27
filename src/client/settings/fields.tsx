@@ -8,7 +8,10 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  DisclosureRow, IconChevronDownOutlineRegular, Menu, Tag,
+  DisclosureRow,
+  IconChevronDownOutlineRegular,
+  Menu,
+  Tag,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TagTone } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from './fields.module.css'
@@ -88,18 +91,16 @@ export function FieldBadges(props: FieldBadgesProps) {
     <span className={css.badges}>
       {status === null ? null : <Tag tone={status.tone}>{status.label}</Tag>}
       {props.pending ? <Tag tone="neutral">{props.pendingLabel}</Tag> : null}
-      {props.resettable
-        ? (
-          <button
-            type="button"
-            className={css.reset}
-            disabled={props.disabled}
-            onClick={props.onReset}
-          >
-            {props.resetLabel}
-          </button>
-        )
-        : null}
+      {props.resettable ? (
+        <button
+          type="button"
+          className={css.reset}
+          disabled={props.disabled}
+          onClick={props.onReset}
+        >
+          {props.resetLabel}
+        </button>
+      ) : null}
     </span>
   )
 }
@@ -126,12 +127,14 @@ export interface FieldFrameProps extends FieldBadgesProps {
  * @returns 字段行元素。
  */
 export function FieldFrame(props: FieldFrameProps) {
-  const note = props.invalid ? props.invalidNote ?? props.hint : props.hint
+  const note = props.invalid ? (props.invalidNote ?? props.hint) : props.hint
   const hasNote = note !== undefined && note !== null && note !== ''
   return (
     <div className={css.field}>
       <div className={css.head}>
-        <label className={css.label} htmlFor={props.id}>{props.label}</label>
+        <label className={css.label} htmlFor={props.id}>
+          {props.label}
+        </label>
         <FieldBadges
           status={props.status ?? null}
           pending={props.pending}
@@ -172,12 +175,14 @@ export function TextControl(props: TextControlProps) {
       id={props.id}
       className={props.invalid ? css.inputInvalid : css.input}
       type="text"
-      {...props.numeric ? { inputMode: 'numeric' as const } : {}}
-      {...props.invalid ? { 'aria-invalid': true } : {}}
+      {...(props.numeric ? { inputMode: 'numeric' as const } : {})}
+      {...(props.invalid ? { 'aria-invalid': true } : {})}
       value={props.text}
       disabled={props.disabled}
       onBlur={props.onBlur}
-      onChange={(event) => { props.onEdit(event.target.value) }}
+      onChange={(event) => {
+        props.onEdit(event.target.value)
+      }}
     />
   )
 }
@@ -237,7 +242,9 @@ export function DetailsGroup(props: DetailsGroupProps) {
     <details
       className={css.details}
       open={open}
-      onToggle={(event) => { setOpen(event.currentTarget.open) }}
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open)
+      }}
     >
       <summary className={css.detailsSummary}>{props.title}</summary>
       <div className={css.detailsBody}>{props.children}</div>
@@ -272,12 +279,14 @@ export interface SelectorControlProps {
  */
 export function SelectorControl(props: SelectorControlProps) {
   const [open, setOpen] = useState(false)
-  const selected = props.options.find(option => option.id === props.selectedId)
+  const selected = props.options.find((option) => option.id === props.selectedId)
   return (
     <Menu
       open={open}
-      onClose={() => { setOpen(false) }}
-      items={props.options.map(option => ({ id: option.id, label: option.label }))}
+      onClose={() => {
+        setOpen(false)
+      }}
+      items={props.options.map((option) => ({ id: option.id, label: option.label }))}
       selectedId={props.selectedId}
       onSelect={(id) => {
         props.onSelect(id)
@@ -287,7 +296,7 @@ export function SelectorControl(props: SelectorControlProps) {
       portal
       // 根 span 是整行里的 flex 项，给它不收缩的类，pill 才不会被左槽挤压。
       className={css.selectorAnchor}
-      anchor={(
+      anchor={
         <button
           id={props.id}
           type="button"
@@ -296,12 +305,14 @@ export function SelectorControl(props: SelectorControlProps) {
           aria-haspopup="menu"
           aria-expanded={open}
           disabled={props.disabled}
-          onClick={() => { setOpen(value => !value) }}
+          onClick={() => {
+            setOpen((value) => !value)
+          }}
         >
           {selected?.label ?? ''}
           <IconChevronDownOutlineRegular className={css.selectorChevron} />
         </button>
-      )}
+      }
     />
   )
 }
@@ -333,17 +344,15 @@ export function ActionRow(props: ActionRowProps) {
           {props.label}
         </button>
       </div>
-      {props.result === null
-        ? null
-        : (
-          // 成功只是通报，用 polite 的 status；失败需要用户处理，按 06 §6.7 的「行内错误」用 alert。
-          <p
-            className={props.result.ok ? css.resultOk : css.resultFail}
-            role={props.result.ok ? 'status' : 'alert'}
-          >
-            {props.result.text}
-          </p>
-        )}
+      {props.result === null ? null : (
+        // 成功只是通报，用 polite 的 status；失败需要用户处理，按 06 §6.7 的「行内错误」用 alert。
+        <p
+          className={props.result.ok ? css.resultOk : css.resultFail}
+          role={props.result.ok ? 'status' : 'alert'}
+        >
+          {props.result.text}
+        </p>
+      )}
     </>
   )
 }

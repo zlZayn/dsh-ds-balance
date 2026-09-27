@@ -162,7 +162,8 @@ export const en: Record<LocaleKey, string> = {
   'settings.currency.auto': 'Automatic (follow account)',
   'settings.credential.configured': 'A key is configured.',
   'settings.credential.notConfigured': 'No key is configured.',
-  'settings.hint.credential': 'Stored outside the settings file. Leave blank to keep the current key.',
+  'settings.hint.credential':
+    'Stored outside the settings file. Leave blank to keep the current key.',
   'settings.group.customized': 'Customized settings',
   'settings.test': 'Test connection',
   'settings.testing': 'Testing…',
@@ -194,5 +195,6 @@ export function dictionaryFor(language: string): Record<LocaleKey, string> {
 /** 极简插值：把 `{name}` 替换成实参。 */
 export function interpolate(template: string, params: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
-    Object.prototype.hasOwnProperty.call(params, name) ? params[name] : whole)
+    Object.prototype.hasOwnProperty.call(params, name) ? params[name] : whole,
+  )
 }

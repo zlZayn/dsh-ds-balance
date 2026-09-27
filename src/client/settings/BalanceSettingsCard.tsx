@@ -7,13 +7,22 @@
 
 import { useState, type ReactNode } from 'react'
 import {
-  IconApiOutlineRegular, IconGlobeOutlineRegular, IconRefreshOutlineRegular, IconWarningOutlineRegular,
+  IconApiOutlineRegular,
+  IconGlobeOutlineRegular,
+  IconRefreshOutlineRegular,
+  IconWarningOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { interpolate } from '../locales.ts'
 import type { LocaleKey } from '../locales.ts'
 import {
-  ActionRow, DetailsGroup, FieldBadges, FieldFrame, FieldGroup, ReadOnlyControl,
-  SelectorControl, TextControl,
+  ActionRow,
+  DetailsGroup,
+  FieldBadges,
+  FieldFrame,
+  FieldGroup,
+  ReadOnlyControl,
+  SelectorControl,
+  TextControl,
 } from './fields.tsx'
 import type { FieldStatus, SelectorOption } from './fields.tsx'
 import { AUTO_CURRENCY, currencyCodes, THRESHOLD_PAIRS, useConfigForm } from './use-config-form.ts'
@@ -104,20 +113,21 @@ function isFilled(value: unknown): boolean {
  */
 export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCardProps) {
   const form = useConfigForm(scopedForm)
-  const [groupOpen, setGroupOpen] = useState<Readonly<Record<GroupKey, boolean>>>(DEFAULT_GROUP_OPEN)
+  const [groupOpen, setGroupOpen] =
+    useState<Readonly<Record<GroupKey, boolean>>>(DEFAULT_GROUP_OPEN)
 
   // 各组独立展开，不做手风琴：多项同时展开是刻意的（官方 PluginCard.tsx:8-9 的注释）。
   const toggleGroup = (key: GroupKey): void => {
-    setGroupOpen(current => ({ ...current, [key]: !current[key] }))
+    setGroupOpen((current) => ({ ...current, [key]: !current[key] }))
   }
 
   // 组里有非法草稿时该组强制展开：非法会禁用保存，用户必须看得见那个标红的字段，
   // 否则 footer 的「请检查标红的字段」会指向一个收起来的组。改好后即可自行收起。
   const groupOpenNow = (key: GroupKey): boolean =>
-    groupOpen[key]
-    || GROUP_FIELDS[key].some(name => form.field(name).invalid)
+    groupOpen[key] ||
+    GROUP_FIELDS[key].some((name) => form.field(name).invalid) ||
     // 成对校验不是字段级 invalid，得单独问一次：否则收起的阈值组会挡住「保存为什么是灰的」。
-    || (key === 'thresholds' && THRESHOLD_PAIRS.some(pair => !form.thresholdPairOk(pair.currency)))
+    (key === 'thresholds' && THRESHOLD_PAIRS.some((pair) => !form.thresholdPairOk(pair.currency)))
 
   const { available, writable, dirty, invalid, saving, failed } = form.state
   const disabled = !writable || saving
@@ -146,7 +156,9 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
         invalid={state.invalid}
         hint={t(hintKey)}
         disabled={disabled}
-        onReset={() => { form.resetField(name) }}
+        onReset={() => {
+          form.resetField(name)
+        }}
       >
         <TextControl
           id={FIELD_IDS[name] ?? name}
@@ -154,7 +166,9 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
           numeric={false}
           invalid={state.invalid}
           disabled={disabled}
-          onEdit={(text) => { form.edit(name, text) }}
+          onEdit={(text) => {
+            form.edit(name, text)
+          }}
         />
       </FieldFrame>
     )
@@ -177,7 +191,9 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
         invalidNote={t('settings.invalidNumber')}
         hint={hintKey === undefined ? undefined : t(hintKey)}
         disabled={disabled}
-        onReset={() => { form.resetField(name) }}
+        onReset={() => {
+          form.resetField(name)
+        }}
       >
         <TextControl
           id={FIELD_IDS[name] ?? name}
@@ -185,8 +201,12 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
           numeric
           invalid={state.invalid}
           disabled={disabled}
-          onBlur={() => { form.touch(name) }}
-          onEdit={(text) => { form.edit(name, text) }}
+          onBlur={() => {
+            form.touch(name)
+          }}
+          onEdit={(text) => {
+            form.edit(name, text)
+          }}
         />
         {note ?? null}
       </FieldFrame>
@@ -201,29 +221,35 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
    * 保存按钮不按这条走 —— 它有非法项就置灰，判据在 use-config-form 的 `state.invalid`。
    */
   const pairNote = (currency: string): ReactNode => {
-    const pair = THRESHOLD_PAIRS.find(item => item.currency === currency)
+    const pair = THRESHOLD_PAIRS.find((item) => item.currency === currency)
     if (pair === undefined || form.thresholdPairOk(currency)) return null
     const drafting = form.field(pair.warn).dirty || form.field(pair.critical).dirty
     if (drafting && !form.touched(pair.warn) && !form.touched(pair.critical)) return null
-    return <p className={fieldCss.pairNote} role="alert">{t('settings.hint.thresholdPair')}</p>
+    return (
+      <p className={fieldCss.pairNote} role="alert">
+        {t('settings.hint.thresholdPair')}
+      </p>
+    )
   }
 
   const apiKey = form.field('apiKey')
   const apiKeyRef = form.field('apiKeyRef')
   // 读凭据状态用的是**生效**引用名：草稿还没保存时，后端认的仍是存下来的那个。
-  const effectiveRef = typeof apiKeyRef.effective === 'string' && apiKeyRef.effective !== ''
-    ? apiKeyRef.effective
-    : DEFAULT_API_KEY_REF
+  const effectiveRef =
+    typeof apiKeyRef.effective === 'string' && apiKeyRef.effective !== ''
+      ? apiKeyRef.effective
+      : DEFAULT_API_KEY_REF
   const credential = useCredentialState(effectiveRef)
   // 只读凭据行显示哪一档：覆盖优先（折叠里存过值就是它生效），其次才看宿主能不能写。
   // 「读不到就说什么」的策略也在这个函数里，见它的文档注释。
   const credentialView = credentialViewOf(credential, apiKey.stored || apiKeyRef.stored)
 
   const currency = form.field('displayCurrency')
-  const currencyId = typeof currency.value === 'string' && currency.value !== '' ? currency.value : AUTO_CURRENCY
+  const currencyId =
+    typeof currency.value === 'string' && currency.value !== '' ? currency.value : AUTO_CURRENCY
   const currencyOptions: SelectorOption[] = [
     { id: AUTO_CURRENCY, label: t('settings.currency.auto') },
-    ...currencyCodes(currency.value, currency.effective).map(code => ({ id: code, label: code })),
+    ...currencyCodes(currency.value, currency.effective).map((code) => ({ id: code, label: code })),
   ]
   // 「显示币种」是整行选择型：左文字、右 pill，结构照官方 General 行。
   // 凭据字段才带状态徽标；这一行的左槽只放「未保存」与「重置」，右侧整块让给 pill。
@@ -238,7 +264,9 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
             pendingLabel={t('settings.unsaved')}
             resetLabel={t('settings.reset')}
             disabled={disabled}
-            onReset={() => { form.resetField('displayCurrency') }}
+            onReset={() => {
+              form.resetField('displayCurrency')
+            }}
           />
         </div>
         <p className={fieldCss.hint}>{t('settings.hint.displayCurrency')}</p>
@@ -249,16 +277,19 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
         options={currencyOptions}
         selectedId={currencyId}
         disabled={disabled}
-        onSelect={(id) => { form.setValue('displayCurrency', id) }}
+        onSelect={(id) => {
+          form.setValue('displayCurrency', id)
+        }}
       />
     </div>
   )
 
-  const testResult = form.test.ok === null
-    ? null
-    : form.test.ok
-      ? { ok: true, text: t('settings.test.ok') }
-      : { ok: false, text: interpolate(t('settings.test.fail'), { message: form.test.message }) }
+  const testResult =
+    form.test.ok === null
+      ? null
+      : form.test.ok
+        ? { ok: true, text: t('settings.test.ok') }
+        : { ok: false, text: interpolate(t('settings.test.fail'), { message: form.test.message }) }
 
   const footerNote = failed
     ? { text: t('settings.failed'), className: css.failed }
@@ -274,13 +305,19 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
   return (
     // 页面把这一格渲染在自己的 <section> 里：无外框的一列控件，所以根节点是 div、不是 li。
     <div className={css.form}>
-      {writable ? null : <p className={css.readOnly} role="status">{t('settings.readOnly')}</p>}
+      {writable ? null : (
+        <p className={css.readOnly} role="status">
+          {t('settings.readOnly')}
+        </p>
+      )}
 
       <FieldGroup
         icon={<IconApiOutlineRegular size={14} />}
         title={t('settings.group.connection')}
         open={groupOpenNow('connection')}
-        onToggle={() => { toggleGroup('connection') }}
+        onToggle={() => {
+          toggleGroup('connection')
+        }}
       >
         {/* 凭据状态：只读展示。结构照搬官方「模型」卡片对「启动环境提供的密钥」的处理 ——
             字段照常渲染，disabled、整块降到 60%，而不是隐藏或另做只读块。
@@ -290,7 +327,10 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
         <FieldFrame
           id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
           label={t('settings.field.apiKey')}
-          status={{ label: t(CREDENTIAL_BADGE[credentialView]), tone: credentialView === 'notConfigured' ? 'quiet' : 'neutral' }}
+          status={{
+            label: t(CREDENTIAL_BADGE[credentialView]),
+            tone: credentialView === 'notConfigured' ? 'quiet' : 'neutral',
+          }}
           pending={false}
           resettable={false}
           pendingLabel={t('settings.unsaved')}
@@ -300,9 +340,7 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
           disabled
           onReset={() => {}}
         >
-          <ReadOnlyControl
-            id={FIELD_IDS.apiKeyState ?? 'apiKeyState'}
-          />
+          <ReadOnlyControl id={FIELD_IDS.apiKeyState ?? 'apiKeyState'} />
         </FieldFrame>
 
         {textRow('baseUrl', 'settings.field.baseUrl', 'settings.hint.baseUrl', false)}
@@ -328,7 +366,9 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
         icon={<IconGlobeOutlineRegular size={14} />}
         title={t('settings.group.display')}
         open={groupOpenNow('display')}
-        onToggle={() => { toggleGroup('display') }}
+        onToggle={() => {
+          toggleGroup('display')
+        }}
       >
         {currencyRow}
       </FieldGroup>
@@ -338,7 +378,9 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
         title={t('settings.group.thresholds')}
         note={t('settings.hint.threshold')}
         open={groupOpenNow('thresholds')}
-        onToggle={() => { toggleGroup('thresholds') }}
+        onToggle={() => {
+          toggleGroup('thresholds')
+        }}
       >
         {numberRow('cnyWarn', 'settings.field.cnyWarn')}
         {numberRow('cnyCritical', 'settings.field.cnyCritical', undefined, pairNote('CNY'))}
@@ -352,23 +394,41 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
         title={t('settings.group.refresh')}
         note={t('settings.hint.refreshAdvanced')}
         open={groupOpenNow('refresh')}
-        onToggle={() => { toggleGroup('refresh') }}
+        onToggle={() => {
+          toggleGroup('refresh')
+        }}
         last
       >
-        {numberRow('serverRefreshSeconds', 'settings.field.serverRefreshSeconds', 'settings.hint.serverRefreshSeconds')}
-        {numberRow('clientPollSeconds', 'settings.field.clientPollSeconds', 'settings.hint.clientPollSeconds')}
-        {numberRow('manualRefreshCooldownSeconds', 'settings.field.manualRefreshCooldownSeconds', 'settings.hint.manualRefreshCooldownSeconds')}
+        {numberRow(
+          'serverRefreshSeconds',
+          'settings.field.serverRefreshSeconds',
+          'settings.hint.serverRefreshSeconds',
+        )}
+        {numberRow(
+          'clientPollSeconds',
+          'settings.field.clientPollSeconds',
+          'settings.hint.clientPollSeconds',
+        )}
+        {numberRow(
+          'manualRefreshCooldownSeconds',
+          'settings.field.manualRefreshCooldownSeconds',
+          'settings.hint.manualRefreshCooldownSeconds',
+        )}
       </FieldGroup>
 
       <div className={css.footer}>
-        {footerNote === null
-          ? null
-          : <p className={footerNote.className} role="status">{footerNote.text}</p>}
+        {footerNote === null ? null : (
+          <p className={footerNote.className} role="status">
+            {footerNote.text}
+          </p>
+        )}
         <button
           type="button"
           className={css.save}
           disabled={!dirty || invalid || saving || !writable}
-          onClick={() => { void form.save() }}
+          onClick={() => {
+            void form.save()
+          }}
         >
           {saving ? t('settings.saving') : t('settings.save')}
         </button>

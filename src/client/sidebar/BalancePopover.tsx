@@ -9,7 +9,11 @@
 
 import type { CSSProperties, RefObject } from 'react'
 import {
-  Button, FishLogo, IconPluginPinwheelOutlineRegular, IconRefreshOutlineRegular, Tooltip,
+  Button,
+  FishLogo,
+  IconPluginPinwheelOutlineRegular,
+  IconRefreshOutlineRegular,
+  Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { interpolate, type LocaleKey } from '../locales.ts'
 import { ageBucket, formatMoney, type AgeBucket, type CurrencySelection } from '../model.ts'
@@ -124,36 +128,53 @@ export interface PluginsAction {
  */
 export function BalancePopover(props: BalancePopoverProps): JSX.Element {
   const {
-    t, selection, displayCurrency, ageMs, refreshing, cooldownSeconds,
-    configSlotWarning, panelRef, style, onRefresh, onUseShown, useShownDisabled, pluginsAction,
+    t,
+    selection,
+    displayCurrency,
+    ageMs,
+    refreshing,
+    cooldownSeconds,
+    configSlotWarning,
+    panelRef,
+    style,
+    onRefresh,
+    onUseShown,
+    useShownDisabled,
+    pluginsAction,
   } = props
 
   const shown = selection.shown
   const totalText = shown === null ? BALANCE_PLACEHOLDER : formatMoney(shown.total, shown.currency)
-  const grantedText = shown === null ? BALANCE_PLACEHOLDER : formatMoney(shown.granted, shown.currency)
-  const toppedUpText = shown === null ? BALANCE_PLACEHOLDER : formatMoney(shown.toppedUp, shown.currency)
+  const grantedText =
+    shown === null ? BALANCE_PLACEHOLDER : formatMoney(shown.granted, shown.currency)
+  const toppedUpText =
+    shown === null ? BALANCE_PLACEHOLDER : formatMoney(shown.toppedUp, shown.currency)
 
   const age = ageBucket(ageMs)
-  const updatedText = age.bucket === 'just-now' || age.bucket === 'unknown'
-    ? t('popover.updated.justNow')
-    : interpolate(t('popover.updated'), {
-      value: ageValueText(age.bucket, age.value, unitLocale(t)),
-    })
+  const updatedText =
+    age.bucket === 'just-now' || age.bucket === 'unknown'
+      ? t('popover.updated.justNow')
+      : interpolate(t('popover.updated'), {
+          value: ageValueText(age.bucket, age.value, unitLocale(t)),
+        })
 
   const cooling = cooldownSeconds > 0
 
   // 刷新中优先于冷却：两者不会同时成立，但刷新中的文案更贴近当下。
   let statusText = ''
   if (refreshing) statusText = t('popover.refreshing')
-  else if (cooling) statusText = interpolate(t('popover.cooldown'), { value: String(cooldownSeconds) })
+  else if (cooling)
+    statusText = interpolate(t('popover.cooldown'), { value: String(cooldownSeconds) })
 
   const refreshLabel = t('sidebar.aria.refresh')
 
   // 右上角图标没有可见文字，名字只能来自 aria-label 与 tooltip —— 两处逐字同源，
   // 且**按落点分档**：能直达配置格就说配置格，只能到列表就说列表（见 PluginsAction）。
-  const pluginsLabel = t(pluginsAction?.reachesConfig === true
-    ? 'popover.action.openPluginConfig'
-    : 'popover.action.openPlugins')
+  const pluginsLabel = t(
+    pluginsAction?.reachesConfig === true
+      ? 'popover.action.openPluginConfig'
+      : 'popover.action.openPlugins',
+  )
 
   return (
     <section
@@ -211,7 +232,12 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
             {interpolate(t('popover.mismatch'), { wanted: displayCurrency, shown: shown.currency })}
           </p>
           <div className={css.noticeActions}>
-            <Button size="sm" variant="outline" disabled={useShownDisabled === true} onClick={onUseShown}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={useShownDisabled === true}
+              onClick={onUseShown}
+            >
               {interpolate(t('popover.action.useShown'), { shown: shown.currency })}
             </Button>
           </div>
@@ -228,7 +254,9 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
 
       <div className={css.footer}>
         <span className={css.updated}>{updatedText}</span>
-        <span className={css.status} role="status">{statusText}</span>
+        <span className={css.status} role="status">
+          {statusText}
+        </span>
         <Tooltip label={refreshLabel} side="top" delayMs={500} disabled={refreshing || cooling}>
           <button
             type="button"

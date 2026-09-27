@@ -33,7 +33,9 @@ describe('upstreamCodeOf', () => {
 describe('classify', () => {
   it('自己的错误原样透出', () => {
     expect(classify(new NoKeyError())).toEqual({
-      code: 'NO_KEY', message: 'API key not configured', retryable: false,
+      code: 'NO_KEY',
+      message: 'API key not configured',
+      retryable: false,
     })
   })
 
@@ -59,12 +61,19 @@ describe('classify', () => {
   })
 
   it('其余兜底成 STORAGE_ERROR 且可重试', () => {
-    expect(classify(new Error('boom'))).toEqual({ code: 'STORAGE_ERROR', message: 'boom', retryable: true })
+    expect(classify(new Error('boom'))).toEqual({
+      code: 'STORAGE_ERROR',
+      message: 'boom',
+      retryable: true,
+    })
     expect(classify('plain string').code).toBe('STORAGE_ERROR')
   })
 
   it('带 details 的错误把 details 带上', () => {
-    const err = new AppError('UPSTREAM_429', 'slow down', { retryable: true, details: { retryAfterMs: 1000 } })
+    const err = new AppError('UPSTREAM_429', 'slow down', {
+      retryable: true,
+      details: { retryAfterMs: 1000 },
+    })
     expect(classify(err).details).toEqual({ retryAfterMs: 1000 })
   })
 })

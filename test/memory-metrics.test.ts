@@ -43,7 +43,11 @@ describe('MemoryMetrics', () => {
     const metrics = new MemoryMetrics()
     for (const value of [10, 30, 20]) metrics.histogram('balance_fetch_duration_ms', {}, value)
     expect(metrics.snapshot().histograms['balance_fetch_duration_ms']).toEqual({
-      count: 3, sum: 60, min: 10, max: 30, last: 20,
+      count: 3,
+      sum: 60,
+      min: 10,
+      max: 30,
+      last: 20,
     })
   })
 

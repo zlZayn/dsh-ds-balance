@@ -37,9 +37,17 @@ function render(fields: Record<string, unknown> | undefined): string {
  */
 export function createConsoleLogger(sink: ConsoleLike = console): Logger {
   return {
-    debug: (message, fields) => { sink.debug(`${LOG_PREFIX} ${message}${render(fields)}`) },
-    info: (message, fields) => { sink.info(`${LOG_PREFIX} ${message}${render(fields)}`) },
-    warn: (message, fields) => { sink.warn(`${LOG_PREFIX} ${message}${render(fields)}`) },
-    error: (message, fields) => { sink.error(`${LOG_PREFIX} ${message}${render(fields)}`) },
+    debug: (message, fields) => {
+      sink.debug(`${LOG_PREFIX} ${message}${render(fields)}`)
+    },
+    info: (message, fields) => {
+      sink.info(`${LOG_PREFIX} ${message}${render(fields)}`)
+    },
+    warn: (message, fields) => {
+      sink.warn(`${LOG_PREFIX} ${message}${render(fields)}`)
+    },
+    error: (message, fields) => {
+      sink.error(`${LOG_PREFIX} ${message}${render(fields)}`)
+    },
   }
 }

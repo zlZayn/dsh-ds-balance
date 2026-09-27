@@ -57,28 +57,44 @@ describe('nextDelayMs', () => {
   })
 
   it('缺密钥且无快照时快速重试', () => {
-    expect(nextDelayMs(status({ state: 'error', errorCode: 'NO_KEY', hasSnapshot: false }), { random: mid }))
-      .toBe(NO_KEY_RETRY_MS)
+    expect(
+      nextDelayMs(status({ state: 'error', errorCode: 'NO_KEY', hasSnapshot: false }), {
+        random: mid,
+      }),
+    ).toBe(NO_KEY_RETRY_MS)
   })
 
   it('有快照时不走缺密钥分支', () => {
-    const delay = nextDelayMs(status({ state: 'stale', errorCode: 'NO_KEY', hasSnapshot: true, consecutiveFailures: 1 }), { random: mid })
+    const delay = nextDelayMs(
+      status({ state: 'stale', errorCode: 'NO_KEY', hasSnapshot: true, consecutiveFailures: 1 }),
+      { random: mid },
+    )
     expect(delay).toBe(BASE_BACKOFF_MS)
   })
 
   it('失败按指数退避', () => {
-    for (const [failures, expected] of [[1, BASE_BACKOFF_MS], [2, BASE_BACKOFF_MS * 2], [3, BASE_BACKOFF_MS * 4]] as const) {
-      expect(nextDelayMs(status({ state: 'error', consecutiveFailures: failures }), { random: mid })).toBe(expected)
+    for (const [failures, expected] of [
+      [1, BASE_BACKOFF_MS],
+      [2, BASE_BACKOFF_MS * 2],
+      [3, BASE_BACKOFF_MS * 4],
+    ] as const) {
+      expect(
+        nextDelayMs(status({ state: 'error', consecutiveFailures: failures }), { random: mid }),
+      ).toBe(expected)
     }
   })
 
   it('退避有上限', () => {
-    expect(nextDelayMs(status({ state: 'error', consecutiveFailures: 50 }), { random: mid })).toBe(MAX_BACKOFF_MS)
+    expect(nextDelayMs(status({ state: 'error', consecutiveFailures: 50 }), { random: mid })).toBe(
+      MAX_BACKOFF_MS,
+    )
   })
 
   it('抖动始终为正', () => {
     for (const failures of [0, 1, 5, 50]) {
-      expect(nextDelayMs(status({ state: 'error', consecutiveFailures: failures }), { random: () => 0 })).toBeGreaterThan(0)
+      expect(
+        nextDelayMs(status({ state: 'error', consecutiveFailures: failures }), { random: () => 0 }),
+      ).toBeGreaterThan(0)
     }
   })
 })
@@ -88,18 +104,29 @@ function fakeTimers() {
   let seq = 0
   let now = 0
   const jobs = new Map<number, { fn: () => void; at: number }>()
-  const flush = async (): Promise<void> => { for (let i = 0; i < 12; i += 1) await Promise.resolve() }
+  const flush = async (): Promise<void> => {
+    for (let i = 0; i < 12; i += 1) await Promise.resolve()
+  }
   return {
     timers: {
-      set: (fn: () => void, ms: number): unknown => { seq += 1; jobs.set(seq, { fn, at: now + ms }); return seq },
-      clear: (handle: unknown): void => { jobs.delete(handle as number) },
+      set: (fn: () => void, ms: number): unknown => {
+        seq += 1
+        jobs.set(seq, { fn, at: now + ms })
+        return seq
+      },
+      clear: (handle: unknown): void => {
+        jobs.delete(handle as number)
+      },
     },
     now: () => now,
     pending: () => [...jobs.values()].map((job) => job.at - now),
     async advance(ms: number): Promise<void> {
       now += ms
       for (const [id, job] of [...jobs.entries()]) {
-        if (job.at <= now) { jobs.delete(id); job.fn() }
+        if (job.at <= now) {
+          jobs.delete(id)
+          job.fn()
+        }
       }
       await flush()
     },
@@ -115,7 +142,10 @@ describe('Scheduler', () => {
       ...targetPatch,
     }
     const scheduler = new Scheduler({
-      target, timers: clock.timers, random: mid, now: clock.now,
+      target,
+      timers: clock.timers,
+      random: mid,
+      now: clock.now,
     })
     return { scheduler, target, clock }
   }
@@ -179,7 +209,10 @@ describe('Scheduler', () => {
     // eslint-disable-next-line prefer-const -- mock 实现里要回调 scheduler，而 h 由该 mock 构造，只能先声明后赋值。
     let scheduler: Scheduler
     const h = harness({
-      getView: vi.fn().mockImplementation(async () => { scheduler.stop(); return {} }),
+      getView: vi.fn().mockImplementation(async () => {
+        scheduler.stop()
+        return {}
+      }),
     })
     scheduler = h.scheduler
     h.scheduler.start()

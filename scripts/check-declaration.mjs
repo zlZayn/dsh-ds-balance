@@ -67,7 +67,9 @@ function npmCli() {
   ].filter((value) => typeof value === 'string' && value.length > 0)
   const found = candidates.find((value) => existsSync(value))
   if (!found) {
-    throw new Error('cannot locate the npm CLI entry (npm-cli.js) next to node; run inside a node install that ships npm')
+    throw new Error(
+      'cannot locate the npm CLI entry (npm-cli.js) next to node; run inside a node install that ships npm',
+    )
   }
   return found
 }
@@ -79,16 +81,22 @@ function npmCli() {
  * @returns 匹配到的版本列表；npm 明确回答「区间内没有版本」时返回空数组。
  */
 function matchingVersions(name, range) {
-  const result = spawnSync(process.execPath, [npmCli(), 'view', `${name}@${range}`, 'version', '--json'], {
-    encoding: 'utf8',
-  })
+  const result = spawnSync(
+    process.execPath,
+    [npmCli(), 'view', `${name}@${range}`, 'version', '--json'],
+    {
+      encoding: 'utf8',
+    },
+  )
   if (result.error) throw result.error
   const stderr = result.stderr ?? ''
   // npm 对「区间内没有任何版本」用的是 E404 + 这句；别的失败（网络、registry）必须炸出来，
   // 不能伪装成「罩不住」—— 那会把基础设施故障读成声明问题。
   if (result.status !== 0) {
     if (stderr.includes('No match found for version')) return []
-    throw new Error(`npm view ${name}@${range} failed: ${stderr.trim().split('\n').slice(0, 3).join(' ')}`)
+    throw new Error(
+      `npm view ${name}@${range} failed: ${stderr.trim().split('\n').slice(0, 3).join(' ')}`,
+    )
   }
   const parsed = JSON.parse(result.stdout)
   return Array.isArray(parsed) ? parsed : [parsed]
@@ -141,7 +149,9 @@ async function check(line) {
   const decls = declarations(manifest)
   if (decls.length === 0) throw new Error('package.json declares no dsh compatibility range at all')
 
-  console.log(`[INFO] tracked line: ${line} (the dist-tag line the README's version-compatibility section names)`)
+  console.log(
+    `[INFO] tracked line: ${line} (the dist-tag line the README's version-compatibility section names)`,
+  )
 
   // 上下文：三条线现在各指向什么。只有被跟的那条会因为「罩不住」变红。
   const names = [...new Set(decls.map((entry) => entry.name))].sort()
@@ -163,11 +173,15 @@ async function check(line) {
     const version = lineVersions.get(entry.name)
     const matches = matchingVersions(entry.name, entry.range)
     if (matches.includes(version)) {
-      console.log(`[INFO] ${entry.where} declares ${entry.range} for ${entry.name} — covers ${version}`)
+      console.log(
+        `[INFO] ${entry.where} declares ${entry.range} for ${entry.name} — covers ${version}`,
+      )
       continue
     }
     uncovered.push(entry)
-    console.log(`[WARN] ${entry.where} declares ${entry.range} for ${entry.name} — does NOT cover ${version}`)
+    console.log(
+      `[WARN] ${entry.where} declares ${entry.range} for ${entry.name} — does NOT cover ${version}`,
+    )
   }
 
   // 判据落在被跟的那条线上，而不是 `latest`：宿主 `latest` 指向的版本比被跟的线还旧
@@ -175,15 +189,23 @@ async function check(line) {
   // 所以这里现比一次、打印出来，而不是把结论写死。
   const hostTags = await distTags(HOST_PACKAGE)
   if (hostTags.latest !== undefined && hostTags.latest !== hostTags[line]) {
-    console.log(`[NOTE] ${HOST_PACKAGE} latest=${hostTags.latest} differs from ${line}=${hostTags[line]}; the judgement is on the ${line} line.`)
+    console.log(
+      `[NOTE] ${HOST_PACKAGE} latest=${hostTags.latest} differs from ${line}=${hostTags[line]}; the judgement is on the ${line} line.`,
+    )
   }
 
   if (uncovered.length === 0) {
-    console.log(`[NOTE] declaration check passed: all ${decls.length} declared ranges cover the ${line} line`)
+    console.log(
+      `[NOTE] declaration check passed: all ${decls.length} declared ranges cover the ${line} line`,
+    )
     return 0
   }
-  console.log(`[WARN] declaration check failed: ${uncovered.length} of ${decls.length} declared ranges do not cover the ${line} line`)
-  console.log('[NOTE] update the declared ranges in package.json to a version you actually tested, or move the tracked line.')
+  console.log(
+    `[WARN] declaration check failed: ${uncovered.length} of ${decls.length} declared ranges do not cover the ${line} line`,
+  )
+  console.log(
+    '[NOTE] update the declared ranges in package.json to a version you actually tested, or move the tracked line.',
+  )
   return 1
 }
 

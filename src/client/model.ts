@@ -12,11 +12,16 @@ export type DotState = 'done' | 'warning' | 'ongoing' | 'error' | 'idle'
 /** severity → StateDot 状态。见 .agents/notes 的映射决策。 */
 export function dotStateOf(severity: Severity): DotState {
   switch (severity) {
-    case 'ok': return 'done'
-    case 'warn': return 'warning'
-    case 'critical': return 'error'
-    case 'unavailable': return 'error'
-    case 'unknown': return 'idle'
+    case 'ok':
+      return 'done'
+    case 'warn':
+      return 'warning'
+    case 'critical':
+      return 'error'
+    case 'unavailable':
+      return 'error'
+    case 'unknown':
+      return 'idle'
   }
 }
 
@@ -104,9 +109,10 @@ export function ringRatioOf(
   severity: Severity,
 ): number {
   const balance = total === null ? null : scaledOf(total)
-  const limit = warnThreshold === undefined || !Number.isFinite(warnThreshold)
-    ? null
-    : scaledOf(String(warnThreshold))
+  const limit =
+    warnThreshold === undefined || !Number.isFinite(warnThreshold)
+      ? null
+      : scaledOf(String(warnThreshold))
   if (balance === null || limit === null || limit <= 0n) return QUALITATIVE_ARC[severity]
   // 负余额是形状违约，画空环 —— 画成满环会被读成「余额充足」，方向正好反过来。
   if (balance <= 0n) return 0
@@ -117,10 +123,14 @@ export function ringRatioOf(
 /** 币种符号。未知币种回落到代码本身。 */
 export function currencySymbol(currency: string): string {
   switch (currency.toUpperCase()) {
-    case 'CNY': return '¥'
-    case 'USD': return '$'
-    case 'EUR': return '€'
-    default: return ''
+    case 'CNY':
+      return '¥'
+    case 'USD':
+      return '$'
+    case 'EUR':
+      return '€'
+    default:
+      return ''
   }
 }
 

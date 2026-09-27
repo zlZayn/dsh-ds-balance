@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CONFIG_SLOT, CONFIG_SLOT_TIMEOUT_MS, CONFIG_SLOT_WARNING, createConfigSlotProbe,
+  CONFIG_SLOT,
+  CONFIG_SLOT_TIMEOUT_MS,
+  CONFIG_SLOT_WARNING,
+  createConfigSlotProbe,
 } from '../src/client/config-slot.ts'
 
 /**
@@ -20,10 +23,16 @@ function fakeClock(): {
     schedule: (fire, ms) => {
       pending = fire
       delay = ms
-      return () => { cancelled = true; pending = undefined }
+      return () => {
+        cancelled = true
+        pending = undefined
+      }
     },
     // 真实计时器取消后不会再回调；假时钟照做，否则测不出「标记声明后超时不再生效」。
-    fire: () => { const run = pending; if (!cancelled && run) run() },
+    fire: () => {
+      const run = pending
+      if (!cancelled && run) run()
+    },
     cancelled: () => cancelled,
     delay: () => delay,
   }
@@ -43,7 +52,9 @@ describe('配置槽探测', () => {
     const clock = fakeClock()
     const probe = createConfigSlotProbe({ schedule: clock.schedule })
     let calls = 0
-    probe.subscribe(() => { calls += 1 })
+    probe.subscribe(() => {
+      calls += 1
+    })
     expect(probe.getSnapshot()).toBe('pending')
     expect(calls).toBe(0)
   })
@@ -52,7 +63,9 @@ describe('配置槽探测', () => {
     const clock = fakeClock()
     const probe = createConfigSlotProbe({ schedule: clock.schedule })
     const seen: string[] = []
-    probe.subscribe(() => { seen.push(probe.getSnapshot()) })
+    probe.subscribe(() => {
+      seen.push(probe.getSnapshot())
+    })
     probe.markDeclared()
     expect(probe.getSnapshot()).toBe('available')
     expect(clock.cancelled()).toBe(true)
@@ -65,7 +78,9 @@ describe('配置槽探测', () => {
     const clock = fakeClock()
     const probe = createConfigSlotProbe({ schedule: clock.schedule })
     const seen: string[] = []
-    probe.subscribe(() => { seen.push(probe.getSnapshot()) })
+    probe.subscribe(() => {
+      seen.push(probe.getSnapshot())
+    })
     clock.fire()
     expect(probe.getSnapshot()).toBe('missing')
     probe.markDeclared()
@@ -77,7 +92,9 @@ describe('配置槽探测', () => {
     const clock = fakeClock()
     const probe = createConfigSlotProbe({ schedule: clock.schedule })
     let calls = 0
-    probe.subscribe(() => { calls += 1 })
+    probe.subscribe(() => {
+      calls += 1
+    })
     clock.fire()
     clock.fire()
     probe.markDeclared()
@@ -89,7 +106,9 @@ describe('配置槽探测', () => {
     const clock = fakeClock()
     const probe = createConfigSlotProbe({ schedule: clock.schedule })
     let calls = 0
-    probe.subscribe(() => { calls += 1 })
+    probe.subscribe(() => {
+      calls += 1
+    })
     probe.dispose()
     expect(clock.cancelled()).toBe(true)
     probe.markDeclared()

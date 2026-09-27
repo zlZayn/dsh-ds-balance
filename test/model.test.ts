@@ -23,7 +23,9 @@ function response(patch: Partial<BalanceResponse> = {}): BalanceResponse {
     ageMs: 12_000,
     isAvailable: true,
     accountTag8: 'a1b2c3d4',
-    balances: [{ currency: 'CNY', total: '110.00000000', granted: '10.00000000', toppedUp: '100.00000000' }],
+    balances: [
+      { currency: 'CNY', total: '110.00000000', granted: '10.00000000', toppedUp: '100.00000000' },
+    ],
     selected: { currency: 'CNY', total: '110.00000000' },
     severity: 'ok',
     thresholds: { CNY: { warn: '10.00000000', critical: '5.00000000' } },
@@ -60,14 +62,22 @@ describe('formatAmount / formatMoney', () => {
 
 describe('selectionOf', () => {
   it('读后端的 selected，而不是自己挑', () => {
-    const value = selectionOf(response({
-      balances: [
-        { currency: 'CNY', total: '110.00000000', granted: '0.00000000', toppedUp: '110.00000000' },
-        { currency: 'USD', total: '20.00000000', granted: '0.00000000', toppedUp: '20.00000000' },
-      ],
-      // 后端把 USD 排在后面却选了它：顺序不该影响结果。
-      selected: { currency: 'USD', total: '20.00000000' },
-    }), 'auto')
+    const value = selectionOf(
+      response({
+        balances: [
+          {
+            currency: 'CNY',
+            total: '110.00000000',
+            granted: '0.00000000',
+            toppedUp: '110.00000000',
+          },
+          { currency: 'USD', total: '20.00000000', granted: '0.00000000', toppedUp: '20.00000000' },
+        ],
+        // 后端把 USD 排在后面却选了它：顺序不该影响结果。
+        selected: { currency: 'USD', total: '20.00000000' },
+      }),
+      'auto',
+    )
     expect(value.shown?.currency).toBe('USD')
     expect(value.shown?.granted).toBe('0.00000000')
     expect(value.matchesPreference).toBe(true)
@@ -92,14 +102,20 @@ describe('selectionOf', () => {
   })
 
   it('selected 为 null 时是空态', () => {
-    const value = selectionOf(response({ balances: [], selected: null, severity: 'unknown' }), 'USD')
+    const value = selectionOf(
+      response({ balances: [], selected: null, severity: 'unknown' }),
+      'USD',
+    )
     expect(value.shown).toBeNull()
     expect(value.empty).toBe(true)
     expect(value.matchesPreference).toBe(false)
   })
 
   it('selected 指向 balances 里没有的币种时给 null，不硬凑一条', () => {
-    const value = selectionOf(response({ selected: { currency: 'EUR', total: '1.00000000' } }), 'auto')
+    const value = selectionOf(
+      response({ selected: { currency: 'EUR', total: '1.00000000' } }),
+      'auto',
+    )
     expect(value.shown).toBeNull()
     expect(value.empty).toBe(true)
   })
@@ -184,7 +200,11 @@ describe('ringRatioOf', () => {
 
   it('阈值缺失或非正数时退回按 severity 定性', () => {
     const cases = [
-      ['ok', 1], ['unavailable', 1], ['warn', 0.75], ['critical', 0.25], ['unknown', 0],
+      ['ok', 1],
+      ['unavailable', 1],
+      ['warn', 0.75],
+      ['critical', 0.25],
+      ['unknown', 0],
     ] as const
     for (const [severity, expected] of cases) {
       expect(ringRatioOf('110.00000000', undefined, severity), severity).toBe(expected)

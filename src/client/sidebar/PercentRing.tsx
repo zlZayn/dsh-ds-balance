@@ -97,7 +97,13 @@ export interface PercentRingProps {
  * @param props - 状态、边长与可选提示。
  * @returns 圆环 svg；自身 aria-hidden，语义名由调用方的 aria-label 提供。
  */
-export function PercentRing({ state, marker = null, ratio = 1, size = 18, title }: PercentRingProps): JSX.Element {
+export function PercentRing({
+  state,
+  marker = null,
+  ratio = 1,
+  size = 18,
+  title,
+}: PercentRingProps): JSX.Element {
   const clamped = Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : 1
   return (
     <svg
@@ -126,24 +132,22 @@ export function PercentRing({ state, marker = null, ratio = 1, size = 18, title 
         />
       )}
       {/* 中心叉号：两条对角短线，颜色跟弧走（currentColor）。没有动画。 */}
-      {marker === 'cross'
-        ? (
-          <g className={css.cross}>
-            <line
-              x1={CENTER - CROSS_ARM}
-              y1={CENTER - CROSS_ARM}
-              x2={CENTER + CROSS_ARM}
-              y2={CENTER + CROSS_ARM}
-            />
-            <line
-              x1={CENTER + CROSS_ARM}
-              y1={CENTER - CROSS_ARM}
-              x2={CENTER - CROSS_ARM}
-              y2={CENTER + CROSS_ARM}
-            />
-          </g>
-        )
-        : null}
+      {marker === 'cross' ? (
+        <g className={css.cross}>
+          <line
+            x1={CENTER - CROSS_ARM}
+            y1={CENTER - CROSS_ARM}
+            x2={CENTER + CROSS_ARM}
+            y2={CENTER + CROSS_ARM}
+          />
+          <line
+            x1={CENTER + CROSS_ARM}
+            y1={CENTER - CROSS_ARM}
+            x2={CENTER - CROSS_ARM}
+            y2={CENTER + CROSS_ARM}
+          />
+        </g>
+      ) : null}
     </svg>
   )
 }

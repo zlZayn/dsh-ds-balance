@@ -81,11 +81,16 @@ export class NetworkError extends AppError {
 /** 把 HTTP 状态码映射到错误码。 */
 export function upstreamCodeOf(status: number): ErrorCode {
   switch (status) {
-    case 401: return 'UPSTREAM_401'
-    case 402: return 'UPSTREAM_402'
-    case 422: return 'UPSTREAM_422'
-    case 429: return 'UPSTREAM_429'
-    case 503: return 'UPSTREAM_503'
+    case 401:
+      return 'UPSTREAM_401'
+    case 402:
+      return 'UPSTREAM_402'
+    case 422:
+      return 'UPSTREAM_422'
+    case 429:
+      return 'UPSTREAM_429'
+    case 503:
+      return 'UPSTREAM_503'
     default:
       if (status >= 500) return 'UPSTREAM_5XX'
       return 'UPSTREAM_4XX'
@@ -97,7 +102,11 @@ export class UpstreamError extends AppError {
   readonly status: number
   readonly headers: Headers | undefined
 
-  constructor(status: number, message: string, options: { headers?: Headers; cause?: unknown } = {}) {
+  constructor(
+    status: number,
+    message: string,
+    options: { headers?: Headers; cause?: unknown } = {},
+  ) {
     super(upstreamCodeOf(status), message, {
       retryable: status >= 500 || status === 429,
       cause: options.cause,
@@ -140,7 +149,10 @@ export class StorageError extends AppError {
  * @param now - 当前时刻，HTTP-date 用它算差值；便于测试注入。
  * @returns 毫秒数，或 `undefined` 表示没给出可用的提示。
  */
-export function parseRetryAfter(headers: Headers | undefined, now: number = Date.now()): number | undefined {
+export function parseRetryAfter(
+  headers: Headers | undefined,
+  now: number = Date.now(),
+): number | undefined {
   const raw = headers?.get('retry-after')
   if (raw === undefined || raw === null) return undefined
   const text = raw.trim()

@@ -76,7 +76,7 @@ function post(path: string, body?: unknown): Request {
 
 /** 读 JSON 响应体。字段名在测试里动态取，所以放宽到 any。 */
 async function readJson(response: Response): Promise<Record<string, any>> {
-  return await response.json() as Record<string, any>
+  return (await response.json()) as Record<string, any>
 }
 
 interface HarnessOptions {
@@ -120,7 +120,7 @@ function harness(options: HarnessOptions = {}): Harness {
   const config = new ConfigService({ source, env: {} })
   const keys = new KeyResolver({
     readConfig: () => ({
-      apiKey: options.key === null ? '' : options.key ?? 'test-key',
+      apiKey: options.key === null ? '' : (options.key ?? 'test-key'),
       apiKeyRef: 'DEEPSEEK_API_KEY',
     }),
     env: {},
@@ -146,10 +146,19 @@ function harness(options: HarnessOptions = {}): Harness {
     async close() {},
   }
   const service = new BalanceService({
-    client, store, keys, config, clock, salt: 'test-salt', metrics: options.metrics,
+    client,
+    store,
+    keys,
+    config,
+    clock,
+    salt: 'test-salt',
+    metrics: options.metrics,
   })
   const scheduler = new Scheduler({
-    target: { getView: (callOptions) => service.getView(callOptions), status: () => service.status() },
+    target: {
+      getView: (callOptions) => service.getView(callOptions),
+      status: () => service.status(),
+    },
     timers: { set: () => 0, clear: () => {} },
     now: () => NOW,
   })
@@ -185,10 +194,19 @@ describe('GET /api/v1/balance', () => {
   it('currency 查询参数覆盖配置里的 displayCurrency', async () => {
     const h = harness({
       config: { displayCurrency: 'CNY' },
-      respond: async () => raw([{ currency: 'CNY', total: '110' }, { currency: 'USD', total: '20' }]),
+      respond: async () =>
+        raw([
+          { currency: 'CNY', total: '110' },
+          { currency: 'USD', total: '20' },
+        ]),
     })
-    expect((await readJson(await handleBalance(get('/api/v1/balance'), h.deps))).selected.currency).toBe('CNY')
-    expect((await readJson(await handleBalance(get('/api/v1/balance?currency=USD'), h.deps))).selected.currency).toBe('USD')
+    expect(
+      (await readJson(await handleBalance(get('/api/v1/balance'), h.deps))).selected.currency,
+    ).toBe('CNY')
+    expect(
+      (await readJson(await handleBalance(get('/api/v1/balance?currency=USD'), h.deps))).selected
+        .currency,
+    ).toBe('USD')
   })
 
   it('上游失败仍然 200，业务错误走 state + error', async () => {
@@ -222,18 +240,28 @@ describe('GET /api/v1/balance', () => {
   it('每次请求现读配置：改 displayCurrency 后立刻生效', async () => {
     const h = harness({
       config: { displayCurrency: 'CNY' },
-      respond: async () => raw([{ currency: 'CNY', total: '110' }, { currency: 'USD', total: '20' }]),
+      respond: async () =>
+        raw([
+          { currency: 'CNY', total: '110' },
+          { currency: 'USD', total: '20' },
+        ]),
     })
-    expect((await readJson(await handleBalance(get('/api/v1/balance'), h.deps))).selected.currency).toBe('CNY')
+    expect(
+      (await readJson(await handleBalance(get('/api/v1/balance'), h.deps))).selected.currency,
+    ).toBe('CNY')
     h.setConfig({ displayCurrency: 'USD' })
-    expect((await readJson(await handleBalance(get('/api/v1/balance'), h.deps))).selected.currency).toBe('USD')
+    expect(
+      (await readJson(await handleBalance(get('/api/v1/balance'), h.deps))).selected.currency,
+    ).toBe('USD')
   })
 })
 
 describe('POST /api/v1/balance/refresh', () => {
   it('回 triggered / joined / cooldownMs / state', async () => {
     const h = harness()
-    const json = await readJson(await handleRefresh(post('/api/v1/balance/refresh', { reason: 'manual' }), h.deps))
+    const json = await readJson(
+      await handleRefresh(post('/api/v1/balance/refresh', { reason: 'manual' }), h.deps),
+    )
     expect(json.triggered).toBe(true)
     expect(json.joined).toBe(false)
     expect(json.cooldownMs).toBe(0)
@@ -260,7 +288,9 @@ describe('GET /api/v1/config', () => {
 
   it('未配置 apiKey 时掩码是空串', async () => {
     const h = harness({ config: { apiKey: '' } })
-    expect((await readJson(await handleConfigGet(get('/api/v1/config'), h.deps))).apiKeyMasked).toBe('')
+    expect(
+      (await readJson(await handleConfigGet(get('/api/v1/config'), h.deps))).apiKeyMasked,
+    ).toBe('')
   })
 
   it('掩码是手动的：除 apiKey 外十个字段全在，超时不在 schema 里', async () => {
@@ -275,7 +305,10 @@ describe('GET /api/v1/config', () => {
 describe('POST /api/v1/config', () => {
   it('合法补丁 200 且写进配置源', async () => {
     const h = harness({ config: { displayCurrency: 'auto' } })
-    const response = await handleConfigUpdate(post('/api/v1/config', { displayCurrency: 'USD' }), h.deps)
+    const response = await handleConfigUpdate(
+      post('/api/v1/config', { displayCurrency: 'USD' }),
+      h.deps,
+    )
     expect(response.status).toBe(200)
     expect(h.updates()).toEqual([{ displayCurrency: 'USD' }])
     expect((await readJson(response)).config.displayCurrency).toBe('USD')
@@ -291,7 +324,10 @@ describe('POST /api/v1/config', () => {
 
   it('schema 拒绝越界值时 422', async () => {
     const h = harness()
-    const response = await handleConfigUpdate(post('/api/v1/config', { serverRefreshSeconds: 1 }), h.deps)
+    const response = await handleConfigUpdate(
+      post('/api/v1/config', { serverRefreshSeconds: 1 }),
+      h.deps,
+    )
     expect(response.status).toBe(422)
     expect((await readJson(response)).error.message).toContain('>= 10')
     expect(h.updates()).toEqual([])
@@ -301,7 +337,10 @@ describe('POST /api/v1/config', () => {
     // 0.1.7 起宿主侧不再强制这条约束（register 的 validate 被删、schema 没有跨字段钩子），
     // 所以这条端点是写入侧唯一还拦得住的地方。见 src/config.ts 的 validateThresholds。
     const h = harness()
-    const response = await handleConfigUpdate(post('/api/v1/config', { cnyWarn: 4, cnyCritical: 4 }), h.deps)
+    const response = await handleConfigUpdate(
+      post('/api/v1/config', { cnyWarn: 4, cnyCritical: 4 }),
+      h.deps,
+    )
     expect(response.status).toBe(422)
     expect((await readJson(response)).error.message).toContain('CNY')
     expect(h.updates()).toEqual([])
@@ -310,10 +349,14 @@ describe('POST /api/v1/config', () => {
   it('跨字段先验：只写一半时按合并后的完整值判', async () => {
     // 现行配置是 10 / 5；只把告急抬到 10 就越线了，只看补丁本身是看不出来的。
     const h = harness()
-    expect((await handleConfigUpdate(post('/api/v1/config', { cnyCritical: 10 }), h.deps)).status).toBe(422)
+    expect(
+      (await handleConfigUpdate(post('/api/v1/config', { cnyCritical: 10 }), h.deps)).status,
+    ).toBe(422)
     expect(h.updates()).toEqual([])
     // 合法的一半照旧写得进去。
-    expect((await handleConfigUpdate(post('/api/v1/config', { cnyCritical: 1 }), h.deps)).status).toBe(200)
+    expect(
+      (await handleConfigUpdate(post('/api/v1/config', { cnyCritical: 1 }), h.deps)).status,
+    ).toBe(200)
   })
 
   it('请求体不是 JSON 对象时 422', async () => {
@@ -334,9 +377,16 @@ describe('POST /api/v1/config', () => {
 describe('POST /api/v1/test-connection', () => {
   it('成功回延迟与余额预览', async () => {
     const h = harness({
-      testResult: { ok: true, latencyMs: 42, isAvailable: true, balances: [{ currency: 'CNY', total: '110.00000000' }] },
+      testResult: {
+        ok: true,
+        latencyMs: 42,
+        isAvailable: true,
+        balances: [{ currency: 'CNY', total: '110.00000000' }],
+      },
     })
-    const json = await readJson(await handleTestConnection(post('/api/v1/test-connection', {}), h.deps))
+    const json = await readJson(
+      await handleTestConnection(post('/api/v1/test-connection', {}), h.deps),
+    )
     expect(json.ok).toBe(true)
     expect(json.latencyMs).toBe(42)
     expect(json.balances).toEqual([{ currency: 'CNY', total: '110.00000000' }])
@@ -353,7 +403,16 @@ describe('POST /api/v1/test-connection', () => {
 
   it('请求体里的 apiKey 优先于解析链', async () => {
     const h = harness({ key: null })
-    expect((await readJson(await handleTestConnection(post('/api/v1/test-connection', { apiKey: 'sk-inline' }), h.deps))).ok).toBe(true)
+    expect(
+      (
+        await readJson(
+          await handleTestConnection(
+            post('/api/v1/test-connection', { apiKey: 'sk-inline' }),
+            h.deps,
+          ),
+        )
+      ).ok,
+    ).toBe(true)
   })
 
   it('不动活动缓存', async () => {
@@ -423,7 +482,10 @@ describe('配置响应里的凭据事实', () => {
     const text = await response.clone().text()
     const json = JSON.parse(text) as Record<string, any>
     expect(json.credential).toEqual({
-      ref: 'DEEPSEEK_API_KEY', configured: true, source: 'env', writable: false,
+      ref: 'DEEPSEEK_API_KEY',
+      configured: true,
+      source: 'env',
+      writable: false,
     })
     // 密钥的任何片段都不该出现在响应里。
     expect(text).not.toContain('test-key')
@@ -441,7 +503,9 @@ describe('配置响应里的凭据事实', () => {
       ...h.deps,
       credentials: {
         resolve: async () => ({ value: '', source: 'unset' }),
-        describe: async () => { throw new Error('boom') },
+        describe: async () => {
+          throw new Error('boom')
+        },
       },
     }
     const response = await handleConfigGet(get('/api/v1/config'), broken)

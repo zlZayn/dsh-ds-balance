@@ -10,7 +10,9 @@ import { CONTRACT_KEY_VARS, contractKeyMissingMessage, resolveContractKey } from
 
 describe('resolveContractKey', () => {
   it('优先用契约巡检的专用 key', () => {
-    expect(resolveContractKey({ DSH_CI_API_KEY: 'sk-ci', DEEPSEEK_API_KEY: 'sk-local' })).toBe('sk-ci')
+    expect(resolveContractKey({ DSH_CI_API_KEY: 'sk-ci', DEEPSEEK_API_KEY: 'sk-local' })).toBe(
+      'sk-ci',
+    )
   })
 
   it('只有本机那把时回落 —— 否则本地根本跑不了契约测试', () => {
@@ -24,7 +26,9 @@ describe('resolveContractKey', () => {
 
   it('空串按「没有」算，不拿它去换一个语义模糊的 401', () => {
     // CI 上 secret 没配时 GitHub 注入的就是空串；真实原因是「没配 secret」。
-    expect(resolveContractKey({ DSH_CI_API_KEY: '', DEEPSEEK_API_KEY: 'sk-local' })).toBe('sk-local')
+    expect(resolveContractKey({ DSH_CI_API_KEY: '', DEEPSEEK_API_KEY: 'sk-local' })).toBe(
+      'sk-local',
+    )
   })
 })
 

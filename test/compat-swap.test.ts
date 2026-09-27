@@ -15,14 +15,18 @@ import { describe, expect, it } from 'vitest'
 describe('compat-swap 换版保形', () => {
   it('认识的形状保留运算符，不认识的形状报错停下', () => {
     // 不装依赖、不打网络：selftest 只跑本地那张形状表。
-    const result = spawnSync(process.execPath, ['scripts/compat-swap.mjs', 'selftest'], { encoding: 'utf8' })
+    const result = spawnSync(process.execPath, ['scripts/compat-swap.mjs', 'selftest'], {
+      encoding: 'utf8',
+    })
     expect(result.error).toBeUndefined()
     expect(result.status, result.stdout + result.stderr).toBe(0)
     expect(result.stdout).toContain('条全部符合预期')
   })
 
   it('用法里列了 selftest 这条子命令', () => {
-    const result = spawnSync(process.execPath, ['scripts/compat-swap.mjs', '--help'], { encoding: 'utf8' })
+    const result = spawnSync(process.execPath, ['scripts/compat-swap.mjs', '--help'], {
+      encoding: 'utf8',
+    })
     expect(result.stderr + result.stdout).toContain('selftest')
   })
 })
