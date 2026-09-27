@@ -1,5 +1,8 @@
 # 决策：配置槽的能力探测（2026-09-19）
 
+状态：被取代
+指针：[配置入口回到 `plugins.bundle.config`](2026-09-22-config-entry-back-to-bundle-config.md)
+
 > **状态（2026-09-22）：判据已被
 > [2026-09-22-config-entry-back-to-bundle-config.md](2026-09-22-config-entry-back-to-bundle-config.md) 取代** ——
 > 「盯槽名」换成「盯 `configForms` 服务」。原因是被探测的那个槽（`plugins.bundle.config`）

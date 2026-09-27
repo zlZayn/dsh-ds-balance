@@ -1,5 +1,7 @@
 # 配置入口回到 bundle.config，浮层材质与圆环几何对齐官方
 
+状态：生效
+
 **类型**：决策记录（问题 / 决策 / 替代方案 / 影响）。
 **取代**：[2026-09-22-settings-seam-migration.md](2026-09-22-settings-seam-migration.md) 的「决策 2」与「决策 3」
 （探测目标槽、只注册 `plugins.row.config` 两条）。接缝本身不变 —— 仍然是 `configForms` + volatile 引用。

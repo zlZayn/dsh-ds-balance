@@ -1,5 +1,8 @@
 # 设置接缝迁移：作用域服务 → configForms + volatile 配置引用
 
+状态：被取代
+指针：[配置入口回到 `plugins.bundle.config`](2026-09-22-config-entry-back-to-bundle-config.md)
+
 > **状态（2026-09-22，同一天晚些时候）：其中两条已被
 > [2026-09-22-config-entry-back-to-bundle-config.md](2026-09-22-config-entry-back-to-bundle-config.md) 取代** ——
 > 「决策 2：探测目标槽改成 `plugins.row.config`」与「决策 3：只注册 `plugins.row.config`」。

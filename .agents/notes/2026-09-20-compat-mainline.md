@@ -1,5 +1,7 @@
 # 决策：compat 恢复主次 —— alpha 是承诺线，next 停测（2026-09-20）
 
+状态：生效
+
 **已实施**：[compat.yml](../../.github/workflows/compat.yml) 只剩 alpha 一个作业，**不再
 `continue-on-error`**（红了就红、就修）；next 作业整个移除。取代
 [2026-09-17-compat-lines-advisory.md](2026-09-17-compat-lines-advisory.md) 的"两条都只记录"。

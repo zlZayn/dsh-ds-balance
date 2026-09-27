@@ -1,5 +1,7 @@
 # 锁文件的 resolved 必须指向官方源：从散文变成红线
 
+状态：生效
+
 ## 问题
 
 「`package-lock.json` 里 `resolved` 必须指向 `registry.npmjs.org`」这条规则**写在另一个仓库里**

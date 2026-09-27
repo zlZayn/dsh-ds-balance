@@ -1,5 +1,7 @@
 # 备忘：宿主 `ConnectionFetchRoute.path` 的 JSDoc 与实现矛盾（2026-09-17）
 
+状态：生效
+
 只记录事实与我们的处置，不改宿主、不提 issue。
 
 ## 事实

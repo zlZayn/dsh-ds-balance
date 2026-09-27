@@ -1,5 +1,7 @@
 # 声明面下限对齐：所有 `@deepseek-ai/dsh-*` 声明的下限抬到 `engines.dsh` 的下限
 
+状态：生效
+
 ## 问题
 
 `package.json` 的 `engines.dsh` 是 `^0.1.6-alpha.2`，但同一份清单里 **10 条**官方声明的下限比它低：

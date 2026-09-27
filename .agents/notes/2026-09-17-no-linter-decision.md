@@ -1,6 +1,6 @@
 # 决策：不引入 lint，改用编译器开关（2026-09-17）
 
-已否决：本仓库不加 eslint / biome / oxlint，也不设 `lint` 脚本。
+状态：已否决 —— 本仓库不加 eslint / biome / oxlint，也不设 `lint` 脚本
 
 ## 问题
 
