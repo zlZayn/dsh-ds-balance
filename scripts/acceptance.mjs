@@ -48,7 +48,6 @@ check('目标目录里有一份构建好的包', () => {
 })
 
 check('宿主入口可求值，并导出契约面', async () => {
-  const pkg = JSON.parse(readFileSync(join(target, 'package.json'), 'utf8'))
   const host = await import(pathToFileURL(join(target, 'lib', 'index.js')).href)
   if (typeof host.apply !== 'function') throw new Error('apply 不是函数')
   if (typeof host.name !== 'string') throw new Error('name 不是字符串')

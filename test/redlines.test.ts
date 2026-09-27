@@ -274,8 +274,8 @@ describe('类型检查开关', () => {
   }
 
   it('四个「通用 lint 那一档」的开关都在', () => {
-    // 它们是不引入 linter 这个决定的全部依据：缺任何一个，覆盖面就不再成立。
-    // 见 .agents/notes/2026-09-17-no-linter-decision.md。
+    // 它们是「类型与死代码」这一档的守卫（与 ESLint 的分工见 2026-09-27-adopt-eslint-prettier.md）：
+    // 缺任何一个，覆盖面就不再成立。
     const flags = ['noUnusedLocals', 'noUnusedParameters', 'noImplicitReturns', 'noFallthroughCasesInSwitch']
     for (const flag of flags) {
       expect(tsconfig.compilerOptions?.[flag], flag).toBe(true)

@@ -581,7 +581,7 @@ export function useConfigForm(form: ConfigFormOf): ConfigFormApi {
         ? { op: 'unset', path: [item.field] }
         : { op: 'set', path: [item.field], value: write.value as MutateValue })
     }
-    let landed = false
+    let landed: boolean
     try {
       landed = await form.mutate(ops, form.getSnapshot().revision)
     } catch {

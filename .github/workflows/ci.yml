@@ -48,3 +48,6 @@ jobs:
       # `npm test` 自带 build：产物级测试读 lib/，必须先有产物。
       - name: Test
         run: npm test
+
+      - name: Lint
+        run: npm run lint

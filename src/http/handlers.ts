@@ -278,7 +278,7 @@ export async function handleTestConnection(request: Request, deps: HttpDeps): Pr
 export async function handleHealthz(_request: Request, deps: HttpDeps): Promise<Response> {
   const requestId = newRequestId()
   const status = deps.service.status()
-  let store: { ok: boolean; detail: string | null } = { ok: false, detail: 'health check failed' }
+  let store: { ok: boolean; detail: string | null }
   try {
     const health = await deps.store.health()
     store = { ok: health.ok, detail: health.detail ?? null }
