@@ -7,6 +7,7 @@
 
 import { useState, type ReactNode } from 'react'
 import {
+  Button,
   IconApiOutlineRegular,
   IconGlobeOutlineRegular,
   IconRefreshOutlineRegular,
@@ -422,16 +423,16 @@ export function BalanceSettingsCard({ t, form: scopedForm }: BalanceSettingsCard
             {footerNote.text}
           </p>
         )}
-        <button
+        <Button
           type="button"
-          className={css.save}
+          variant="primary"
           disabled={!dirty || invalid || saving || !writable}
           onClick={() => {
             void form.save()
           }}
         >
           {saving ? t('settings.saving') : t('settings.save')}
-        </button>
+        </Button>
       </div>
     </div>
   )

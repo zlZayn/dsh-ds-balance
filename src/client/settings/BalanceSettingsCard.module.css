@@ -41,27 +41,3 @@
   line-height: 1.5;
   color: var(--dsw-alias-label-tertiary);
 }
-
-.save {
-  appearance: none;
-  /* 项目硬规则：中性实线边框统一 0.5px。官方这里写 1px，是它的偏差。 */
-  border: 0.5px solid transparent;
-  border-radius: 8px;
-  padding: 5px 14px;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-  cursor: pointer;
-  background: var(--dsw-alias-label-primary);
-  color: var(--dsw-alias-bg-layer-3);
-}
-
-.save:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.save:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
-  outline-offset: 1px;
-}

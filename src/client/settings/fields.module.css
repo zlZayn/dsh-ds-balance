@@ -30,45 +30,11 @@
   border-top: 0.5px solid var(--dsw-alias-border-l2);
 }
 
-/* 二级折叠「自定义设置」：原生 details，与官方 ProviderEditor 同构
-   （官方那一处也不用原语，是 details + summary 加一个 ::before 折角）。 */
+/* 二级折叠「自定义设置」：容器只出组间分隔与间距，折叠头与展开体交给原语 DisclosureRow。 */
 .details {
   border-top: 0.5px solid var(--dsw-alias-border-l2);
   margin-top: 12px;
   padding-top: 12px;
-}
-
-.detailsSummary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  color: var(--dsw-alias-label-secondary);
-  cursor: pointer;
-  list-style: none;
-}
-
-.detailsSummary::-webkit-details-marker {
-  display: none;
-}
-
-/* 5px 折角：收起时朝右，展开时转 45° 朝下。官方同款尺寸。
-   translate 的一半像素是为了让折角在行高里光学居中。 */
-.detailsSummary::before {
-  content: '';
-  flex: none;
-  width: 5px;
-  height: 5px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: translate(-0.5px, -1px) rotate(-45deg);
-  transition: transform 120ms ease;
-}
-
-.details[open] > .detailsSummary::before {
-  transform: translate(-0.5px, -1px) rotate(45deg);
 }
 
 .detailsBody {
@@ -157,76 +123,37 @@
   cursor: default;
 }
 
-.input {
-  box-sizing: border-box;
-  width: 100%;
-  height: 34px;
-  padding: 0 12px;
-  border: 0.5px solid var(--dsw-alias-border-l4);
-  border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-3);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--dsw-alias-label-primary);
-}
-
-.input:focus-visible {
-  outline: none;
-  border-color: var(--dsw-alias-brand-primary);
-}
-
-.input:disabled {
-  color: var(--dsw-alias-label-tertiary);
-  /* 与官方 ProviderEditor 的 .input:disabled 逐字一致：只读字段整块降到 60%。 */
-  opacity: 0.6;
-  cursor: default;
-}
-
 /**
  * 只读凭据框：视觉与交互都当静态文本 —— 悬停不换描边、指针不是插入符、点了也不出焦点环。
  *
- * 两条一起给才彻底：`pointer-events: none` 让鼠标根本落不到这个框上（宿主对 `input:hover`
- * 的全局样式因此不会命中，指针也回落到父元素的普通箭头）；其余声明是兜底，
- * 免得宿主那条同特异度的规则按加载顺序盖过来。
+ * 类落在官方 Input 的外壳 span 上：外壳 pointer-events:none 让鼠标根本落不进去；
+ * 内框的描边 / 背景兜底用后代选择器打，免得宿主那条同特异度的规则按加载顺序盖过来。
  */
-input.inputStatic,
-input.inputStatic:hover,
-input.inputStatic:focus,
-input.inputStatic:focus-visible,
-input.inputStatic:active {
+.inputStatic,
+.inputStatic:hover {
+  pointer-events: none;
+}
+
+.inputStatic input,
+.inputStatic input:hover,
+.inputStatic input:focus,
+.inputStatic input:focus-visible,
+.inputStatic input:active {
   border-color: var(--dsw-alias-border-l4);
   background: var(--dsw-alias-bg-layer-3);
   outline: none;
   box-shadow: none;
   cursor: default;
-  pointer-events: none;
 }
 
-/* 非法草稿：换描边色，不换几何。显式重复 .input 的声明，不依赖 composes。 */
-.inputInvalid {
-  box-sizing: border-box;
-  width: 100%;
-  height: 34px;
-  padding: 0 12px;
-  /* 状态色边框按规范保留 1px。 */
+/* 非法草稿：几何归官方 Input 自管，这里只把内框描边换成 1px 状态色。
+   类落在官方 Input 的外壳 span 上，描边用后代选择器打进内框。 */
+.inputInvalid input {
   border: 1px solid var(--dsw-alias-state-error-primary);
-  border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-3);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--dsw-alias-label-primary);
 }
 
-.inputInvalid:focus-visible {
-  outline: none;
+.inputInvalid input:focus-visible {
   border-color: var(--dsw-alias-brand-primary);
-}
-
-.inputInvalid:disabled {
-  color: var(--dsw-alias-label-tertiary);
-  cursor: default;
 }
 
 /* 掩码输入：输入框与显隐按钮同一行，按钮浮在右端。 */
@@ -355,35 +282,6 @@ input.inputStatic:active {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.actionButton {
-  appearance: none;
-  /* 中性实线边框统一 0.5px。 */
-  border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
-  padding: 5px 14px;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-  cursor: pointer;
-  background: none;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.actionButton:hover:not(:disabled) {
-  color: var(--dsw-alias-label-primary);
-  border-color: var(--dsw-alias-label-dimmed);
-}
-
-.actionButton:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.actionButton:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
-  outline-offset: 1px;
 }
 
 .resultOk {

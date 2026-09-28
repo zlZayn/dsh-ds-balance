@@ -8,8 +8,10 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import {
+  Button,
   DisclosureRow,
   IconChevronDownOutlineRegular,
+  Input,
   Menu,
   Tag,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -171,9 +173,10 @@ export interface TextControlProps {
  */
 export function TextControl(props: TextControlProps) {
   return (
-    <input
+    <Input
       id={props.id}
-      className={props.invalid ? css.inputInvalid : css.input}
+      // 非法描边走 wrapper span：官方 Input 把 className 落在外壳上，内框样式归官方自管。
+      className={props.invalid ? css.inputInvalid : undefined}
       type="text"
       {...(props.numeric ? { inputMode: 'numeric' as const } : {})}
       {...(props.invalid ? { 'aria-invalid': true } : {})}
@@ -210,9 +213,10 @@ export interface ReadOnlyControlProps {
  */
 export function ReadOnlyControl(props: ReadOnlyControlProps) {
   return (
-    <input
+    <Input
       id={props.id}
-      className={clsx(css.input, css.inputStatic)}
+      // inputStatic 落在官方 Input 的外壳 span 上：内框的静态化规则用后代选择器打进去。
+      className={css.inputStatic}
       type="text"
       value=""
       readOnly
@@ -229,26 +233,30 @@ export interface DetailsGroupProps {
 }
 
 /**
- * 渲染一个原生 details 折叠块。
+ * 渲染二级折叠「自定义设置」。
  *
- * **受控但跟手**：`open` 由 state 持有，用户拨动时从 DOM 读回真实状态，
- * 所以卡片每次重渲染（每敲一个字都会）不会把用户展开的块弹回去。
+ * **受控但跟手**：`open` 由 state 持有，官方 DisclosureRow 的展开体只在 open 时条件渲染，
+ * 卡片每次重渲染（每敲一个字都会）不会把用户展开的块弹回去。
  * @param props - 标题、初始状态与内容。
  * @returns 折叠块元素。
  */
 export function DetailsGroup(props: DetailsGroupProps) {
   const [open, setOpen] = useState(props.defaultOpen === true)
   return (
-    <details
-      className={css.details}
-      open={open}
-      onToggle={(event) => {
-        setOpen(event.currentTarget.open)
-      }}
-    >
-      <summary className={css.detailsSummary}>{props.title}</summary>
-      <div className={css.detailsBody}>{props.children}</div>
-    </details>
+    <div className={css.details}>
+      <DisclosureRow
+        icon={null}
+        title={props.title}
+        open={open}
+        expandable
+        expandOnRowClick
+        onToggle={() => {
+          setOpen((value) => !value)
+        }}
+      >
+        <div className={css.detailsBody}>{props.children}</div>
+      </DisclosureRow>
+    </div>
   )
 }
 
@@ -335,14 +343,14 @@ export function ActionRow(props: ActionRowProps) {
   return (
     <>
       <div className={css.actions}>
-        <button
+        <Button
           type="button"
-          className={css.actionButton}
+          variant="outline"
           disabled={props.disabled}
           onClick={props.onClick}
         >
           {props.label}
-        </button>
+        </Button>
       </div>
       {props.result === null ? null : (
         // 成功只是通报，用 polite 的 status；失败需要用户处理，按 06 §6.7 的「行内错误」用 alert。
