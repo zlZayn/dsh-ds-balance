@@ -69,6 +69,10 @@
    会把标签推到行中间。 */
 .title {
   display: flex;
+  /* 官方那一行两端都是文字（左标题、右 tabular-nums 汇总值），盒高天然一致，
+     所以它不需要 align-items。我们把右端换成了 28px 的图标按钮，行高被撑到 28px，
+     左组（18px 行盒）就会贴顶 —— 实测中线偏 5px。这一句是**为我们的结构补的**。 */
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 8px;
@@ -76,10 +80,14 @@
   font-weight: 500;
 }
 
-/* 标题 + 来源标签：两者紧贴，一起占住左端。 */
+/* 标题 + 来源标签：两者紧贴，一起占住左端。
+   这一层是**官方结构里没有的**：官方 `.titleLabel` 里只有「图标 + 文字」，
+   我们为了把来源标签贴在标题右侧（它是链接外的普通文本）才多包了这一层。
+   代价是多一个子元素，所以居中要自己声明 —— baseline 会让 14px 高的鲸鱼按基线坐，
+   与同排的文字错开（实测 -0.08px 靠运气，与 28px 按钮一起就散架）。 */
 .titleMain {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   min-width: 0;
 }
@@ -131,7 +139,9 @@
    **不写 corner-shape**：宿主 ui-theme 已给 `*` 配了 var(--dsw-corner-shape)
    （superellipse(1.5)），写 round 会把它掰回 superellipse(1)、与官方不一致
    （同 SidebarBalance.module.css 的既有结论）。
-   */
+   margin-block 是**为我们的结构补的**：本组件用的是 18px 行高的标题行，官方那一行也是 18px，
+   而这个按钮 28px 会把行撑成 28px（分隔线与面板节奏跟着偏）。负外边距 = (28 − 18) / 2 = 5px，
+   把行高还给 18px —— 实测标题行高 18.00、左中右三者中线偏移全部 0.00。 */
 .iconButton {
   position: relative;
   flex: none;
@@ -140,6 +150,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
+  margin-block: -5px;
   border: none;
   border-radius: var(--dsw-radius-sm, 50%);
   padding: 0;
