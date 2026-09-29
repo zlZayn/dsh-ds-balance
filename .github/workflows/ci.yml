@@ -51,3 +51,8 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # 本次新增：lint 此前已在跑，但格式没进 CI。本仓此前 `prettier --check .`
+      # 是红的（src/client/settings/fields.tsx 一个文件），已在本次一并格式化。
+      - name: Format check
+        run: npm run format:check

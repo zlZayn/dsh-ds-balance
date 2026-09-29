@@ -169,3 +169,23 @@ dsh plugin --profile web add "$PWD"
 外部贡献入口（报 bug 带什么、提功能前先翻什么、提 PR 前做什么）→ [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 设计取向与实现约束 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)；发布流程与版本号判定 → [docs/PUBLISHING.md](docs/PUBLISHING.md)；维护者文档地图 → [AGENTS.md](AGENTS.md)。
+
+---
+
+## 本地提交钩子（pre-commit）
+
+提交前自动修复格式（Prettier）与 lint（ESLint）——只跑秒级检查，且一律走 `npx --no-install`，
+**不联网下载**；typecheck、测试与 `check:release` 留在 [ci.yml](.github/workflows/ci.yml)。
+
+前提：需要 uv 与 pre-commit（pre-commit 用 `uv tool install pre-commit` 装到 `~/.local/bin`）。
+
+```bash
+uv tool install pre-commit
+pre-commit install
+```
+
+> 装完需重开终端（或重载 shell 配置），PATH 才生效。
+
+- 手动全量跑：`pre-commit run --all-files`
+- 跳过单次：`git commit --no-verify`
+- 定义：[.pre-commit-config.yaml](.pre-commit-config.yaml)

@@ -42,6 +42,8 @@
 
 ## 常用命令
 
+- 本地钩子：`pre-commit install`（每个 clone 一次；本体 `uv tool install pre-commit`）——提交前自动 `prettier --write` + `eslint --fix`（`npx --no-install`，不联网）；CI 只读新增 format:check
+
 - `npm run build`：宿主 tsc + 客户端 tsc + esbuild 打包，三步缺一不可
 - `npm run typecheck`、`npm test`
 - `npm run test:contract`：打真实上游的契约测试，要环境里有 `DSH_CI_API_KEY`（专用），缺了回落 `DEEPSEEK_API_KEY`；不进 ci.yml
