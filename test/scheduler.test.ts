@@ -4,9 +4,12 @@ import {
   INITIAL_DELAY_MS,
   JITTER_RATIO,
   MAX_BACKOFF_MS,
+  MIN_DELAY_MS,
   NO_KEY_RETRY_MS,
+  SCHEDULE_GUARD_MS,
   Scheduler,
   jitter,
+  jitterWithin,
   nextDelayMs,
   type SchedulerTarget,
 } from '../src/services/scheduler.ts'
@@ -43,6 +46,22 @@ describe('jitter', () => {
   })
 })
 
+describe('jitterWithin', () => {
+  it('永远不越过基准值，且下界与对称抖动一致', () => {
+    for (const r of [0, 0.001, 0.5, 0.999_999]) {
+      const delay = jitterWithin(60_000, JITTER_RATIO, () => r)
+      expect(delay, `r=${r}`).toBeGreaterThanOrEqual(60_000 * (1 - JITTER_RATIO))
+      expect(delay, `r=${r}`).toBeLessThanOrEqual(60_000 - SCHEDULE_GUARD_MS)
+    }
+    expect(jitterWithin(60_000, JITTER_RATIO, () => 0)).toBe(jitter(60_000, JITTER_RATIO, () => 0))
+  })
+
+  it('基准太小时兜到下限，不塌成 0 或负数', () => {
+    expect(jitterWithin(1200, JITTER_RATIO, () => 0)).toBe(MIN_DELAY_MS)
+    expect(jitterWithin(0, JITTER_RATIO, () => 1)).toBe(MIN_DELAY_MS)
+  })
+})
+
 describe('nextDelayMs', () => {
   it('Retry-After 优先', () => {
     expect(nextDelayMs(status({ state: 'error', retryAfterMs: 7000 }), { random: mid })).toBe(7000)
@@ -52,8 +71,13 @@ describe('nextDelayMs', () => {
     expect(nextDelayMs(status({ retryAfterMs: 10_000_000 }), { random: mid })).toBe(MAX_BACKOFF_MS)
   })
 
-  it('正常态按配置的刷新频率', () => {
-    expect(nextDelayMs(status({ serverRefreshSeconds: 90 }), { random: mid })).toBe(90_000)
+  it('正常态落在窗口内：不越过配置的刷新频率', () => {
+    // 越过窗口就会出现「轮询代打一次 + tick 再打一次」的连击，见 jitterWithin 的说明。
+    for (const r of [0, 0.5, 0.999_999]) {
+      const delay = nextDelayMs(status({ serverRefreshSeconds: 90 }), { random: () => r })
+      expect(delay, `r=${r}`).toBeGreaterThanOrEqual(90_000 * (1 - JITTER_RATIO))
+      expect(delay, `r=${r}`).toBeLessThanOrEqual(90_000 - SCHEDULE_GUARD_MS)
+    }
   })
 
   it('缺密钥且无快照时快速重试', () => {
@@ -134,6 +158,9 @@ function fakeTimers() {
 }
 
 describe('Scheduler', () => {
+  /** 60 秒基准 + 中点随机源下的健康态间隔。由 jitterWithin 给，不手抄一个数进来。 */
+  const HEALTHY_60S = jitterWithin(60_000, JITTER_RATIO, mid)
+
   function harness(targetPatch: Partial<SchedulerTarget> = {}) {
     const clock = fakeTimers()
     const target: SchedulerTarget = {
@@ -163,7 +190,7 @@ describe('Scheduler', () => {
     h.scheduler.start()
     await h.clock.advance(INITIAL_DELAY_MS)
     expect(h.target.getView).toHaveBeenCalledWith({ force: true })
-    expect(h.clock.pending()).toEqual([60_000])
+    expect(h.clock.pending()).toEqual([HEALTHY_60S])
   })
 
   it('重复 start 不会排两轮', () => {
@@ -202,7 +229,7 @@ describe('Scheduler', () => {
     const h = harness({ getView: vi.fn().mockRejectedValue(new Error('boom')) })
     h.scheduler.start()
     await h.clock.advance(INITIAL_DELAY_MS)
-    expect(h.clock.pending()).toEqual([60_000])
+    expect(h.clock.pending()).toEqual([HEALTHY_60S])
   })
 
   it('tick 期间被 stop 就不再排下一轮', async () => {

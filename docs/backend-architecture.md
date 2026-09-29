@@ -412,7 +412,8 @@ class BalanceService {
 **`setTimeout` 链，不用 `setInterval`。**
 
 - 首拉延迟 1s。
-- 正常间隔 `serverRefreshSeconds * 1000`，带 ±20% 抖动。
+- 正常间隔 `serverRefreshSeconds * 1000`，**单边抖动**（`jitterWithin`）：落在 `[base × 0.8, base - 1s]`。
+  上界必须留在缓存窗口之内，否则窗口先过期、界面轮询会替它代打一次，紧接着这一轮 tick 又打一次。
 - 失败指数退避：`min(300_000, 5_000 * 2 ** consecutiveFailures)` + 抖动。
 - 缺 key 时 5s 快速重试。
 - 429 / 503 带 `Retry-After` 时优先用它。

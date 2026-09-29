@@ -17,10 +17,12 @@
   - `getView` 合并并发请求（`inflight`）；不 force 且**可服务缓存**时直接返回。
   - **两个新鲜度谓词不能混**：`withinWindow()` 只看时间（`restore` 用）；`canServeCache()` 额外要求 `state === 'ok'`（`getView` 用）—— 混用会让一次失败之后永远不再重试。
   - `restore()` 按 `accountTag` 过滤恢复快照；凭据轮换后旧快照视为不存在。
+  - 手动刷新的冷却**锚在上一次手动刷新**（`lastManualRefreshAt`），不是上一次抓取：锚在 `fetchedAt` 上时，一次自动刷新会把用户刚按下的一下吞掉 —— 界面转了圈、上游一次没打。
   - 只在**首次失败**打 warn，避免日志刷屏。
-- `scheduler.ts`：`Scheduler`、`nextDelayMs`、`jitter` 与常量。
+- `scheduler.ts`：`Scheduler`、`nextDelayMs`、`jitter`、`jitterWithin` 与常量。
   - `setTimeout` 链而非 `setInterval`：跑完才排下一轮，退避与 `Retry-After` 才生效。
-  - 间隔优先级：`Retry-After` → 缺密钥快速重试 → 失败指数退避 → 配置频率；一律带 ±20% 抖动。
+  - 间隔优先级：`Retry-After` → 缺密钥快速重试 → 失败指数退避 → 配置频率。退避与缺密钥重试带对称 ±20% 抖动。
+  - **健康态走单边抖动**（`jitterWithin`，`[base × (1-ratio), base - SCHEDULE_GUARD_MS]`）：缓存窗口就是 `serverRefreshSeconds`，对称抖动会让一半轮次的窗口先过期，界面轮询于是替它代打一次、tick 再打一次。
   - `start` / `stop` 幂等；**必须挂在 `ctx.effect` 的 disposer 上**。
 
 ## 被谁依赖

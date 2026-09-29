@@ -30,6 +30,14 @@ const MAX_BACKOFF_EXPONENT = 10
 /** 延迟下限，避免忙转。 */
 export const MIN_DELAY_MS = 1000
 
+/**
+ * 健康态延迟给「这一轮抓取本身」留的余量。
+ *
+ * 延迟是从上一轮**抓完之后**起算的，而抓取要几百毫秒（本机实测到上游一个往返约 0.2 秒）。
+ * 延迟若正好等于缓存窗口，新快照就会晚于窗口过期落地，那个缝里又会出现一次轮询代打的抓取。
+ */
+export const SCHEDULE_GUARD_MS = 1000
+
 /** 定时器抽象，测试可注入。 */
 export interface SchedulerTimers {
   set(callback: () => void, ms: number): unknown
@@ -74,6 +82,27 @@ export function jitter(base: number, ratio: number, random: () => number): numbe
 }
 
 /**
+ * 健康态的单边抖动：落在 `[base * (1 - ratio), base - SCHEDULE_GUARD_MS]`。
+ *
+ * **为什么健康态不能用对称抖动**：缓存窗口就是 `serverRefreshSeconds`
+ * （见 `BalanceService.withinWindow`），对称抖动有一半轮次落在窗口**之后** ——
+ * 那段时间里界面一次普通轮询就会自己穿透上游抓一次，紧接着这一轮 tick 又抓一次。
+ * 本机 3608 个快照间隔里 158 对相隔不足 3 秒的连击，其中 117 对前面那格超过 60 秒（窗口已过），
+ * 就是这么来的。单边抖动把「tick 不越过窗口」变成结构保证。
+ *
+ * 退避与缺密钥重试仍走对称的 {@link jitter}：那些分支本来就在窗口外，没有这条不变量。
+ * @param base - 基准毫秒数。
+ * @param ratio - 抖动比例。
+ * @param random - 随机源，返回 `[0, 1)`。
+ * @returns 取整后的毫秒数。
+ */
+export function jitterWithin(base: number, ratio: number, random: () => number): number {
+  const upper = Math.max(MIN_DELAY_MS, base - SCHEDULE_GUARD_MS)
+  const lower = Math.min(upper, Math.max(MIN_DELAY_MS, base * (1 - ratio)))
+  return Math.floor(lower + (upper - lower) * random())
+}
+
+/**
  * 算下一轮该等多久。
  *
  * 优先级：上游 `Retry-After` → 缺密钥快速重试 → 失败指数退避 → 配置的刷新频率。
@@ -100,7 +129,11 @@ export function nextDelayMs(
     return jitter(Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * 2 ** exponent), JITTER_RATIO, random)
   }
 
-  return jitter(Math.max(MIN_DELAY_MS, status.serverRefreshSeconds * 1000), JITTER_RATIO, random)
+  return jitterWithin(
+    Math.max(MIN_DELAY_MS, status.serverRefreshSeconds * 1000),
+    JITTER_RATIO,
+    random,
+  )
 }
 
 /** 真正的默认定时器。 */
