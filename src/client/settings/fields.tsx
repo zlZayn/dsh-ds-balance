@@ -343,12 +343,7 @@ export function ActionRow(props: ActionRowProps) {
   return (
     <>
       <div className={css.actions}>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={props.disabled}
-          onClick={props.onClick}
-        >
+        <Button type="button" variant="outline" disabled={props.disabled} onClick={props.onClick}>
           {props.label}
         </Button>
       </div>
