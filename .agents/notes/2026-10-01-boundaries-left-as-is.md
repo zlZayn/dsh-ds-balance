@@ -24,7 +24,7 @@
 
 - `canServeCache()` 要求 `state === 'ok'`，所以首选来源不是 `ok` 时（stale / error）
   **每次** `getView` 都真打一次上游，而它不读退避与 `Retry-After`。
-- **这是既有取舍，不是漏改**：`2026-09-30-refresh-timing-single-clock.md` 的替代方案第 5 条
+- **这是既有取舍，不是漏改**：[2026-09-30-refresh-timing-single-clock.md](2026-09-30-refresh-timing-single-clock.md) 的替代方案第 5 条
   已经讨论过「让 GET 永不触发抓取」，结论是本轮不动；那一轮还明写「缓存不可服务时轮询代打
   **正是恢复可见性的来源**」。
 - 本轮只做一件事：**把说反了的文案改对** —— 配置项 `clientPollSeconds` 的说明
@@ -39,7 +39,7 @@
   所以把 Key 从 A 换成 B（两者都非空）不会改变指纹，客户端不会立刻重问。
 - 宿主侧 `apiKey` 在 `SCHEDULE_FIELDS` 里，会立刻 `scheduler.reset()` 抓一轮；
   客户端最多晚一个轮询周期（≤ `clientPollSeconds`）看到。
-- 口径与 `2026-09-30-credential-change-refresh-boundary.md` 一致（凭据变更「等下一个刷新周期」）。
+- 口径与 [2026-09-30-credential-change-refresh-boundary.md](2026-09-30-credential-change-refresh-boundary.md) 一致（凭据变更「等下一个刷新周期」）。
   **不改**：让密钥进依赖串的代价（把明文带进 React 的依赖比较与潜在日志）高于这点延迟。
 
 ## 替代方案（想过，为什么不选）

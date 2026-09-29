@@ -26,12 +26,27 @@ sidebar/ 特有约束：
   - 注意：它的 `side` 只有 `'top'` 与 `'bottom'`，水平方向没有分支。
 - 金额一律按字符串处理，只用 `../model.ts` 的 `formatMoney` / `formatAmount`。
   - 禁止 `parseFloat` 后比较或累加；相等与累加都在后端。
-- 颜色只由 `severity` 决定，链路是 `severity → dotStateOf → RingState → data-state → token`。
-  - 唯一例外是弧长：由 `../model.ts` 的 `ringRatioOf` 用 `total` 与 `warn` 阈值算出，它是几何不是配色。
-  - 不许为标记另起一套配色，也不许拿阈值决定任何颜色。
+- **形态从处境派生，本目录不做形态判断**：环 / 中心符号 / 弧长 / 文案 / 要不要标来源，
+  一次 `presentationOf(situation, severity)` 全拿到（[../situation.ts](../situation.ts)）。
+  组件里不得再出现 `state` / `severity` / `error.code` 的分支。
+  - 唯一由 `severity` 决定的是**颜色**（`severity → dotStateOf → RingState → data-state → token`），
+    且只对 `gauge` 族（有数字）有意义。
+  - 弧长由 `../model.ts` 的 `ringRatioOf` 用 `total` 与 `warn` 阈值算，它是几何不是配色；
+    `presentation.arc === 'none'` 的处境不画弧。
+- **中心记号两个取值几何同源**：`cross` 与 `plus` 共用 `PercentRing.tsx` 的 `MARK_ARM` 与
+  同一条 `.marker` CSS 规则（外接框逐值相等、只差 45° 朝向）。
+  - 别给记号分叉出第二个类或第二份半臂 —— 红线「叉与＋取自同一个常量」会红。
+  - 它们是**形状通道**，为的是不依赖颜色也能区分处境（同 `critical` / `unavailable` 靠叉区分那条纪律）。
 - 样式只写 CSS Modules 类与 `--dsw-alias-*` 语义 token。
   - 禁止字面色值；禁止 `[data-ds-dark-theme]` 与 `prefers-color-scheme` 选择器。
-- 全圆角必须成对写 `corner-shape: round`；中性实线边框统一 `0.5px`。
+- **引官方 token 一律带回落值，回落取「老线上官方的值」**：`--dsw-radius-*` 与 `--dsw-focus-ring-*`
+  比本仓声明的下限**晚三个版本**才存在 —— 裸引会让圆角变直角、`outline-width` 变 0
+  （焦点环整条消失）。两条线上官方的值**本身也不同**，所以回落不能取 token 自己的值。
+  见 [决策记录](../../../.agents/notes/2026-10-01-declaration-floor-vs-running-version.md)。
+- **`corner-shape` 只给真正的圆点写**：控件圆角（矩形、pill、图标按钮）**不写** —— 它们继承宿主
+  `*` 上的全局 `var(--dsw-corner-shape)`（superellipse(1.5)），写 `round` 会掰回 superellipse(1)、与官方不一致。
+  只有「必须是真的圆」的元素（5px 状态点、全圆图标按钮）才成对写 `50%` + `corner-shape: round`。
+- 中性实线边框统一 `0.5px`。
   - 高程表面写 `border: 0` + `box-shadow: var(--dsw-elevation-*)`，两者不同时用。
 - 组件拿不到 `ctx`，数据只走 props。
 - 相对导入保留 `.ts` / `.tsx` 后缀。

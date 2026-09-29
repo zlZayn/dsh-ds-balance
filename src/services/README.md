@@ -19,16 +19,21 @@
   - `restore()` 按 `accountTag` 过滤恢复快照；凭据轮换后旧快照视为不存在。
   - 手动刷新的冷却**锚在上一次手动刷新**（`lastManualRefreshAt`），不是上一次抓取：锚在 `fetchedAt` 上时，一次自动刷新会把用户刚按下的一下吞掉 —— 界面转了圈、上游一次没打。
   - 只在**首次失败**打 warn，避免日志刷屏；指标键带 `source` 标签，两条路各自可看。
-  - **没接入 ≠ 接入了但出错**：都没凭据（`NO_KEY`、无快照）→ `unknown`（空环 +「尚未配置凭据」）；
-    有凭据却没抓到 → `unavailable`（叉 +「服务暂不可用」）。判定在 `severityOf`，旧代码「无快照一律空环」会把两种处境混成一种。
+  - **没接入 ≠ 接入了但出错**：判定不在本文件，而在 [../domain/situation.ts](../domain/situation.ts)
+    的 `situationOf` —— 账本只负责把六个事实（有无快照 / stale / isAvailable / hasSelected /
+    severity / errorCode）交给它。`severityOf` 现在只服务颜色，不再决定界面形态。
+  - `status()` 回报的切片比调度需要的那几项更宽（多带 `isAvailable` / `hasSelected` / `severity`）——
+    那是给 `/healthz` 判处境用的，口径与 `toView` 完全同源，不开浏览器也能知道界面会画成什么。
   - `SourceReader` 是**换来源要换的那一件**：`available()` / `tag()` / `read()`，前两个是本地读、只有 `read()` 打上游。
 - `source-readers.ts`：两条路的读取策略 —— `keyReader`（解析链 → 官方余额端点）与 `accountReader`（账号登录态 → 钱包查询 → 投影）。
   - 账号账本的 `tag` 用 `account:<userId>` 前缀，与密钥那条**永不共账本**；id 拿不到时退 `account:unknown`（那种情况下换账号不换账本，下一轮自愈）。
 - `source-selector.ts`：**选源判据的唯一一处**。`routeOf(provider)` 把宿主路由翻成来源；`pickSource` 走四层回落（会话 → 全局默认 → `FALLBACK_ORDER` → 默认来源）。新增一个来源只动这里 + 装配处。
 - `balance-service.ts`：`BalanceService`（门面）、`RefreshResult`、`BalanceStatus`、`GetViewOptions`。
   - 门面**不持状态、不抓数据**：解析这一轮谁活跃，然后把活交给那条路的账本。
-  - **`mark(served)` 是这一层的关键**：哪条把数字交出去，`active` 就是哪条 —— 展示、刷新、标签从此只认它，
+  - `mark(served)` 是这一层的关键：哪条把数字交出去，`active` 就是哪条 —— 展示、刷新、标签从此只认它，
     不会出现「数字是账号的、标签写 Key、刷新去刷 Key」。
+  - 它同时记 `balance_source_switch_total{from,to}`：来源切换**刻意不给界面提示**
+    （见 [决策记录](../../.agents/notes/2026-10-01-boundaries-left-as-is.md)），这是唯一观测出口。
   - **本插件只记官方那一个**：首选那条拿不出数字就按 `FALLBACK_ORDER` 退到另一条官方路（有旧快照也算）；
     **两条都拿不出数字才画叉**。一轮最多「首选一次 + 兜底一次」，**不来回重试**。
   - `refreshActive()` 刷 `active`（即展示的那条）；发现它不可用时**重判一次** —— 宿主刚起来时

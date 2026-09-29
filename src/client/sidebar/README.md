@@ -39,7 +39,7 @@
 - 关键导出：`BalancePopover`、`BalancePopoverProps`（除 `configSlotWarning` 外，还有 `useShownDisabled` 与 `pluginsAction`；`onOpenPlugins` / `onOpenSettings` 已随落点改档与「去设置」删掉）、`PluginsAction`（动作 + 落点，见下）、`BALANCE_PLACEHOLDER`。
 - `configSlotWarning` 非 null 时复用既有的 `notice` / `noticeText` 渲染一行英文 `[WARN]`（无动作按钮、无新增样式）。
 - 标题行是外链：`https://platform.deepseek.com/usage`，`target="_blank"` + `rel="noopener noreferrer"`，新标签页打开官网用量页；文字带下划线但**颜色 `inherit`**（宿主没有「链接色」这类语义 token，硬套会破配色纪律），图标是 svg、不吃 `text-decoration`。
-- **标题行右端的 Plugins 图标按钮**：无可见文字，`aria-label` 与 tooltip **逐字同源**（同一个 `pluginsLabel`）；图标 `IconPluginPinwheelOutlineRegular` 与宿主侧栏 Plugins 条目同字形（图标按**笔画粗细**分 `Regular` / `Medium`，尺寸走 `size` prop），样式逐值照抄宿主 `.iconButton`（28×28、全圆角**成对写** `corner-shape: round`、hover 用 `--dsw-alias-interactive-bg-hover`），并显式 `cursor: pointer`（浮层面板自己写了 `cursor: default`）。点它跳转并**关闭浮层**。
+- **标题行右端的 Plugins 图标按钮**：无可见文字，`aria-label` 与 tooltip **逐字同源**（同一个 `pluginsLabel`）；图标 `IconPluginPinwheelOutlineRegular` 与宿主侧栏 Plugins 条目同字形（图标按**笔画粗细**分 `Regular` / `Medium`，尺寸走 `size` prop），样式逐值照抄宿主 `.iconButton`（28×28、圆角 `var(--dsw-radius-sm, 50%)` —— **token 是新线的值、回落是老线官方的正圆**；不写 `corner-shape`，继承宿主全局 superellipse；hover 用 `--dsw-alias-interactive-bg-hover`），并显式 `cursor: pointer`（浮层面板自己写了 `cursor: default`）。点它跳转并**关闭浮层**。
 - **落点是两档，措辞跟着分档**（`PluginsAction.reachesConfig`，由 [../index.tsx](../index.tsx) 的 `createPluginsNavigation` 按**服务在不在**给出）：
   ① 宿主 provide 了跨插件深链服务 `pluginNavigation.openBundle(包名)` 时**直达本插件的配置格**，话术是「打开插件配置页」；
   ② 服务缺席（更早的宿主线）或深链抛错时退回 `ctx.layout.selectPanel('plugins')` 的 **Plugins 列表页**，话术跟着退回「打开插件页」。
@@ -63,19 +63,24 @@
 ### PercentRing.tsx
 
 - 职责：折叠与展开**共用**的状态圆环；弧长是「余额 / `warn` 阈值」的比例，颜色只表达状态。
-- 关键导出：`PercentRing`、`PercentRingProps`（`state` / `marker` / `ratio` / `size` / `title`）、`RingState`。
-- `marker` 是中心符号，目前只有 `'cross'`：`unavailable` 用它把「账户维度不可用」与 `critical` 的「余额维度告急」分开 —— 两者都是红弧，因为官方 token 没有第五种色相（详见 [docs/ui-handoff.md](../../../docs/ui-handoff.md)）。
-- 被谁依赖：`SidebarBalance.tsx`，两个形态都用它；形态由 [../model.ts](../model.ts) 的 `ringSpecOf` 给出，弧长由同一个文件的 `ringRatioOf` 给出。
+- 关键导出：`PercentRing`、`PercentRingProps`（`state` / `marker` / `ratio` / `size` / `title`）、`RingState`、`RingMarker`。
+- `marker` 是中心记号，两个取值：`'cross'`（斜交 —— 读不到）与 `'plus'`（正交 —— 待配置）。
+  两者**几何同源**：同一个 `MARK_ARM`（= 内半径 / 2 / √2）、外接框逐值相等，只差 45° 朝向，
+  所以灰度 / 色盲 / 12px 下都分得开，不靠颜色。改了记号必须同批改红线里那两条几何断言。
+- 被谁依赖：`SidebarBalance.tsx`，两个形态都用它；形态由 [../situation.ts](../situation.ts) 的
+  形态表给出，弧长由 [../model.ts](../model.ts) 的 `ringRatioOf` 给出。
 - **几何分两处照官方，不是整份照抄同一个文件**：网格与笔画照左栏那批图标（`viewBox="0 0 16 16"`、笔画 1 = 宿主 `ui-primitives/src/icons/index.tsx:21` 的 `ICON_REGULAR_STROKE`），弧的读法照官方 `ContextMeter`（宿主 `packages/client/ui-conversation/src/client/skeleton/ContextMeter.tsx:117-127`）。圆心 (8,8)、`r=6.5`（与官方 `ContextMeter` 同一个公式：边长/2 − 圆留白 − 笔画/2）：墨迹外径 14 落在 16 的格里、四周各留 1，与官方字形 12–13.75 的墨迹跨度同档（另加一格容差，见红线）。
-- 改后必测什么：四档 `state` 各自的颜色；`ratio` 为 0 时 svg 里没有 `.fill` 那条弧、为 1 时是满环；`unavailable` 时 svg 里恰好多两条 `<line>`；svg 自身的 `aria-hidden` 仍在（语义由外层 `aria-label` 承担）；折叠态的 `title` 只在有状态文案时出；**弧的接缝仍在 12 点** —— 靠 `transform="rotate(-90 8 8)"`（圆心跟着 `VIEW` 走），**不是 `stroke-dashoffset`**（换成 dashoffset 会把接缝挪回 3 点）。
+- 改后必测什么：四档 `state` 各自的颜色；`ratio` 为 0 时 svg 里没有 `.fill` 那条弧、为 1 时是满环；`cross` 与 `plus` 各恰好两条 `<line>`；svg 自身的 `aria-hidden` 仍在（语义由外层 `aria-label` 承担）；折叠态的 `title` 只在有状态文案时出；**弧的接缝仍在 12 点** —— 靠 `transform="rotate(-90 8 8)"`（圆心跟着 `VIEW` 走），**不是 `stroke-dashoffset`**（换成 dashoffset 会把接缝挪回 3 点）。
 
 ### PercentRing.module.css
 
-- 职责：圆环几何（轨道 + 进度环 + 中心叉号）与按 `data-state` 的配色。
-- 关键导出：CSS Module 类 `ring` / `track` / `fill` / `cross`。
-- **颜色只在 `.ring[data-state='...']` 上定一次**（赋给 `color`），弧与叉号都取 `currentColor`；别在两处各写一份 token。
+- 职责：圆环几何（轨道 + 进度环 + 中心记号）与按 `data-state` 的配色。
+- 关键导出：CSS Module 类 `ring` / `track` / `fill` / `marker`。
+- **颜色只在 `.ring[data-state='...']` 上定一次**（赋给 `color`），弧与中心记号都取 `currentColor`；别在两处各写一份 token。
+- **中心记号只有一条规则**（`.marker`）：叉（斜交）与＋（正交）几何同源、共用同一个类 ——
+  分叉成两个类就会各自漂各自的 `stroke-width`，红线会红。
 - 被谁依赖：`PercentRing.tsx`。
-- 改后必测什么：轨道与环线宽一致（都是 1）；**四档 `data-state` 全部命中，含 `idle` 走 `--dsw-alias-state-idle-primary`**；叉号与环同宽（都是 1）且随 viewBox 缩放；圆角线帽只加在环与叉号上、轨道保持平头。
+- 改后必测什么：轨道与环线宽一致（都是 1）；**四档 `data-state` 全部命中，含 `idle` 走 `--dsw-alias-state-idle-primary`**；两个记号与环同宽（都是 1）且随 viewBox 缩放；圆角线帽只加在环与记号上、轨道保持平头。
 
 ### footer-stack.module.css
 
@@ -115,17 +120,25 @@
   **它在链接外面**：标签说的是这个数字的来路，不是官网用量页的入口 —— 放进链接里会跟着下划线，读起来像标题的一部分。
 - 标签文本**连括号一起来自词典**（中文全角、英文半角带前置空格），本目录只拼接。
   判据：`../model.ts` 的 `sourceLabelKeyOf`（认不出来回 `null`，**不标**）。
-- **空态不标**：`state === 'empty'` 时还没有数字，「哪来的」没有意义。
+- **出现条件由处境给**（`presentation.showSource`）：**只在真的有数字时标**。
+  从前那条判据是 `state === 'empty'`，漏掉了「插件端点不可达」—— 那一路上本来一个数字都没有，
+  却会标出「（API Key）」。现在它由 `gauge` 族统一决定，不会再有例外路径。
 - **标题与标签合成一组**（`.titleMain`）占住左端：这一行是 space-between 的两端布局，
   三个并列子元素会把标签推到行中间；标签要紧贴标题右侧，右端仍归那个图标按钮。
+  这一层是官方结构里没有的（官方 `.titleLabel` 只有图标 + 文字），代价是**居中要自己声明**。
 
-## 状态文案
+## 处境与形态
 
-- **「没接入」与「接入了但出错」是两条不同的话**：`state.noKey`（尚未配置凭据）与
-  `state.fetchFailed`（服务暂不可用）。判据在 `stateLabelKey`：看 `error.code === 'NO_KEY'`。
-- 环也是两种：没接入是**空环**（`unknown`），接入了却抓不到才是**叉**（`unavailable`）—— 判定在宿主侧账本
-  （`SourceLedger.severityOf`），本目录不做这个判断。
-- 有旧快照时显示旧快照（state `stale`），不给叉。
+- **本目录不做形态判断**：环、文案、中心符号、要不要标来源，全部读 `../situation.ts` 的形态表
+  （一次 `presentationOf`）。组件里不再出现 `state` / `severity` / `error.code` 的分支 ——
+  从前那三样各拼各的，会出现「环说 A、文案说 B」。
+- 表格（处境 → 环 / 文案）见 [docs/ui-handoff.md](../../../docs/ui-handoff.md) 的 §四；
+  合并意图与「为什么只有 4 个族」写在 [../situation.ts](../situation.ts) 的注释里。
+- 两条与用户直接相关的差异：
+  - **「没接入」与「接入了但读不到」**：前者是灰环 + 中心**＋** +「尚未配置凭据」（要你去配置），
+    后者是红环 + **叉** +「服务暂不可用」（等）。两个记号几何同源、只差 45° 朝向。
+  - **有旧快照就显示旧快照**（处境 `stale`）：数字照常显示、来源照常标，只在文案上说它旧。
+- 首帧是 `checking`（「正在获取」），**不再**先说「尚未配置」—— 那会儿只是还没问到。
 
 ## 路由提示
 

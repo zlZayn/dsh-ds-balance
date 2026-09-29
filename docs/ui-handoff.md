@@ -15,20 +15,20 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 
 | 字段 | UI 用它做什么 |
 |---|---|
-| `severity` | **唯一的颜色来源**（左下角状态圆环） |
+| `situation` | **界面唯一的分支入口**：环 / 文案 / 来源标签都由它派生 |
+| `severity` | 只用来给「有数字那一族」上色（绿 / 琥珀 / 红） |
 | `balances[]` | 币种与金额；展示用的那个由「显示币种」配置挑选 |
 | `selected` | 后端选定的币种 |
-| `state` | 空态与错误态的文案分支 |
-| `error.code` | 细分分支（如 `NO_KEY`） |
+| `source` | 标题右侧的来源括号标签（**只在真的有数字时标**） |
 | `ageMs` | 浮层里的「多久之前」 |
-| `isAvailable` | 账户不可用态 |
+| `state` / `error.code` / `isAvailable` | **兼容字段**：新界面不据它们拼形态；仅旧宿主路径用它现推处境 |
 
 ### UI 明确**不**消费的字段
 
 | 字段 | 说明 |
 |---|---|
 | `todayUsage` 整组 | 第一版不做「今日已用」，`value` / `source` / `confidence` / `needsReview` / `range` 全部不读 |
-| `thresholds` | UI 不用它配色；只用 `warn` 当圆环弧长的刻度，颜色完全来自 `severity` |
+| `thresholds` | UI 不用它配色；只用 `warn` 当圆环弧长的刻度；颜色走处境 → `severity`（见 §四） |
 | `requestId` / `schemaVersion` / `accountTag8` | 保留在契约里，当前无消费方 |
 | `GET /api/v1/estimate` | UI 侧没有消费方 |
 
@@ -43,28 +43,43 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 - `balances` 的**顺序可能跳变**；UI 不依赖顺序做语义判断（只在「回落到第一个」时用到顺序）。
 - 可能多币种。
 - `selected` **可以为 `null`**。
-- `state` 与 `severity` 是**两个独立维度**，UI 不互相推导。
-- `severity` 是闭集：`ok` / `warn` / `critical` / `unavailable` / `unknown`；出现未知值时 UI 回落 `unknown`。
-- `state` 是闭集：`empty` / `ok` / `stale` / `error`。
+- `situation` 是**界面唯一的分支入口**，闭集 11 个取值：宿主判 9 个
+  （`internal-error` / `no-credential` / `fetch-failed` / `account-unavailable` / `stale` /
+  `empty-wallet` / `ok` / `low` / `critical`），客户端补 2 个本地事实
+  （`checking` 首帧、`offline` 插件端点不可达）。出现未知值时 UI 回落 `checking`（最保守：不谎报状态）。
+- `state`（`empty` / `ok` / `stale` / `error`）与 `severity`
+  （`ok` / `warn` / `critical` / `unavailable` / `unknown`）仍是闭集，但**降级为兼容字段** ——
+  新界面不据它们拼形态，只有旧宿主路径用它现推处境。
+- **「没数字」与「有数字」决定来源标签**：`situation` 为 `gauge` 族（有数字）才标 `source`；
+  其余处境一律不标 —— 没有数字时说「这份数字从哪来」没有意义。
 
 ---
 
-## 四、severity → 颜色映射（前端只做机械映射）
+## 四、处境 → 形态映射（前端只做机械映射）
 
-| `severity` | 语义 | 弧的颜色 token | 形状 |
+**收起态只有 4 个视觉族**（那一个圆环能表达的区别就这么多），内部处境有 11 个。
+每一处合并都是**有意的**，写在 `client/situation.ts` 的形态表里，并由测试把同族关系写死。
+
+| 视觉族 | 环长什么样 | 合并了哪些处境 | 用户此刻要做什么 |
 |---|---|---|---|
-| `ok` | 正常 | `--dsw-alias-state-success-primary`（绿） | 实弧 |
-| `warn` | 预警 | `--dsw-alias-state-warn-primary`（琥珀） | 实弧 |
-| `critical` | 告急 | `--dsw-alias-state-error-primary`（红） | 实弧 |
-| `unavailable` | 账户不可用 | `--dsw-alias-state-error-primary`（红） | 实弧 **+ 中心叉号** |
-| `unknown` | 未知 | `--dsw-alias-label-tertiary`（灰） | 实弧 |
+| **仪表** | 彩弧（绿 / 琥珀 / 红）+ 有弧长 | `ok` `low` `critical` `stale` `account-unavailable` | 看数字（红=考虑充值） |
+| **读不到** | 红环 + **中心叉**（斜交） | `offline` `fetch-failed` `internal-error` | 等 |
+| **待配置** | 灰环 + **中心＋**（正交） | `no-credential` | **去配置**（唯一需要动手的一族） |
+| **暂无读数** | 灰环（空） | `checking` `empty-wallet` | 等 |
+
+- 弧长：余额占该币种 `warn` 阈值的几分之几。**只有「仪表」族画弧**，
+  且 `account-unavailable` 明确不画（停用时余额不是「多少」而是「没有」，
+  按比例画会出一条长红弧，读起来像「红=很多」，方向反了）。
+- 两个记号**几何同源**：同一个 `MARK_ARM`、外接框逐值相等（4.2426 见方），只差 45° 朝向 ——
+  所以灰度、色盲、12px 下都分得开，不靠颜色。
+- **颜色只对「仪表」族有意义**：其余三族的颜色由处境定死，换 `severity` 不变。
 
 **这条映射是 UI 与后端之间唯一的「策略」接口**：阈值定在哪、何时算告急，全在后端，前端不参与。
 
 **为什么两档都用红**：官方 token 里 `error-primary` 与 `error-secondary` 在深色主题下是同一个值，
 可用色相只有绿 / 琥珀 / 红 / 品牌蓝 / 灰五个，没有第五种「红系」可分。
-于是颜色编码**数值严重度**，形状编码**账户可用性**：`critical` 是余额维度，`unavailable` 是账户维度，
-后者多一个中心叉号。色盲与 12px 小尺寸下依然分得开。
+于是颜色编码**数值严重度**，形状编码**用户处境**：`critical` 是余额维度、`unavailable` 是账户维度，
+后者多一个中心叉号；「待配置」用正交的＋与叉区分（朝向不依赖颜色）。色盲与 12px 小尺寸下依然分得开。
 
 ---
 
@@ -135,15 +150,18 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 
 场景键即 URL 参数 `?dsb=<键>`，权威清单在代码里（`src/client/mock/scenarios.ts`）。
 
-覆盖的状态组合：
+覆盖的处境组合（每条 `?dsb=<键>` 对应一个处境）：
 
-- `state` 四档：`ok` / `stale` / `error` / `empty`。
-- `severity` 五档：`ok` / `warn` / `critical` / `unavailable` / `unknown`。
-- 无 Key（`error.code = NO_KEY`）。
-- 多币种（CNY + USD）。
-- 选定币种不存在。
-- 账户完全没有余额。
-- `todayUsage` 为 `null` 与「需复核」两种（保留作契约回归，界面不展示）。
+- `checking` / `offline` —— **这两条造不出来**：它们由客户端本地产生（首帧、端点不可达），
+  不经 mock 场景。验收方式是真机首帧、以及让插件端点不可达。
+- `no-credential`（无 Key）/ `fetch-failed`（无值失败）/ `internal-error`（我们自己抛错）
+- `account-unavailable`（读到了但账户停用）
+- `stale`（有旧值、本轮失败）
+- `empty-wallet`（连上了但没有可展示币种）
+- `ok` / `low` / `critical` 三档
+- 来源为账号那条路（看来源括号）
+- 多币种（CNY + USD）、选定币种不存在
+- `todayUsage` 为 `null` 与「需复核」两种（保留作契约回归，界面不展示）
 
 ---
 
@@ -164,13 +182,21 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 
 ## 十、待后端确认
 
-1. `GET /api/v1/balance` 走哪条通道？（建议 `connection.fetch`）
-2. `POST /refresh` 的实际路径与语义（现有 mock 未实现，前端只留了冷却计时）。
-3. `error.code` 的**完整枚举**：目前前端只按 `NO_KEY` 分支，其余一律落到通用错误文案。
-4. `severity` 与 `isAvailable` 在「账户不可用」时是否总是同时为 `unavailable` / `false`。
+1. ~~`GET /api/v1/balance` 走哪条通道？~~ **已定**：`ctx.connection.fetch.register`
+   （物理载体已做完信任与浏览器鉴权，见 [backend-architecture.md](backend-architecture.md) §8）。
+2. ~~`POST /refresh` 的实际路径与语义~~ **已定**：`POST /api/v1/balance/refresh`，
+   请求体 `{ reason, provider }`，回 `{ triggered, joined, cooldownMs, state }`；
+   冷却的权威在后端。
+3. ~~`error.code` 的完整枚举~~ **已定**：18 个码的闭集，见
+   [src/domain/errors.ts](../src/domain/errors.ts) 的 `ErrorCode`。
+   **但新界面不再按码分支** —— 码只在宿主侧参与处境判定（`NO_KEY` 且无快照 = 没接入）。
+4. ~~`severity` 与 `isAvailable` 在「账户不可用」时是否总是同时为 `unavailable` / `false`~~
+   **已定且已解耦**：两者不必同时出现，判定统一走 `situationOf`；`isAvailable: false`
+   只要有快照就判 `account-unavailable`（压过 `stale`）。
 5. `ageMs` 是后端算好给前端，还是前端用 `fetchedAt` 自己算？（前端目前优先用 `ageMs`，因为它不受两端时钟差影响）
 6. `todayUsage` 第二版是否回归；若回归，前端需要知道 `source` 的展示口径。
-7. 阈值改动的生效时机：是否需要前端立即重新取数，还是等下一轮轮询。
+7. ~~阈值改动的生效时机~~ **已定**：前端按配置指纹立刻重问一次 `/api/v1/balance`；
+   后端从缓存快照按新阈值重算，**不打上游**。
 
 ---
 
@@ -179,7 +205,8 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 - 前端**没有**接任何真实接口，所有数据来自仓库内的 mock 模块。
 - 前端**没有**实现「测试连接」的真实往返，当前是本地模拟。
 - 「今日已用」「本轮消耗」「账本 / 投影 / 手工校正」「诊断层」「独立页面」「图表」均**未做**。
-- 界面颜色完全由 `severity` 决定。前端只用 `warn` 当圆环弧长的刻度：不配色、不读 `critical`。
+- 界面形态完全由**处境**决定（见 §四）；其中「有数字那一族」的颜色来自 `severity`。
+  前端只用 `warn` 当圆环弧长的刻度：不配色、不读 `critical`。
 
 ---
 

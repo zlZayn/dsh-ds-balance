@@ -6,7 +6,14 @@ src/client/ 特有约束：
 
 - 组件拿不到 `ctx`；数据只能走 props 或注册项的 `inject` 工厂。
 - 金额一律按字符串处理，禁止 `parseFloat` 后比较或累加。
-- 颜色只由 `severity` 决定。唯一允许读阈值的地方是 [model.ts](model.ts) 的 `ringRatioOf`（只定弧长、只读 `warn`，金额比较走整数不走浮点）；其余任何地方不许拿阈值做判断或配色。
+- **界面形态从「处境」派生，不自己拼**：环 / 文案 / 来源标签都读 [situation.ts](situation.ts) 的
+  形态表（`presentationOf`），组件里不得再出现 `state` / `severity` / `error.code` 的形态判断。
+  唯一例外是 `gauge` 族的**颜色** —— 那是余额高低的编码，由 `presentationOf` 内部读一次 `severity`。
+- 处境闭集与宿主 [../domain/situation.ts](../domain/situation.ts) 逐字同形（两半体不共享值，靠测试对账）；
+  **新增处境必须同步改形态表与 locales**，`Record<Situation, …>` 漏值编译不过。
+- **同族合并是有意的**：收起态只有 4 个视觉族，`test/client-situation.test.ts` 把同族关系写死 ——
+  要拆要合都得先改那张断言并说明理由，不许静默漂。
+- 唯一允许读阈值的地方是 [model.ts](model.ts) 的 `ringRatioOf`（只定弧长、只读 `warn`，金额比较走整数不走浮点）；其余任何地方不许拿阈值做判断或配色。
 - 主题直接读 `--dsw-*` CSS 变量，禁止写 `[data-ds-dark-theme]` 或 `prefers-color-scheme` 选择器。
 - 不许 import `ui-settings-plugins` 等官方包的内部构件；只能照抄模式。
 - **菜单材质成对写**：凡用 `--dsw-specific-menu` 画背景的表面，必须在**同一条规则**里带

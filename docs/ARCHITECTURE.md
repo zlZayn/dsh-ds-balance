@@ -23,16 +23,35 @@
 - 端点经 `ctx.connection.fetch` 注册在 `/api/v1/*`；物理载体已做完信任与浏览器鉴权。
 - 浏览器半边：取后端响应（或 mock 旁路）→ 映射成视图模型 → 渲染左下角与设置卡片。
 - 视图模型只消费后端契约字段，不感知阈值策略。
-- 颜色由 `severity` 机械映射，前端不做金额比较。
-- **severity → 形态**：颜色编码数值严重度（绿 / 琥珀 / 红），形状编码账户可用性。
+- **界面形态从「处境」单一派生**：处境（`domain/situation.ts` 的 `Situation`，11 个取值）
+  是界面**唯一**的分支入口 —— 环、文案、来源标签都由它出，组件里不再读 `state` / `severity` /
+  `error.code` 做形态判断。判据只有一处：全函数 `situationOf` 按固定优先级逐条判、第一个命中即返回。
+  为什么：从前环只吃 `severity`、文案吃 `state + error.code + isAvailable + selection`、
+  标签吃 `state + source` —— 三套输入集与优先级都不同，必然出现「环说 A、文案说 B」
+  与「一个空环代表三种处境」。
+- **枚举细、视觉粗**：处境有 11 个（诊断、日志、指标都用它），但收起态只有 **4 个视觉族**
+  （仪表 / 读不到 / 待配置 / 暂无读数）—— 收起态只有一个圆环，塞不下 11 种区别。
+  每一处合并都是**有意的**并写在客户端的形态表里（`client/situation.ts`），不是默认掉进去的；
+  测试把同族关系写死，将来静默拆开或合并会红。
+- **处境 → 形态**：颜色编码数值严重度（绿 / 琥珀 / 红，只对「有数字」那一族），
+  形状编码「用户此刻要做什么」：叉（斜交）= 读不到，＋（正交）= 需要你去配置。
   官方 token 里 `error-primary` 与 `error-secondary` 在深色主题下同值，没有第五种色相，
-  所以 `unavailable` 用红弧加**中心叉号**与 `critical` 区分。这是维护者拍板的取舍，不要改回红系双色。
+  所以两档「红」靠形状分。这是维护者拍板的取舍，不要改回红系双色。
+  两个记号**几何同源**（同一个 `MARK_ARM`、外接框逐值相等，只差 45° 朝向），
+  由 [test/redlines.test.ts](../test/redlines.test.ts) 守着「不许各自漂一份半臂」。
 - **`selected` 由后端权威**：前端不挑币种，只把设置里的 `displayCurrency` 当查询参数传过去。
 - **圆环与左栏图标共用同一套度量**：viewBox 16×16、笔画 1（官方 `ICON_REGULAR_STROKE`），
   半径走与官方 `ContextMeter` **同一个公式**（边长/2 − 圆留白 − 笔画/2）⇒ 墨迹外径 14 落在格里；
   弧的读法（`strokeDasharray` + `rotate(-90 …)`）也照它。四档颜色逐条对齐官方 `StateDot` 的
   `data-state`，`idle` 走官方为它新增的那条 `--dsw-alias-state-idle-primary`。
   几何口径由 [test/redlines.test.ts](../test/redlines.test.ts) 的「圆环几何」一组守住，别在组件里另写一套数。
+- **引官方 token 必须带回落值，且回落值是「老线上官方的值」**：圆角与焦点环那两族 token 比本仓
+  声明的下限**晚三个版本**才存在 —— 在下限那一档里裸引会让圆角变直角、`outline-width` 变 0
+  （焦点环整条消失）。两条线上官方的值**本身也不同**（同一个官方规则老线写像素、新线写 token），
+  所以回落不能取 token 自己的值。版本号一律现查（`package.json` 的 `engines.dsh` /
+  `node scripts/compat-swap.mjs check`），事实与替代方案见
+  [决策记录](../.agents/notes/2026-10-01-declaration-floor-vs-running-version.md)；
+  口径由 [test/redlines.test.ts](../test/redlines.test.ts) 的「注释声称照官方」一组守着。
 - **菜单材质必须成对**：凡用 `--dsw-specific-menu` 画填充的表面，必须在**同一条规则**里带
   `backdrop-filter: var(--dsw-menu-backdrop-filter)` —— 官方把菜单材质拆成了这两条 token（填充半透明、
   模糊另起一条），只写前者就是「透光但不磨砂」。
@@ -115,8 +134,14 @@
   否则「数字是账号的、标签写 Key、刷新去刷 Key」。
   ⑤ **本插件只记官方那一个**：首选那条拿不出数字就退到另一条官方路；一条有旧快照就显示旧快照；
   **两条都拿不出数字才画叉**。兜底一轮最多各打一次，不来回重试。
-  ⑥ **「没接入」≠「接入了但出错」**：没接入 → 空环 +「尚未配置凭据」；接入了却抓不到 → 叉 +「服务暂不可用」。
+  ⑥ **「没接入」≠「接入了但出错」**，现在是处境枚举里的两个取值（不再是散落的 if）：
+  没接入 → 空环 + **＋** +「尚未配置凭据」（唯一需要用户动手的一族）；接入了却抓不到 → 叉 +「服务暂不可用」。
+  同类还有两处：**账户停用压过「数据已过期」**（`isAvailable:false` 是上游明确给的事实，比「数字旧」更强），
+  以及「连上了但没有可展示币种」是独立处境（旧写法与「没接入」同为空环，用户看不出差别）。
   ⑦ 判据只有一处：`services/source-selector.ts`；新增来源 = 加一行 + 多一份 reader 与账本。
+  ⑧ **来源切换刻意不给界面提示**；`mark()` 记 `balance_source_switch_total{from,to}` 当观测出口。
+  三件刻意不改的边界（切换提示 / 失败态轮询穿透 / 凭据非空换非空）见
+  [决策记录](../.agents/notes/2026-10-01-boundaries-left-as-is.md)。
   真机判据、替代方案与已知边界见 [决策记录](../.agents/notes/2026-09-30-account-balance-source.md)。
 - **阈值成对约束：同一币种内 `critical` 必须严格低于 `warn`。** 相等也拒绝 —— 压线时「预警」这一档等于不存在。
 - **这条约束宿主侧已经拦不住**，现在只有两道，且都不在 schema 上：
@@ -144,14 +169,23 @@
 
 `GET /api/v1/balance` 响应形状（后端实现，mock 场景与之同形）：
 
-- `state`：`empty` / `ok` / `stale` / `error`
-- `severity`：`ok` / `warn` / `critical` / `unavailable` / `unknown`
+- `situation`：**界面唯一的分支入口**，11 个取值。
+  宿主判 9 个（`internal-error` / `no-credential` / `fetch-failed` / `account-unavailable` /
+  `stale` / `empty-wallet` / `ok` / `low` / `critical`），客户端补 2 个本地事实
+  （`checking` 首帧、`offline` 插件端点不可达）。
+- `state`：`empty` / `ok` / `stale` / `error` —— **兼容字段**，新界面不再据它做形态判断
+- `severity`：`ok` / `warn` / `critical` / `unavailable` / `unknown` —— 同上；
+  只剩「有数字那一族的颜色」还用它
 - `balances[]`：金额是字符串，可能多币种，数组顺序可能跳变
 - `todayUsage`：可为 `null`；`source` 为 `blended` / `balance-observed` / `projection`
 
+`state` 与 `severity` 保留是为了**旧客户端能活**（客户端半边 HMR 立刻换新、宿主半边要重启才换，
+「新客户端 + 旧宿主」是合法中间态；反向的「旧客户端 + 新宿主」同样存在）。
+客户端对缺失的 `situation` 有形状守卫 + 现推路径（`client/situation.ts` 的 `legacySituationOf`）。
+
 **余额端点的状态码始终 `200`**，业务错误走 `state` + `error` —— 前端要拿到 `error` 结构才能分支。
 
-完整字段清单、`severity` 映射表、币种回落规则、配置契约与后端移交说明 → [UI 侧契约与移交](ui-handoff.md)。
+完整字段清单、处境 → 形态映射表、币种回落规则、配置契约与后端移交说明 → [UI 侧契约与移交](ui-handoff.md)。
 端点表、通道选择与请求体约定 → [后端架构](backend-architecture.md) 的 §8。
 
 ### 插件展示元数据（宿主直读，不进我们的代码）
@@ -170,8 +204,17 @@
 
 - 金额一律按字符串处理，禁止用浮点数做相等比较或累加。
 - 多币种时不得依赖数组顺序，按 `currency` 取值。
-- `state` 与 `severity` 是两个独立维度，不得互相推导。
-- 折叠态与展开态都必须能吃下所有 `severity`，未知值回落 `unknown`。
+- **处境是界面唯一的分支入口**：环 / 文案 / 来源标签都从 `situation` 派生；
+  组件里不得再出现 `state` / `severity` / `error.code` 的形态判断
+  （唯一例外是 `gauge` 族的**颜色**，那是余额高低的编码，由 `presentationOf` 内部读一次）。
+  `state` 与 `severity` 在契约里保留只是为了旧客户端能活，不是给新界面拼形态用的。
+- 新增处境必须同时改三处，缺一处会红：宿主 `domain/situation.ts` 的闭集与 `situationOf`、
+  客户端 `client/situation.ts` 的形态表（`Record<Situation, …>` 漏值编译不过）、以及 locales 的文案键。
+- 折叠态与展开态都必须能吃下所有处境，未知值回落 `unknown`。
+- **引官方 token / 组件 / 符号之前先确认它在声明下限那一档存在**（下限见 `package.json` 的 `engines.dsh`）。
+  比「存在」更容易漏的是**值**：同一个官方规则在两条宿主线上可以写不同的值
+  （回落必须取**老线上官方的值**，不是 token 自己的值）。口径由「注释声称照官方」那组红线守着，
+  事实与死区间实测见 [决策记录](../.agents/notes/2026-10-01-declaration-floor-vs-running-version.md)。
 - 组件拿不到 `ctx`；数据只能走注册项的 `inject` 工厂。
 - 跨插件值导入会被 bundle-purity gate 拒绝，只能用公共导出。
 - **不许把 `backdrop-filter` 写在带 fixed 浮层的容器上**：它会成为那些后代的包含块，把按视口算好的坐标变成

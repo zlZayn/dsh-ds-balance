@@ -13,6 +13,8 @@
 - `errors.ts`：错误码闭集、`AppError` 家族、`upstreamCodeOf`（状态码 → 错误码）、`parseRetryAfter`、`classify`（任意异常 → `ErrorInfo`）、`describeError`（任意异常 → 单行文本）。
 - `balance.ts`：契约类型。`BalanceSnapshot` 是内部形状（金额为 `bigint`），`BalanceView` 是对外形状，`RawBalanceResponse` 是上游形状（字段名保持上游拼写）。
 - `severity.ts`：`thresholdsOf` / `thresholdsFor` / `severityOf`。**阈值只在这里被读**，前端不参与任何金额比较。
+- `situation.ts`：`Situation` 闭集 + `situationOf`（**界面唯一的分支入口**，全函数、按固定优先级逐条判）。
+  入参只收六个事实、不收 `BalanceView`，所以能脱离视图结构单测。改了它必须同批改客户端形态表与 locales。
 - `select.ts`：`stableOrder`（CNY 提前、其余保序）与 `pickBalance`（后端权威的币种选择）。
 - `normalize.ts`：`normalize`（上游 JSON → 快照，结构不符抛 `ShapeError`、金额坏掉抛 `ParseError`）、`nextSnapshotId`、`parseErrorBody`（容错解析三种错误体形状）。
 
@@ -23,7 +25,8 @@
 
 ## 改后必测
 
-- `npx --no-install vitest run test/money.test.ts test/severity.test.ts test/select.test.ts test/normalize.test.ts`
+- `npx --no-install vitest run test/money.test.ts test/severity.test.ts test/select.test.ts test/normalize.test.ts test/situation.test.ts`
 - 金额：往返一致、超 8 位截断、非法输入抛错。
 - 严重度：五档 + 阈值边界取等号 + 不可用压过阈值。
+- 处境：真值表（每个取值一组事实）、覆盖度（每个取值都有生产方）、两条刻意的优先级。
 - 选择：数组顺序跳变不改变结果。

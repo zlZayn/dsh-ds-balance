@@ -109,8 +109,14 @@
 - [ ] **浮层图标行为变了 → 涉及它的门面截图需重拍**（`sidebar-popover*.png`）：判据见 [assets/AGENTS.md](assets/AGENTS.md)
 - [ ] 本机 profile 升到 `2.1.3` 后实机验收本轮计时修复：浮层冷却从冷却值本身开始倒数（不再从 N+1）、按钮在截止时刻就能按、点刷新一定真的打一次上游
 - [ ] `node scripts/acceptance.mjs` 的**上游那一段**（要真实 `DEEPSEEK_API_KEY`）：本轮发布前只跑了离线四项，退出码 2
-- [ ] **账号来源这一轮的实机验收**（宿主侧已用跑源码的 web 实例验过：`/balance` 与 `healthz` 的 `source` 都已是 `deepseek-account`、账号服务真被打到 200）：待维护者在界面上确认 —— 只登录不配 Key 也能看到余额、浮层标题的括号跟着**切会话 / 切模型**换、非官方供应商落兜底
-- [ ] **这一轮还没发版**（维护者要求先停）：档位按判定链是 **minor**（新增对外可见能力），`npm version minor` + `src/version.ts` + push + release.yml 待办
+- [ ] **这一轮（处境重构 + 记号几何 + 标题行对齐 + token 回落）的实机验收**：待维护者刷新界面确认 ——
+  左下角条目在、括号紧贴标题右侧、叉变小了、没接入时是 ＋ 而不是叉、切会话/切模型跟着换。
+  mock 逐形态一眼过用 `?dsb=<处境键>`（9 个造得出来；`checking` / `offline` 只能真机验，见 [docs/ui-handoff.md](docs/ui-handoff.md) §八）
+- [ ] **这一轮还没发版**（维护者要求先停）：档位按判定链是 **minor**（新增对外可见能力 + 行为变化），`npm version minor` + `src/version.ts` + push + release.yml 待办
+- [ ] 采纳宿主下一条线时：把 `engines.dsh` 与全部 peer 区间提到那条线的起点、删掉那批 token 回落值、
+  同步 README 的安装指引（它指的那条线）与 `scripts/check-declaration.mjs` 的 `TRACKED_LINE`
+  → [决策记录](.agents/notes/2026-10-01-declaration-floor-vs-running-version.md) 的反转时机。
+  **两条线各是什么版本一律现查，不抄进文档**
 
 ## 活跃坑
 
@@ -143,6 +149,25 @@
   「拿不拿得到 form」—— 那是**结构性**的，不是某个版本的问题。能力探测一律盯**服务**（`configForms`），
   见 [config-slot.ts](src/client/config-slot.ts) 的模块头。
 - **宿主半边/浏览器半边的装载时机、cordis 服务门禁、构建链三类坑** → [src 规则层](src/AGENTS.md) 与 [scripts 规则层](scripts/AGENTS.md)（进目录即自动注入，这里不重抄）。
+- **引官方 token / 组件 / 符号前，先确认它在「声明下限」那一档存在 —— 更要确认值是不是一样**：
+  本仓声明的下限（见 `package.json` 的 `engines.dsh`）与**实际在跑的那条线不是同一条**
+  （前者长期落后于后者）。实测：`--dsw-radius-*` 与 `--dsw-focus-ring-*` 比下限**晚三个版本**才进；
+  裸引会让圆角变直角、`outline-width` 变 0（**焦点环整条消失**，不报错）。更隐蔽的是
+  **同一个官方规则在两条线上写不同的值**（老线写像素、新线写 token），所以回落值必须取
+  **老线上官方的值**。另外 **「下限提到某条 rc」是个死区间**（npm 预发布语义下只匹配同一
+  `major.minor.patch` 的预发布版，而三条 dist-tag 没有一条指向它）——要提只能提到
+  在跑那条线的起点，而那是换承诺线，得同批改 README 与 `TRACKED_LINE`。
+  **版本号一律现查**（`npm view @deepseek-ai/dsh dist-tags` / `node scripts/compat-swap.mjs check`），
+  不抄进活文档（下面那条红线的「文档不抄实测值」会红）。
+  → [决策记录](.agents/notes/2026-10-01-declaration-floor-vs-running-version.md)；
+  口径由 [test/redlines.test.ts](test/redlines.test.ts) 的「注释声称照官方」一组守着。
+- **界面形态只能从「处境」派生**：环 / 文案 / 来源标签都读 `client/situation.ts` 的形态表；
+  组件里出现第二个 `state` / `severity` / `error.code` 分支就是回退。处境判定只有一处
+  （`domain/situation.ts` 的 `situationOf`），新增处境要同批改三处（闭集 / 形态表 / locales）。
+- **来源切换刻意不给界面提示**：正常路径下切换静默且正确，要提示的只有异常摆动。
+  唯一观测出口是 `balance_source_switch_total{from,to}`（`/healthz` 的 metrics 段）。
+  同篇还记着另两条刻意保留的边界（失败态轮询会穿透上游、凭据非空换非空不立刻重取）
+  → [决策记录](.agents/notes/2026-10-01-boundaries-left-as-is.md)。
 
 ## 文档网络与自更新
 

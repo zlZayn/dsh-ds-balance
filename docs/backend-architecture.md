@@ -34,13 +34,14 @@
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `state` | `empty` / `ok` / `stale` / `error` | 缓存状态 |
-| `severity` | `ok` / `warn` / `critical` / `unavailable` / `unknown` | 颜色来源 |
+| `situation` | 闭集 11 个取值 | **界面唯一的分支入口**：环 / 文案 / 来源标签都由它派生 |
+| `state` | `empty` / `ok` / `stale` / `error` | 缓存状态（**兼容字段**，新界面不据它拼形态） |
+| `severity` | `ok` / `warn` / `critical` / `unavailable` / `unknown` | 「有数字那一族」的颜色（同上） |
 | `balances[]` | 数组 | 全币种 |
 | `selected` | 对象或 `null` | **后端选定的币种；前端直接读它，不再自己挑** |
-| `isAvailable` | **纯 `boolean`** | 账户可用性 |
+| `isAvailable` | **纯 `boolean`** | 账户可用性（参与处境判定） |
 | `ageMs` | number 或 `null` | 后端算好的年龄 |
-| `error.code` | 字符串或 `null` | 错误码 |
+| `error.code` | 字符串或 `null` | 错误码（参与处境判定） |
 | `fetchedAt` | number 或 `null` | 时间戳 |
 
 **`selected` 的权威性**：前端把 `displayCurrency` 作为查询参数传给后端，后端按它挑，前端只负责显示。
@@ -61,8 +62,10 @@
 - 金额比较与累加**只在后端做**。
 - `balances[]` 顺序**可能跳变**，前端不依赖顺序。
 - `selected` 可以为 `null`。
-- `state` 与 `severity` 是**两个独立维度**。
-- `severity` 与 `state` 都是**闭集**，未知回落。
+- `state` 与 `severity` 是**两个独立维度**，但**都不再由界面直接消费** ——
+  它们与 `isAvailable` / `error.code` 一起进 `situationOf`，界面只读判出来的 `situation`。
+  保留这两个字段是为了旧客户端能活（两半体的装载时机不同）。
+- `situation`、`severity`、`state` 都是**闭集**，未知回落。
 
 ---
 
@@ -425,10 +428,18 @@ class BalanceService {
 **展示 / 刷新 / 标签只认同一条**：哪条把数字交出去（`mark(served)`），响应里的 `source` 就是它，
 调度与手动刷新也刷它。手动刷新因此刷的是「用户看到的那条」—— 首选那条一条数字都没有时，刷的是兜底那条。
 
-**严重度分两种「看不到」**（判定在 `SourceLedger.severityOf`）：
+**严重度分两种「看不到」，处境把它落成两个取值**（判定在 `src/domain/situation.ts` 的 `situationOf`）：
 
-- 一条凭据都没有（`NO_KEY`、无快照）→ `unknown`：空环，前端文案「尚未配置凭据」；
-- 有凭据但这次没抓到（网络 / 上游 / 账号查询失败）→ `unavailable`：叉，前端文案「服务暂不可用」。
+- 一条凭据都没有（`NO_KEY`、无快照）→ **`no-credential`**：空环 + 中心**＋**，文案「尚未配置凭据」；
+- 有凭据但这次没抓到（网络 / 上游 / 账号查询失败）→ **`fetch-failed`**：叉，文案「服务暂不可用」。
+
+**处境是界面唯一的分支入口**（11 个取值，宿主判 9 个、客户端补 `checking` / `offline`）。
+它的输出同时决定环、文案与来源标签 —— 从前那三样各读各的字段，于是会出现
+「环说 A、文案说 B」。两条刻意的优先级：
+
+- **没接入压过一切**：NO_KEY **且无快照**才是 `no-credential`；有快照说明曾经读到过，那就不是「没接入」。
+- **账户停用压过「数据已过期」**：`isAvailable: false` 有快照即判 `account-unavailable` ——
+  上游明确给的事实比「数字旧了」更强，说后者的原文案会把真问题藏起来。
 
 调度刷**当前活跃来源**（不重新解析，否则会话级的来源会被全局默认无声顶掉），
 并在发现活跃来源不可用时重判一次 —— 宿主刚起来时判据可能还没齐：
@@ -604,8 +615,10 @@ JSON 解析失败时退回纯文本前 200 字符。
 
 ### 8.8 `GET /api/v1/healthz`
 
-返回 `state` / **`source`（当前活跃来源）** / `lastSuccessAt` / `consecutiveFailures` / `scheduler.nextRunAt` / `store.ok` / `version`。
+返回 `situation` / `state` / **`source`（当前活跃来源）** / `lastSuccessAt` / `consecutiveFailures` / `scheduler.nextRunAt` / `store.ok` / `version`。
 两条路并存时，`source` 是唯一能一眼看出「现在服务的是哪条」的地方；指标键也带 `source` 标签。
+`situation` 让**不开浏览器也能知道界面此刻会画成什么**（判定口径与余额端点完全同源）。
+`mark()` 还记 `balance_source_switch_total{from,to}` —— 来源切换刻意不给界面提示，那是唯一观测出口。
 
 ---
 
