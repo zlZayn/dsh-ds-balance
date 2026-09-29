@@ -67,6 +67,8 @@ export function pendingView(): BalanceResponse {
   return {
     requestId: '',
     schemaVersion: 1,
+    // 占位视图没有取数路可言；界面在 `state === 'empty'` 时不渲染来源标签。
+    source: 'deepseek-http',
     state: 'empty',
     stale: false,
     fetchedAt: 0,
@@ -113,17 +115,25 @@ async function readJson<T>(response: Response, path: string): Promise<T> {
  *
  * `displayCurrency` **总是**作为查询参数传出去，包括 `auto` —— 后端的挑选规则
  * 把 `auto` 当作「不指定」，所以传它不等于替后端做决定。
- * @param options - 显示币种、可注入的 fetch 与取消信号。
+ *
+ * `provider` 是**当前会话在用的路由**这条提示：后端据此选数据来源。读不到会话时
+ * 干脆不传，后端回落到全局默认路由 —— 提示缺席不该让界面失去来源。
+ * @param options - 显示币种、会话路由提示、可注入的 fetch 与取消信号。
  * @returns 后端响应。
  * @throws 端点不可达、非 2xx 或响应不是 JSON。
  */
 export async function requestBalance(options: {
   currency: string
+  provider?: string | undefined
   fetchImpl?: FetchLike
   signal?: AbortSignal
 }): Promise<BalanceResponse> {
   const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init))
-  const url = `${BALANCE_PATH}?currency=${encodeURIComponent(options.currency)}`
+  const query = new URLSearchParams({ currency: options.currency })
+  if (options.provider !== undefined && options.provider !== '') {
+    query.set('provider', options.provider)
+  }
+  const url = `${BALANCE_PATH}?${query.toString()}`
   const response = await fetchImpl(url, {
     headers: { accept: 'application/json' },
     ...(options.signal === undefined ? {} : { signal: options.signal }),
@@ -173,18 +183,24 @@ export async function requestConfig(
  * 触发一次手动刷新。
  *
  * 后端的冷却还没过时它回 `triggered: false`，那是正常结果而不是错误。
- * @param options - 刷新原因与可注入的 fetch。
+ * `provider` 与读取余额时给的是同一条提示：刷新要刷**你正在看的那个来源**。
+ * @param options - 刷新原因、会话路由提示与可注入的 fetch。
  * @returns 后端的刷新结果。
  * @throws 端点不可达、非 2xx 或响应不是 JSON。
  */
 export async function requestRefresh(
-  options: { reason?: string; fetchImpl?: FetchLike } = {},
+  options: { reason?: string; provider?: string | undefined; fetchImpl?: FetchLike } = {},
 ): Promise<RefreshResult> {
   const fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init))
   const response = await fetchImpl(REFRESH_PATH, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ reason: options.reason ?? 'manual' }),
+    body: JSON.stringify({
+      reason: options.reason ?? 'manual',
+      ...(options.provider === undefined || options.provider === ''
+        ? {}
+        : { provider: options.provider }),
+    }),
   })
   return await readJson<RefreshResult>(response, REFRESH_PATH)
 }

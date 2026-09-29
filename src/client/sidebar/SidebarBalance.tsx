@@ -38,12 +38,14 @@ import {
   ringRatioOf,
   ringSpecOf,
   selectionOf,
+  sourceLabelKeyOf,
   type CurrencySelection,
   type RingMarker,
 } from '../model.ts'
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
 import { CONFIG_SLOT_WARNING, type ConfigSlotProbe, type ConfigSlotState } from '../config-slot.ts'
+import type { RouteHint } from '../route-hint.ts'
 import { BalancePopover, type PluginsAction } from './BalancePopover.tsx'
 import { PercentRing, type RingState } from './PercentRing.tsx'
 import css from './SidebarBalance.module.css'
@@ -148,6 +150,13 @@ export interface SidebarBalanceProps {
    */
   pluginsNavigation?: PluginsNavigation
   /**
+   * 「当前会话在用哪条路由」这条提示；宿主没有相应客户端服务时给 `undefined`。
+   *
+   * 它只影响**取哪条数据来源**（后端据此选 Key 那条还是账号那条），不影响别的行为；
+   * 缺席时后端回落到全局默认路由，界面照常。
+   */
+  routeHint?: RouteHint
+  /**
    * 「改用 X」：把后端实际给的那个币种写进本插件那一行的设置命名空间（`displayCurrency`）。
    *
    * 成败由父代理的 `writeFieldValue` 直接给出（0.1.7 的 `ConfigForm.set` 返回宿主是否接受，
@@ -215,6 +224,29 @@ function ringSpecFor(severity: Severity): { state: RingState; marker: RingMarker
 }
 
 /**
+ * 订阅「当前会话在用哪条路由」。
+ *
+ * 与 `usePluginsNavigation` 同形：提示对象是可订阅的，宿主服务晚到也能自己出现、自己消失；
+ * 缺席时回 `undefined`，请求里就不带这条提示。
+ * @param hint - 父代理建好的提示；宿主没有相应服务时给 `undefined`。
+ * @returns 当前会话的 provider id，或 `undefined`。
+ */
+function useRouteProvider(hint: RouteHint | undefined): string | undefined {
+  const [provider, setProvider] = useState(() => hint?.getSnapshot())
+  useEffect(() => {
+    if (hint === undefined) {
+      setProvider(undefined)
+      return
+    }
+    setProvider(hint.getSnapshot())
+    return hint.subscribe(() => {
+      setProvider(hint.getSnapshot())
+    })
+  }, [hint])
+  return provider
+}
+
+/**
  * 渲染侧栏左下角的余额条目。
  * @param props - 展开态、词典与配置切片。
  * @returns 条目元素。
@@ -226,6 +258,7 @@ export function SidebarBalance({
   configSlotProbe,
   onSelectCurrency,
   pluginsNavigation,
+  routeHint,
 }: SidebarBalanceProps): JSX.Element | null {
   /**
    * 余额视图与它的**年龄基准**。
@@ -248,6 +281,8 @@ export function SidebarBalance({
   const [refreshing, setRefreshing] = useState(false)
   const [cooldownUntil, setCooldownUntil] = useState(0)
   const [now, setNow] = useState(() => Date.now())
+  // 当前会话的路由提示：一变就带着新提示重问一次后端（切会话、切模型能立刻换来源）。
+  const provider = useRouteProvider(routeHint)
 
   const rootRef = useRef<HTMLDivElement>(null)
   /** 面板在 portal 里，这个 ref 同时喂给 useAnchoredPosition（量尺寸）与外部点击判定。 */
@@ -307,7 +342,7 @@ export function SidebarBalance({
     let cancelled = false
     const load = async (): Promise<void> => {
       try {
-        const next = await requestBalance({ currency: preference })
+        const next = await requestBalance({ currency: preference, provider })
         if (cancelled) return
         loadedRef.current = true
         acceptBalance(next)
@@ -334,6 +369,7 @@ export function SidebarBalance({
   }, [
     mock,
     preference,
+    provider,
     config.clientPollSeconds,
     config.configSignature,
     acceptBalance,
@@ -454,7 +490,7 @@ export function SidebarBalance({
       let rejectedRemainingMs: number | null = null
       try {
         // 先让后端穿透上游抓一次，再读回它刚写好的缓存。
-        const result = await requestRefresh({ reason: 'manual' })
+        const result = await requestRefresh({ reason: 'manual', provider })
         if (!result.triggered) rejectedRemainingMs = Math.max(0, result.cooldownMs)
         const next = await requestBalance({ currency: preference })
         loadedRef.current = true
@@ -470,6 +506,7 @@ export function SidebarBalance({
     config.manualRefreshCooldownSeconds,
     mock,
     preference,
+    provider,
     refreshing,
     acceptBalance,
     showUnreachable,
@@ -540,6 +577,10 @@ export function SidebarBalance({
   if (markerLabel !== null) ariaParts.push(markerLabel)
   const ariaLabel = ariaParts.join(' ')
   const cooldownSeconds = cooldownSecondsOf(cooldownUntil, now)
+  // 来源标签：只认两条官方取数路，认不出来就不标。**空态不标** —— 还没取到数时
+  // 说「这份数字是哪来的」没有意义。括号与词都在词典里。
+  const sourceKey = response.state === 'empty' ? null : sourceLabelKeyOf(response.source)
+  const sourceLabel = sourceKey === null ? null : t(sourceKey)
   // 年龄 = 收到那份响应时后端报的年龄 + 此后流逝的时间。基准随每次响应一起换，
   // 所以自动轮询带回来的新快照同样会把「多久之前」拨回「刚刚」。
   const ageMs = currentAgeMs(view.seenAt, view.seenAgeMs, now)
@@ -625,6 +666,7 @@ export function SidebarBalance({
               selection={selection}
               displayCurrency={preference}
               ageMs={ageMs}
+              sourceLabel={sourceLabel}
               refreshing={refreshing}
               cooldownSeconds={cooldownSeconds}
               configSlotWarning={configSlotState === 'missing' ? CONFIG_SLOT_WARNING : null}

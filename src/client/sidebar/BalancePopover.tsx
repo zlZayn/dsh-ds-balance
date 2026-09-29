@@ -76,6 +76,13 @@ export interface BalancePopoverProps {
   displayCurrency: string
   /** 数据现在的年龄（毫秒）= 收到那份响应时后端报的年龄 + 此后流逝的时间。 */
   ageMs: number
+  /**
+   * 标题里的来源标签（含括号，来自词典）；`null` 表示不标。
+   *
+   * 由父组件算好再传进来：本组件不做来源判断，也不拼括号 —— 中英文的括号不同形，
+   * 拼在代码里必然出错。
+   */
+  sourceLabel: string | null
   /** 是否正在刷新。 */
   refreshing: boolean
   /** 冷却剩余秒数；0 表示可以刷新。 */
@@ -132,6 +139,7 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
     selection,
     displayCurrency,
     ageMs,
+    sourceLabel,
     refreshing,
     cooldownSeconds,
     configSlotWarning,
@@ -195,6 +203,9 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
         >
           <FishLogo size={14} />
           {t('popover.title')}
+          {/* 来源标签跟在标题后面、**在同一枚链接里**：它描述的是这个数字的来路，
+              点了照样去官网用量页。标签自带括号（词典给），这里只做拼接。 */}
+          {sourceLabel === null ? null : <span className={css.sourceLabel}>{sourceLabel}</span>}
         </a>
 
         {/* 右上角：无可见文字的图标按钮，点了去本插件的配置格；宿主没有那条深链服务时

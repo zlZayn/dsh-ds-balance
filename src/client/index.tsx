@@ -27,10 +27,22 @@ import { BalanceSettingsCard } from './settings/BalanceSettingsCard.tsx'
 import { writeFieldValue } from './settings/use-config-form.ts'
 import type { ConfigFormOf } from './settings/use-config-form.ts'
 import { SidebarBalance, type PluginsNavigation } from './sidebar/SidebarBalance.tsx'
+import { createRouteHint, type RouteHint, type RouteHintContext } from './route-hint.ts'
 import type { PluginsAction } from './sidebar/BalancePopover.tsx'
 // 副作用导入：修正宿主 .footerActions 的排版遗漏，见 .agents/notes/2026-09-17-footer-stack-override.md。
 import './sidebar/footer-stack.module.css'
 import { NS, en, zh, type LocaleKey } from './locales.ts'
+
+// 把本命名空间并进 DSH 的词典表：`ctx.locale.register` 的实参因此有类型约束，
+// 拼错命名空间或缺一种语言都是编译错误。
+//
+// **声明放在注册点，不放词典模块**：词典文件是纯数据（测试要能直接 import 它做键集对账），
+// 而这条 module augmentation 依赖宿主包的类型，把宿主拖进任何读到词典的程序里都不划算。
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    'ds-balance': LocaleKey
+  }
+}
 import { CONFIG_SLOT, createConfigSlotProbe, type ConfigSlotProbe } from './config-slot.ts'
 
 /**
@@ -209,6 +221,7 @@ function SidebarSeatComponent(props: {
   form: ConfigFormOf
   configSlotProbe: ConfigSlotProbe
   pluginsNavigation: PluginsNavigation
+  routeHint: RouteHint
 }): ReactNode {
   const value = useScopeValue(props.form)
   const writable = useScopeWritable(props.form)
@@ -225,6 +238,7 @@ function SidebarSeatComponent(props: {
       t={translateOf(props.seat.t)}
       configSlotProbe={props.configSlotProbe}
       pluginsNavigation={props.pluginsNavigation}
+      routeHint={props.routeHint}
       onSelectCurrency={selectCurrency}
       config={{
         displayCurrency: readDisplayCurrency(value),
@@ -385,6 +399,10 @@ export function apply(ctx: ClientContext): void {
   const configSlotProbe = createConfigSlotProbe()
   ctx.effect(() => () => configSlotProbe.dispose(), 'ds-balance: config slot probe')
 
+  // 「当前会话在用哪条路由」这条提示：后端据此决定余额走 Key 还是走账号登录。
+  // 侧栏是壳层座位、不在会话作用域里，所以提示自己去宿主客户端服务上读（鸭子类型，读不到只降级）。
+  const routeHint = createRouteHint(ctx as unknown as RouteHintContext)
+
   // 「切到 Plugins 页」的入口：宿主把它放在跨插件服务 `ctx.layout` 上
   // （宿主 `ui-layout/src/client/service.ts:28-52`：cross-plugin panel-action face behind ctx.layout）。
   // 服务不在 —— 例如 profile 里没装 plugin-manager —— 时整条链不建立，
@@ -457,6 +475,7 @@ export function apply(ctx: ClientContext): void {
             form={form}
             configSlotProbe={configSlotProbe}
             pluginsNavigation={pluginsNavigation}
+            routeHint={routeHint}
           />
         ),
       ),

@@ -9,6 +9,14 @@ import type { UNREACHABLE_CODE } from './data.ts'
 /** 余额数据的状态维度。 */
 export type BalanceState = 'empty' | 'ok' | 'stale' | 'error'
 
+/**
+ * 余额来源。
+ *
+ * 与宿主 `domain/balance.ts` 的 `BalanceSource` **逐字同形**：两个半体不共享值，
+ * 所以这里是自己抄的一份字面量，由 `test/client-data.test.ts` 对账。
+ */
+export type BalanceSource = 'deepseek-http' | 'deepseek-account'
+
 /** 颜色严重度维度。前端只做机械映射，不比较金额。 */
 export type Severity = 'ok' | 'warn' | 'critical' | 'unavailable' | 'unknown'
 
@@ -51,6 +59,8 @@ export interface BalanceError {
 export interface BalanceResponse {
   requestId: string
   schemaVersion: number
+  /** 这一份数字是哪条取数路给的。标题里的来源标签读它。 */
+  source: BalanceSource
   state: BalanceState
   stale: boolean
   fetchedAt: number

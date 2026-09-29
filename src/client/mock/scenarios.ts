@@ -23,6 +23,7 @@ function make(patch: Partial<BalanceResponse>): BalanceResponse {
   return {
     requestId: 'req_mock',
     schemaVersion: 1,
+    source: 'deepseek-http',
     state: 'ok',
     stale: false,
     fetchedAt: T0,
@@ -43,6 +44,9 @@ function make(patch: Partial<BalanceResponse>): BalanceResponse {
 export const scenarios = {
   /** 正常。 */
   ok: make({}),
+
+  /** 正常，但数字来自账号登录那条路（用来眼看「来源标签」）。 */
+  account: make({ source: 'deepseek-account' }),
 
   /** 余额偏低但可用。 */
   warn: make({

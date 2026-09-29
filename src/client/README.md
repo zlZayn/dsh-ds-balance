@@ -8,16 +8,24 @@
 
 - `index.tsx`：入口。注册词典、向两个 slot 注册组件。`inject` 是运行时门禁，**只有 `slots` / `locale` 两项**（永远在的服务），删任一项都会让 `apply` 静默不跑；配置表单服务 `configForms` 由 `apply` 内的嵌套 `ctx.inject` 把门 —— **缺它整个浏览器半边都不渲染**（圆环与浮层一起消失），因为左下角条目也要读 `displayCurrency`。
 - `config-slot.ts`：配置表单的**能力探测**（不查版本号）：卡片拿不拿得到 form。三态 `pending` / `available` / `missing`，**可逆**：服务晚到会把 `missing` 拨回 `available`，已经出现的提示自己撤掉。**探测盯的是 `configForms` 服务本身，不是槽名** —— `plugins.bundle.config` 在宿主两条线上都存在且都不传 `form`，盯槽名等于盯一条恒为真的信号。纯逻辑 + 可注入时钟，所以能脱离浏览器测；提示文案也在这里，且**刻意不点名任何槽**。理由见 [决策记录](../../.agents/notes/2026-09-19-capability-probe-for-config-slot.md) 与[落点回退记录](../../.agents/notes/2026-09-22-config-entry-back-to-bundle-config.md)。
-- `locales.ts`：中英词典。`zh` 是键集真源，`en` 用 `Record<LocaleKey, string>` 做编译期完整性检查。同时把命名空间并进 `LocaleNamespaceMap`。
+- `locales.ts`：中英词典。`zh` 是键集真源，`en` 用 `Record<LocaleKey, string>` 做编译期完整性检查。
+  **纯数据，不引宿主类型** —— 命名空间的 module augmentation 放在注册点 [index.tsx](index.tsx)，
+  这样测试可以直接 import 词典做键集对账，而不用把宿主拖进程序里。
+  来源标签（`popover.source.key` / `popover.source.account`）**连括号一起放在这里**：中文全角、英文半角带前置空格，
+  代码只做拼接 —— 在代码里写 `(` 必然让其中一种语言不对劲，而那种不对劲只有真机看得见（由 `test/locales.test.ts` 兜）。
   **与包根的 [locale/](../../locale/AGENTS.md) 不是一回事**：那是插件的**展示元数据**（插件页上的标题与描述），
   由宿主直接读那两份 JSON —— 它不进本半边、也不参与渲染，别把两处文案互相抄。
 - `model.ts`：纯函数视图模型。`severity` → 状态点与环色、**余额占 `warn` 阈值的弧长比例**（`ringRatioOf`，整数比较不走浮点）、金额字符串格式化、**从后端 `selected` 读出展示币种**、相对时间分档。**没有 React，不自己挑币种，也不用阈值配色。**
-- `data.ts`：数据层。向后端要余额（`GET /api/v1/balance` 带 `currency` 查询参数）、触发手动刷新、读一次配置里的 `credential` 只读事实，并把「端点不可达」翻成可展示的错误态。**不缓存、不排程** —— 节奏归 `sidebar/`。可注入 `fetchImpl`，因此能脱离浏览器测。
+- `data.ts`：数据层。向后端要余额（`GET /api/v1/balance` 带 `currency` 与可选的 `provider`）、触发手动刷新、读一次配置里的 `credential` 只读事实，并把「端点不可达」翻成可展示的错误态。**不缓存、不排程** —— 节奏归 `sidebar/`。可注入 `fetchImpl`，因此能脱离浏览器测。
   - 读宿主的**新增字段一律先过形状守卫**（如 `readCredential`）：客户端半边由 HMR 立刻换新、宿主半边要重启才换，新客户端会读到旧宿主的响应。
+- `route-hint.ts`：**「当前会话在用哪条路由」这条提示**，只用来给后端选数据来源（后端认不出来就落全局默认，再不行按固定顺序兜底）。
+  - 三条更新路径：切会话（订阅 `uiSession` 主绑定）、**同一会话内换模型**（订阅那个会话的 `modelSelection` 投影，换会话时重绑）、读不到就什么都不说。
+  - 宿主客户端服务**全部鸭子类型**（不 import 宿主类型、不为它加依赖）：读不出来只降级，不抛错。
+  - **它不判断「该用哪条」**：选源规则在宿主侧（`services/source-selector.ts`）—— 客户端知道得越少越好。
 - `api-types.ts`：后端契约类型。既约束 mock，也约束 `data.ts` 拿回来的响应；宿主半边的序列化由 `test/http-wire.test.ts` 做编译期对齐断言。
 - `css-modules.d.ts`：CSS Modules 的环境声明。
 - `mock/`：开发场景数据，见 [mock/README.md](mock/README.md)。**默认走真实端点**：只有 URL 参数 `?dsb=<场景键>` 或 localStorage 明确选过场景才用 mock；`?dsb=live` 会清掉已存的选择并回到真实数据。`?dsb-dev` 会让 `isDevMode()` 返回真（当前仓库内没有消费方，切换器尚未接线）。
-- `sidebar/`：左下角条目（状态圆环 + 名称）、点击展开的浮层、宿主容器补丁 → [sidebar/README.md](sidebar/README.md)。首拉一次后按 `clientPollSeconds` 轮询缓存；手动刷新先打 `POST /api/v1/balance/refresh` 再读回。浮层的刷新按钮带 `data-refreshing` / `data-cooling` 两个状态钩子，供 e2e 断言。
+- `sidebar/`：左下角条目（状态圆环 + 名称）、点击展开的浮层、宿主容器补丁 → [sidebar/README.md](sidebar/README.md)。首拉一次后按 `clientPollSeconds` 轮询缓存；手动刷新先打 `POST /api/v1/balance/refresh` 再读回；**浮层标题后面跟一个来源标签**（`（API Key）` / `（账号登录）`，空态不标）。浮层的刷新按钮带 `data-refreshing` / `data-cooling` 两个状态钩子，供 e2e 断言。
 - `settings/`：四组可折叠的配置卡片、字段控件、暂存与保存状态机、凭据状态读取 → [settings/README.md](settings/README.md)。
 
 ## 关键导出

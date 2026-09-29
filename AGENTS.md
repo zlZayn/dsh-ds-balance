@@ -109,13 +109,15 @@
 - [ ] **浮层图标行为变了 → 涉及它的门面截图需重拍**（`sidebar-popover*.png`）：判据见 [assets/AGENTS.md](assets/AGENTS.md)
 - [ ] 本机 profile 升到 `2.1.3` 后实机验收本轮计时修复：浮层冷却从冷却值本身开始倒数（不再从 N+1）、按钮在截止时刻就能按、点刷新一定真的打一次上游
 - [ ] `node scripts/acceptance.mjs` 的**上游那一段**（要真实 `DEEPSEEK_API_KEY`）：本轮发布前只跑了离线四项，退出码 2
+- [ ] **账号来源这一轮的实机验收**（宿主侧已用跑源码的 web 实例验过：`/balance` 与 `healthz` 的 `source` 都已是 `deepseek-account`、账号服务真被打到 200）：待维护者在界面上确认 —— 只登录不配 Key 也能看到余额、浮层标题的括号跟着**切会话 / 切模型**换、非官方供应商落兜底
+- [ ] **这一轮还没发版**（维护者要求先停）：档位按判定链是 **minor**（新增对外可见能力），`npm version minor` + `src/version.ts` + push + release.yml 待办
 
 ## 活跃坑
 
 - **`sidebar.footer.action` 的宿主容器是 row flex（宿主遗漏）**：官方 cordis 面板（`packages/extensions/ui-cordis/src/client/`）把根节点写成满宽且不收缩，横排下条目会被挤到 0 宽。我们已用 `:has()` 反选父元素把它改回纵向堆叠 → [决策](.agents/notes/2026-09-17-footer-stack-override.md)。依赖 `:has()` 与该锚点属性稳定。
 - **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包写进 profile 的 `dsh.profile.bundles`**，而 bundle 层与 patch 层的 insert 行**只在启动时读** —— 两条同时存在就是**双挂载**。开发期靠「不声明 `dsh.bundle`」躲开它，发布态不能这么干（包里必须有 bundle 层）。所以装法只能选一种：**`dsh plugin add` 或手写 patch 行，不要都做**。改本机 profile 前先看 `dsh.profile.bundles`。
-- **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。
-  **同理别整读 `~/.npmrc`**：它通常带着一枚 `//registry.npmjs.org/:_authToken=`（本轮踩过 —— token 就这么进了对话记录，只能靠轮换补救）。
+- **本地起验证实例前先确认端口空闲**：端口被占时 `dsh` 会以 `EADDRINUSE` 启动失败（webserver 是必需插件，`exit code 1`），**但本插件仍然装载、照常抓数** —— 日志里看着像跑起来了，其实没有可访问的 URL。重启前先查 `Get-NetTCPConnection -State Listen -LocalPort <port>`，或直接换端口。
+- **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。  **同理别整读 `~/.npmrc`**：它通常带着一枚 `//registry.npmjs.org/:_authToken=`（本轮踩过 —— token 就这么进了对话记录，只能靠轮换补救）。
   要确认 registry 就问 `npm config get registry`，不要 `Get-Content` 整个文件。
 - dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 与 `@deepseek-ai/cordis` / `@deepseek-ai/cordis-plugin-loader` **不在宿主那条线上**（各有自己的版本号），所以 `compat-swap` 的替换面不覆盖它们，改它们要手工看。实际版本现查：`node scripts/compat-swap.mjs check`。
 - **换版脚本保形，不认识的形状会报错停下**：`scripts/compat-swap.mjs` 只换版本号，运算符（`>=` / `^` / `~` …）原样保留；

@@ -86,6 +86,13 @@
   color: inherit;
 }
 
+/* 来源标签：跟着标题走、比标题弱一档。括号是词典给的，这里只管颜色与不换行。 */
+.sourceLabel {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-weight: 400;
+}
+
 /* 官方这里把图标写死 14×14。鲸鱼标志的比例是 23.16:17.04，
    压成正方形会变形，所以只定宽、高度按比例走。 */
 .titleLabel svg {

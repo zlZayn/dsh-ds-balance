@@ -233,6 +233,28 @@ export function currentAgeMs(seenAt: number, seenAgeMs: number, now: number): nu
 const MS_PER_SECOND = 1000
 
 /**
+ * 来源标签的词典键。
+ *
+ * 只认两条官方取数路：认不出来就回 `null`，界面不标 —— 标错来源比不标更糟。
+ * 括号与词本身都在词典里（中文全角、英文半角带空格），这里只回键。
+ *
+ * 键的形状写在这里而不是从词典模块取 `LocaleKey`：视图模型不该依赖词典模块，
+ * 而这两个键是它自己要产出的东西（词典侧由 `Record<LocaleKey, string>` 兜完整性）。
+ */
+export type SourceLabelKey = 'popover.source.key' | 'popover.source.account'
+
+/**
+ * 把来源折成标签键。
+ * @param source - 响应里的来源；老宿主或占位视图可能没有。
+ * @returns 词典键，或 `null` 表示不标。
+ */
+export function sourceLabelKeyOf(source: string | undefined | null): SourceLabelKey | null {
+  if (source === 'deepseek-http') return 'popover.source.key'
+  if (source === 'deepseek-account') return 'popover.source.account'
+  return null
+}
+
+/**
  * 一次手动刷新之后的冷却截止时刻。
  *
  * **基准是「拿到结果那一刻」**，不是点击那一刻：后端的手动冷却从它收到请求起算，

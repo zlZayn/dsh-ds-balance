@@ -41,7 +41,20 @@ describe('requestBalance', () => {
   it('币种被转义，不拼出畸形 URL', async () => {
     const { calls, fetchImpl } = recorder(pendingView())
     await requestBalance({ currency: 'a b&c', fetchImpl })
-    expect(calls[0]?.input).toBe(BALANCE_PATH + '?currency=a%20b%26c')
+    // `URLSearchParams` 的编码：空格是 `+`、`&` 是 `%26`；宿主用 searchParams 解码，两者等价。
+    expect(calls[0]?.input).toBe(BALANCE_PATH + '?currency=a+b%26c')
+  })
+
+  it('带上会话路由提示时多一个查询参数', async () => {
+    const { calls, fetchImpl } = recorder(pendingView())
+    await requestBalance({ currency: 'CNY', provider: 'deepseek-account', fetchImpl })
+    expect(calls[0]?.input).toBe(BALANCE_PATH + '?currency=CNY&provider=deepseek-account')
+  })
+
+  it('读不到会话路由时干脆不传，后端回落到全局默认', async () => {
+    const { calls, fetchImpl } = recorder(pendingView())
+    await requestBalance({ currency: 'CNY', provider: undefined, fetchImpl })
+    expect(calls[0]?.input).toBe(BALANCE_PATH + '?currency=CNY')
   })
 
   it('回的是解析后的 JSON', async () => {

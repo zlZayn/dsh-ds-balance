@@ -19,6 +19,7 @@ function response(patch: Partial<BalanceResponse> = {}): BalanceResponse {
   return {
     requestId: 'req_test',
     schemaVersion: 1,
+    source: 'deepseek-http',
     state: 'ok',
     stale: false,
     fetchedAt: 1_760_000_000_000,

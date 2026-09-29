@@ -152,6 +152,15 @@ Saving applies immediately; there is no need to restart DSH.
 The key is resolved only through DSH's credential channel; the card's "API key" inherits the one already configured on the official model settings page.
 When it comes from the launch environment (an environment variable) the field is read-only and the badge says where it came from.
 
+**The balance has two official routes and the plugin picks one itself**: the API key from the model settings page or the launch environment, and the **DSH account sign-in** (signed in without a key is enough). The order is:
+
+- **the route the current session is on** — switching sessions *or the model in this session* re-reads it at once;
+- with no session readable, the globally selected model's route;
+- with neither decidable, **key first, account as the fallback**;
+- only when both are missing does it read "no credential configured".
+
+The parenthesised label after the popover title is where that number came from: `(API key)` / `(account sign-in)`.
+
 **How long a key change takes to land follows DSH's own layers — this plugin deliberately adds nothing on top:**
 
 - **A key from the launch environment (an environment variable): restart DSH to change it.** A process's environment is fixed the moment it starts; a later change to that variable outside is invisible to the running plugin.

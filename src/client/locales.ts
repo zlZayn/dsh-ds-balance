@@ -15,6 +15,10 @@ export const zh = {
   'sidebar.aria.mismatch': '显示的币种与你选择的不一致',
 
   'popover.title': '账户余额',
+  // 来源标签：跟着数据来源走。**括号属于词典** —— 中文全角、英文半角带前置空格，
+  // 代码里只做拼接，绝不写死括号字符。
+  'popover.source.key': '（API Key）',
+  'popover.source.account': '（账号登录）',
   'popover.total': '余额',
   'popover.granted': '赠送',
   'popover.toppedUp': '充值',
@@ -33,7 +37,7 @@ export const zh = {
   'state.stale': '数据已过期',
   'state.error': '读取失败',
   'state.empty': '尚未配置',
-  'state.noKey': '尚未填写 API Key',
+  'state.noKey': '尚未配置凭据',
   'state.noBalance': '暂无余额',
 
   'settings.group.connection': '连接',
@@ -98,14 +102,6 @@ export const zh = {
 /** 词典键。 */
 export type LocaleKey = keyof typeof zh
 
-// 把本命名空间并进 DSH 的词典表：`ctx.locale.register` 的实参因此有类型约束，
-// 拼错命名空间或缺一种语言都是编译错误。
-declare module '@deepseek-ai/dsh-client-ui-slots' {
-  interface LocaleNamespaceMap {
-    'ds-balance': LocaleKey
-  }
-}
-
 /** 英文词典。缺键会在编译期报错。 */
 export const en: Record<LocaleKey, string> = {
   'sidebar.label': 'DeepSeek balance',
@@ -115,6 +111,8 @@ export const en: Record<LocaleKey, string> = {
   'sidebar.aria.mismatch': 'Shown currency differs from your selection',
 
   'popover.title': 'Account balance',
+  'popover.source.key': ' (API key)',
+  'popover.source.account': ' (account sign-in)',
   'popover.total': 'Balance',
   'popover.granted': 'Granted',
   'popover.toppedUp': 'Topped up',
@@ -131,7 +129,7 @@ export const en: Record<LocaleKey, string> = {
   'state.stale': 'Data is stale',
   'state.error': 'Failed to load',
   'state.empty': 'Not configured',
-  'state.noKey': 'API key missing',
+  'state.noKey': 'No credential configured',
   'state.noBalance': 'No balance',
 
   'settings.group.connection': 'Connection',
