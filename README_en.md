@@ -136,7 +136,7 @@ Open **Plugins → Installed** and step into the **DeepSeek Balance** (shown as 
   but a hand-edited config file with an illegal pair **no longer errors** — the Host side stopped enforcing it, so the plugin **falls that pair back to its defaults** the moment it reads it, and logs one line.
 
 > **Upgrade note**: the settings live in this plugin's own entry config and the key it is filed under changed once; **old values are not migrated** — please fill the table above in once after upgrading.
-- **Refresh**: the server refresh interval and the UI poll interval.
+- **Refresh**: the server refresh interval, the UI poll interval and the manual refresh cooldown. The cooldown counts from **the moment the refresh finishes**, so the seconds shown in the popover are the real ones left; if the backend says the refresh did not fire, the UI takes its remaining time instead of pretending otherwise.
 
 Saving applies immediately; there is no need to restart DSH.
 
