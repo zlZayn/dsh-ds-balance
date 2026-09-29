@@ -57,7 +57,10 @@
 }
 
 .trigger:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
+  /* 两处都带回落：这两条 token 是宿主 0.1.7-rc.2 才有的，本仓 engines.dsh 下限是
+     >=0.1.7-alpha.1 —— 裸引会让 outline-width 变 0，焦点环整条消失（不报错）。 */
+  outline: var(--dsw-focus-ring-width, 2px) solid
+    var(--dsw-focus-ring-color, var(--dsw-alias-brand-primary));
   outline-offset: -2px;
 }
 
@@ -68,7 +71,7 @@
   width: 100%;
   height: 42px;
   padding: 0 10px 0 8px;
-  border-radius: 12px;
+  border-radius: var(--dsw-radius-md, 12px);
 }
 
 /* 折叠：36×36 的命中区，圆环居中；悬浮背景是圆边矩形，与官方 `.collapsed .iconButton` 同为 12px。
@@ -80,7 +83,7 @@
   width: 36px;
   height: 36px;
   padding: 0;
-  border-radius: 12px;
+  border-radius: var(--dsw-radius-md, 12px);
 }
 
 /* 展开态圆环的固定窝：16×16，保证金额起点不随环径（16 vs 折叠态 18）变化。 */

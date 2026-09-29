@@ -168,6 +168,8 @@
   padding-right: 38px;
 }
 
+/* 掩码输入框右端的显隐按钮：**有意偏离官方**，官方没有对应构件。
+   26×26 命中区；它是圆形图标按钮，所以走 50% + corner-shape: round（同 .pairNote 的理由）。 */
 .reveal {
   position: absolute;
   right: 4px;
@@ -178,7 +180,7 @@
   height: 26px;
   padding: 0;
   border: none;
-  border-radius: 999px;
+  border-radius: 50%;
   corner-shape: round;
   background: transparent;
   color: var(--dsw-alias-label-tertiary);
@@ -205,8 +207,16 @@
   flex: none;
 }
 
-/* 选择器触发 pill（figma Selector：h36 r18，fill module-platform，pad 0/14，gap 12）。
-   没有公共组件，取值照抄 packages/client/locale/src/client/LanguageRow.module.css:28-51。 */
+/* 选择器触发 pill（标准控件尺寸 h36）。
+   **取值照官方 shipped 代码**：packages/client/locale/src/client/LanguageRow.module.css 的 `.selector`
+   —— height:36px、padding:0 14px、gap:12px。
+   **圆角在两条宿主线上值不同**，所以 token + 回落，各给一条线上官方的值：
+   · 0.1.7-alpha 线（本仓 `engines.dsh` 的下限、README 承诺的那条）：`border-radius: 18px`
+     （h36 配 r18 = 全圆 pill；实测 alpha.1 / alpha.2 / rc.1 三个 tag 逐字相同）；
+   · 0.1.7-rc.2 起（token 化之后）：`var(--dsw-radius-md)` = 12px 的圆角矩形。
+   回落的语义是**「这个组件在老线上的官方值」**，不是「token 自己的值」——
+   两者在 h36 这一档恰好不同（18 vs 12），写成 12px 会让老线渲染出官方没有的形状。
+   不写 corner-shape：圆角矩形继承宿主全局的 superellipse。 */
 .selector {
   display: inline-flex;
   align-items: center;
@@ -216,7 +226,7 @@
   height: 36px;
   padding: 0 14px;
   border: none;
-  border-radius: 18px;
+  border-radius: var(--dsw-radius-md, 18px);
   background: var(--dsw-alias-bg-module-platform);
   font: inherit;
   font-size: 14px;
@@ -259,12 +269,16 @@
   color: var(--dsw-alias-state-warn-primary);
 }
 
+/* 成对校验提示前的警示小点：**有意偏离官方**，官方没有这个元素。
+   它是 5×5 的实心圆，不是「控件圆角」，所以走 border-radius: 50% + corner-shape: round
+   —— 圆点必须真的是圆，不能继承宿主的 superellipse(1.5)。
+   （这与 .selector 那类控件圆角不同：后者继承宿主全局形状才是对的。） */
 .pairNote::before {
   content: '';
   flex: none;
   width: 5px;
   height: 5px;
-  border-radius: 999px;
+  border-radius: 50%;
   corner-shape: round;
   background: currentColor;
 }

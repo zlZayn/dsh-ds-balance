@@ -21,7 +21,14 @@
   max-width: min(440px, calc(100vw - 24px));
   padding: 16px;
   border: 0;
-  border-radius: 12px;
+  /* 官方 stat-dialog 的圆角**在两条宿主线上值不同**，所以这里必须 token + 回落：
+     · 0.1.7-alpha 线（本仓声明的下限、README 承诺的那条）：`border-radius: 12px`（字面量）；
+     · 0.2.0-rc 线（token 化之后）：`var(--dsw-radius-lg)` = 16px。
+     回落的语义因此是**「老线上的官方值」**，不是「token 值的安全近似」——
+     写成 16px 会让老线渲染出官方没有的圆角。反过来 token 在新线上就是官方值本身。
+     corner-shape 不写：宿主 ui-theme 已给 `*` 配了 var(--dsw-corner-shape)（superellipse(1.5)），
+     写 round 会掰回 superellipse(1)。 */
+  border-radius: var(--dsw-radius-lg, 12px);
   /* 填充挪到 .panel::before —— 见下面那条规则。 */
   --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
   box-shadow: var(--dsw-elevation-prominent);
@@ -103,7 +110,11 @@
 }
 
 /* 官方这里把图标写死 14×14。鲸鱼标志的比例是 23.16:17.04，
-   压成正方形会变形，所以只定宽、高度按比例走。 */
+   压成正方形会变形，所以只定宽、高度按比例走。
+   **有意偏离官方**：官方那条 `.titleLabel svg { width:14px; height:14px }` 会把
+   FishLogo 自算的比例高度（14 × 17.04/23.16 ≈ 10.3px）覆盖成 14px，纵向拉伸 36%。
+   取 height:auto 让它按 viewBox 比例走 —— 比例正确比字面统一重要。
+   别人若来「统一成官方」，这里不能改。 */
 .titleLabel svg {
   flex: none;
   width: 14px;
@@ -111,8 +122,16 @@
 }
 
 /* 标题行右端的 Plugins 图标按钮：逐值照抄宿主侧栏的 .iconButton
-   （packages/client/ui-sidebar/src/client/SidebarRoot.module.css:295-321），
-   所以它看起来与侧栏里那些图标按钮同族。全圆角按本仓红线成对写 corner-shape。 */
+   （packages/client/ui-sidebar/src/client/SidebarRoot.module.css）——
+   28×28、hover 用 --dsw-alias-interactive-bg-hover，所以它与侧栏里那些图标按钮同族。
+   **圆角在两条宿主线上值不同**，token + 回落正好各给一条线上官方的值：
+   · 0.1.7-alpha 线（本仓声明的下限、README 承诺的那条）：`border-radius: 50%`（正圆）；
+   · 0.2.0-rc 线（token 化之后）：`var(--dsw-radius-sm)` = 8px 的圆角矩形。
+   裸引会让老线渲染成直角（官方在那边是正圆），那才是真回归。
+   **不写 corner-shape**：宿主 ui-theme 已给 `*` 配了 var(--dsw-corner-shape)
+   （superellipse(1.5)），写 round 会把它掰回 superellipse(1)、与官方不一致
+   （同 SidebarBalance.module.css 的既有结论）。
+   */
 .iconButton {
   position: relative;
   flex: none;
@@ -122,8 +141,7 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 50%;
-  corner-shape: round;
+  border-radius: var(--dsw-radius-sm, 50%);
   padding: 0;
   background: transparent;
   /* 面板自己写了 cursor: default，按钮要显式要回手型。 */
@@ -135,9 +153,14 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
-/* 无焦点指示的交互控件在本仓算缺陷：焦点环照既有的触发按钮。 */
+/* 无焦点指示的交互控件在本仓算缺陷。口径照官方（SidebarRoot 的 :focus-visible）：
+   宽度走 --dsw-focus-ring-width、颜色走 --dsw-focus-ring-color，两处都带回落。
+   **回落不是保险起见**：这两条 token 是宿主 0.1.7-rc.2 才有的，而本仓 engines.dsh 下限是
+   >=0.1.7-alpha.1 —— 那一档里裸引会让 outline-width 变成 0（**焦点环整条消失**，
+   无障碍回归且不报错）。回落值取本仓当时的既有写法：宽度 2px、颜色 brand-primary。 */
 .iconButton:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline: var(--dsw-focus-ring-width, 2px) solid
+    var(--dsw-focus-ring-color, var(--dsw-alias-brand-primary));
   outline-offset: -2px;
 }
 
@@ -208,6 +231,9 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+/* 底部刷新按钮：官方 stat-dialog 里没有对应物（它没有底部动作行），
+   所以这里**有意偏离** —— 但走同一族的约定：与标题行那个 .iconButton 同为 28×28 图标按钮，
+   圆角同样取 --dsw-radius-sm，不写 corner-shape（理由同上）。 */
 .refresh {
   display: inline-flex;
   flex: none;
@@ -217,8 +243,7 @@
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 999px;
-  corner-shape: round;
+  border-radius: var(--dsw-radius-sm, 50%);
   background: transparent;
   color: var(--dsw-alias-label-tertiary);
   cursor: pointer;
@@ -230,8 +255,9 @@
 }
 
 .refresh:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
-  outline-offset: 1px;
+  outline: var(--dsw-focus-ring-width, 2px) solid
+    var(--dsw-focus-ring-color, var(--dsw-alias-brand-primary));
+  outline-offset: -2px;
 }
 
 .refresh:disabled {
