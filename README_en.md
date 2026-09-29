@@ -152,6 +152,14 @@ Saving applies immediately; there is no need to restart DSH.
 The key is resolved only through DSH's credential channel; the card's "API key" inherits the one already configured on the official model settings page.
 When it comes from the launch environment (an environment variable) the field is read-only and the badge says where it came from.
 
+**How long a key change takes to land follows DSH's own layers — this plugin deliberately adds nothing on top:**
+
+- **A key from the launch environment (an environment variable): restart DSH to change it.** A process's environment is fixed the moment it starts; a later change to that variable outside is invisible to the running plugin.
+- **A key changed on the official model settings page / in the credential store: no restart needed** — it lands by the next server refresh cycle at the latest (later while failure backoff is active); to see it at once, use the manual refresh in the popover (it is rate-limited).
+- Until then the UI still shows the **previous ledger**: the ledger identifier is derived from the key, so the two never mix, but the in-memory copy is only replaced once the next fetch succeeds.
+
+Why it is this way → [Key decisions](docs/ARCHITECTURE.md#关键决策).
+
 ## Security and boundaries
 
 - **The API key is never returned to the UI**: the config endpoint returns only a fixed-length mask, not even the last few characters.
