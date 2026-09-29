@@ -56,9 +56,10 @@
   pointer-events: none;
 }
 
-/* 标题行：左端是图标 + 标题（链到官网用量页），右端是切到 Plugins 页的图标按钮。
+/* 标题行：左端是「图标 + 标题（链到官网用量页）+ 来源标签」这一组，右端是切到 Plugins 页的图标按钮。
    官方在这一行的右侧放 tabular-nums 的汇总值，我们用不到（余额本身就在明细里，放这里会重复显示），
-   右端改由那个按钮占用；space-between 照官方留着，两端各一个子元素。 */
+   右端改由那个按钮占用。**这一行只有两个子元素**：标题与标签必须包在一组里，否则 space-between
+   会把标签推到行中间。 */
 .title {
   display: flex;
   justify-content: space-between;
@@ -66,6 +67,14 @@
   margin-bottom: 8px;
   color: var(--dsw-alias-label-primary);
   font-weight: 500;
+}
+
+/* 标题 + 来源标签：两者紧贴，一起占住左端。 */
+.titleMain {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
 }
 
 .titleLabel {

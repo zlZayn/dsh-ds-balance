@@ -8,7 +8,14 @@
  * @module dsh-ds-balance/services/balance-source
  */
 
-import type { BalanceSnapshot, BalanceSource, BalanceView, CacheState } from '../domain/balance.js'
+import type {
+  BalanceInfo,
+  BalanceSnapshot,
+  BalanceSource,
+  BalanceView,
+  CacheState,
+  Severity,
+} from '../domain/balance.js'
 import {
   classify,
   describeError,
@@ -323,14 +330,31 @@ export class SourceLedger {
       isAvailable: this.snapshot?.isAvailable ?? null,
       balances: this.snapshot?.balances ?? [],
       selected: selected === null ? null : { currency: selected.currency, total: selected.total },
-      severity: severityOf(
-        selected,
-        this.snapshot?.isAvailable ?? false,
-        thresholdsFor(selected?.currency ?? '', thresholds),
-      ),
+      severity: this.severityOf(selected),
       thresholds,
       error: this.state === 'ok' ? null : this.error,
     }
+  }
+
+  /**
+   * 这一份视图的严重度。
+   *
+   * **没接入 ≠ 接入了但出错**，两者不能都画成叉：
+   * - 一条凭据都没有（`NO_KEY`、也没快照）→ `unknown`：没有信息可画 → 空环，文案是「尚未配置凭据」；
+   * - 有凭据但这次没抓到（网络 / 上游 / 账号查询失败）→ `unavailable`：账户读不到 → 叉，文案是「服务暂不可用」。
+   * @param selected - 选中币种的那条余额；没快照时是 `null`。
+   * @returns 严重度。
+   */
+  private severityOf(selected: BalanceInfo | null): Severity {
+    if (this.snapshot === null) {
+      return this.error?.code === 'NO_KEY' ? 'unknown' : 'unavailable'
+    }
+    const thresholds = this.options.config.thresholds()
+    return severityOf(
+      selected,
+      this.snapshot?.isAvailable ?? false,
+      thresholdsFor(selected?.currency ?? '', thresholds),
+    )
   }
 }
 

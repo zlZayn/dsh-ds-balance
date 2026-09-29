@@ -12,7 +12,7 @@ import type { CoreStore } from '../src/ports/core-store.ts'
 import type { DeepSeekClient } from '../src/ports/deepseek-client.ts'
 import { NetworkError, UpstreamError } from '../src/domain/errors.ts'
 import { formatMoney } from '../src/domain/money.ts'
-import { ACCOUNT_PROVIDER, KEY_PROVIDER } from '../src/services/source-selector.ts'
+import { ACCOUNT_PROVIDER, DEFAULT_SOURCE, KEY_PROVIDER } from '../src/services/source-selector.ts'
 
 const SALT = 'test-salt'
 
@@ -179,9 +179,76 @@ describe('失败路径', () => {
     const view = await h.service.getView()
     expect(view.state).toBe('error')
     expect(view.stale).toBe(false)
-    expect(view.severity).toBe('unknown')
+    // 「接入了但出错」画叉（unavailable），文案是「服务暂不可用」—— 与「没接入」分开。
+    expect(view.severity).toBe('unavailable')
     expect(view.error?.code).toBe('NO_NETWORK')
     expect(view.error?.retryable).toBe(true)
+  })
+
+  it('**两条都抓不到**时一轮最多各打一次 —— 不来回重试（ping-pong）', async () => {
+    let accountCalls = 0
+    const h = harness({}, 'sk-test')
+    vi.mocked(h.client.fetchBalance).mockRejectedValue(new NetworkError('offline'))
+    h.setAccount({
+      ...signedIn,
+      readBalance: async () => {
+        accountCalls += 1
+        throw new NetworkError('account down')
+      },
+    })
+    await h.service.getView()
+    expect(h.client.fetchBalance).toHaveBeenCalledTimes(1)
+    expect(accountCalls).toBe(1)
+    // 都没有 → 回到默认那条，由它报错（此时才画叉）。
+    expect(h.service.activeSource()).toBe(DEFAULT_SOURCE)
+  })
+
+  it('手动刷新刷**用户看到的那条**：首选没数据时刷兜底那条', async () => {
+    let accountCalls = 0
+    const h = harness({}, 'sk-test')
+    vi.mocked(h.client.fetchBalance).mockRejectedValue(new NetworkError('offline'))
+    h.setAccount({
+      ...signedIn,
+      readBalance: async () => {
+        accountCalls += 1
+        return { wallets: [{ currency: 'CNY', balance: '50' }], bonusWallets: [] }
+      },
+    })
+    await h.service.getView() // 展示的是账号那条（兜底）
+    expect(h.service.activeSource()).toBe('deepseek-account')
+    const before = accountCalls
+
+    const result = await h.service.forceRefresh('manual')
+    expect(result.triggered).toBe(true)
+    expect(accountCalls).toBe(before + 1) // 刷的是账号
+    expect(h.client.fetchBalance).toHaveBeenCalledTimes(1) // Key 那条没有被重复刷
+  })
+
+  it('兜底展示之后，调度接着刷**展示的那条** —— 数字才不会停在旧快照', async () => {
+    let accountCalls = 0
+    const h = harness({}, 'sk-test')
+    vi.mocked(h.client.fetchBalance).mockRejectedValue(new NetworkError('offline'))
+    h.setAccount({
+      ...signedIn,
+      readBalance: async () => {
+        accountCalls += 1
+        return { wallets: [{ currency: 'CNY', balance: '50' }], bonusWallets: [] }
+      },
+    })
+    await h.service.getView()
+    const before = accountCalls
+    await h.service.refreshActive()
+    expect(accountCalls).toBe(before + 1)
+    expect(h.service.status().source).toBe('deepseek-account')
+  })
+
+  it('**没接入**与**接入了但出错**不是同一个环：没接入画空环', async () => {
+    // 一条凭据都没有 → 没有信息可画（unknown = 空环），文案是「尚未配置凭据」。
+    const h = harness({}, '')
+    const view = await h.service.getView()
+    expect(view.error?.code).toBe('NO_KEY')
+    expect(view.severity).toBe('unknown')
+    expect(view.source).toBe('deepseek-http')
   })
 
   it('有快照时转 stale，severity 仍按快照算', async () => {
@@ -293,17 +360,17 @@ describe('forceRefresh', () => {
   })
 })
 
-describe('选源', () => {
-  /** 账号那条路的替身：已登录、有 50 元充值。 */
-  const signedIn = {
-    signedIn: async () => true,
-    accountId: async () => 'user-1',
-    readBalance: async () => ({
-      wallets: [{ currency: 'CNY', balance: '50.00000000' }],
-      bonusWallets: [],
-    }),
-  }
+/** 账号那条路的替身：已登录、有 50 元充值。 */
+const signedIn = {
+  signedIn: async () => true,
+  accountId: async () => 'user-1',
+  readBalance: async () => ({
+    wallets: [{ currency: 'CNY', balance: '50.00000000' }],
+    bonusWallets: [],
+  }),
+}
 
+describe('选源', () => {
   it('路由点名账号、账号已登录 → 这一份数字来自账号', async () => {
     const h = harness({}, 'sk-test', { route: ACCOUNT_PROVIDER })
     h.setAccount(signedIn)

@@ -16,7 +16,7 @@ import type {
   RefreshResult,
   SourceLedger,
 } from './balance-source.js'
-import { pickSource, routeOf } from './source-selector.js'
+import { FALLBACK_ORDER, pickSource, routeOf } from './source-selector.js'
 
 export type { BalanceStatus, RefreshResult, SourceReader } from './balance-source.js'
 
@@ -88,18 +88,45 @@ export class BalanceService {
    * 取当前视图。
    *
    * `providerHint` 一变（用户切了会话、切了模型）就重新解析来源 —— 这是「跟着会话走」的入口。
+   *
+   * **本插件只记官方的那一个数字**，所以首选那条路拿不出数字时**退到另一条官方路**：
+   * 叉（空态 / 失败态）只在「官方两条路都拿不到数据」时才出现 —— 那才是「没接入官方」。
    */
   async getView(options: GetViewOptions = {}): Promise<BalanceView> {
-    const id = await this.resolve(options.providerHint)
+    const preferred = await this.resolve(options.providerHint)
+    const view = await this.viewOf(preferred, options)
+    // 展示出去的那条 = 刷新与标签认的那条（否则「数字是账号的、刷新去刷 Key」）。
+    if (view.state === 'ok') {
+      this.mark(preferred)
+      return view
+    }
+
+    // 兜底顺序：固定顺序里排在前面的先试，跳过刚试过的那条。
+    for (const id of FALLBACK_ORDER) {
+      if (id === preferred) continue
+      const fallback = await this.viewOf(id, options)
+      // 有快照就赢过没快照（陈的官方数字也比一个叉有信息）；两边都没快照就继续找。
+      if (fallback.state === 'ok' || fallback.fetchedAt !== null) {
+        this.mark(id)
+        return fallback
+      }
+    }
+    this.mark(preferred)
+    return view
+  }
+
+  /** 取一条路的视图（先确保它恢复过）。 */
+  private async viewOf(id: BalanceSource, options: GetViewOptions): Promise<BalanceView> {
     await this.restoreLedger(id)
     return this.ledger(id).getView({ force: options.force, currency: options.currency })
   }
 
   /**
-   * 定时刷新：刷**当前活跃来源**。
+   * 定时刷新：刷**用户实际看到的那条**。
    *
-   * 来源还没定过（宿主刚起来、可选服务未到齐）时先解析一次；定过之后**不重新解析** ——
-   * 节拍属于「这份数据」，不属于某一次请求，每轮都按全局默认重算会把会话级的来源无声顶掉。
+   * 来源还没定过（宿主刚起来、可选服务未到齐）时先解析一次；定过之后就认 `active` ——
+   * 而 `active` 是**上一次真正把数字交出去的那条**（`getView` 兜底出去的也算），
+   * 所以兜底展示的账号数字才会被继续刷新，不会永远停在一张旧快照上。
    */
   async refreshActive(): Promise<BalanceView> {
     let id = this.resolved ? this.active : await this.resolve(undefined)
@@ -107,27 +134,56 @@ export class BalanceService {
     // 还没读出来），那一轮会落在一条不可用的路上。下一轮发现仍旧不可用就再解析一次 ——
     // 不必等界面来请求，也不必靠外部作废。
     if (!(await this.ledger(id).available())) id = await this.resolve(undefined)
+    this.mark(id)
     await this.restoreLedger(id)
     return this.ledger(id).getView({ force: true })
   }
 
-  /**
-   * 作废「来源已定」这件事，让下一次调度重新解析。
-   *
-   * 装配处在可选服务（账号 / 默认模型）到位时调它：那一刻判据才齐，之前那次解析是兜底。
-   */
+  /** 作废「来源已定」这件事，让下一次调度重新解析。 */
   invalidateSource(): void {
     this.resolved = false
   }
 
-  /** 手动刷新：与 {@link getView} 同一条解析路径；冷却由该来源的账本自己管。 */
+  /**
+   * 手动刷新：**用户看哪条就刷哪条**（与 {@link getView} 同一条判定）。
+   *
+   * 首选那条一条数字都没有时，界面上实际是兜底那条在撑着 —— 那就刷兜底那条，
+   * 否则用户点了刷新、数字却永远不动。冷却仍由那条自己的账本管。
+   */
   async forceRefresh(reason: string, providerHint?: string | null): Promise<RefreshResult> {
-    const id = await this.resolve(providerHint)
-    await this.restoreLedger(id)
-    return this.ledger(id).forceRefresh(reason)
+    const preferred = await this.resolve(providerHint)
+    await this.restoreLedger(preferred)
+    const shown = this.ledger(preferred).status().hasSnapshot
+      ? preferred
+      : await this.firstWithSnapshot(preferred)
+    this.mark(shown)
+    await this.restoreLedger(shown)
+    return this.ledger(shown).forceRefresh(reason)
   }
 
-  /** 解析这一轮用哪条路，并把它记为活跃来源。 */
+  /** 找一条**有快照**的官方路；都没有就退回默认那条（那时才画叉）。 */
+  private async firstWithSnapshot(preferred: BalanceSource): Promise<BalanceSource> {
+    for (const id of FALLBACK_ORDER) {
+      if (id === preferred) continue
+      await this.restoreLedger(id)
+      if (this.ledger(id).status().hasSnapshot) return id
+    }
+    return preferred
+  }
+
+  /** 记下「这条刚刚把数字交出去了」：展示、刷新、标签从此都认它。 */
+  private mark(id: BalanceSource): void {
+    if (id !== this.active) {
+      this.options.logger?.debug('ds-balance: balance source switched', {
+        from: this.active,
+        to: id,
+      })
+    }
+    this.active = id
+    this.resolved = true
+  }
+
+  /** 解析这一轮**首选**哪条路。 */
   private async resolve(hint: string | null | undefined): Promise<BalanceSource> {
     const routed = routeOf(hint ?? this.options.routeProvider())
     // 问**每一条**账本自己「此刻可用吗」：新增来源时这里一行都不用改。
@@ -137,17 +193,7 @@ export class BalanceService {
         availability.set(id, await ledger.available())
       }),
     )
-    const picked = pickSource({ routed, available: (id) => availability.get(id) === true })
-    this.resolved = true
-    if (picked !== this.active) {
-      this.options.logger?.debug('ds-balance: balance source switched', {
-        from: this.active,
-        to: picked,
-        routed,
-      })
-    }
-    this.active = picked
-    return picked
+    return pickSource({ routed, available: (id) => availability.get(id) === true })
   }
 
   /** 取账本；缺一条属于装配错误，直接抛（静默降级会让界面永远停在空态）。 */

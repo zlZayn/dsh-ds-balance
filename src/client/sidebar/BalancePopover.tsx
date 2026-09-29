@@ -193,20 +193,25 @@ export function BalancePopover(props: BalancePopoverProps): JSX.Element {
       aria-label={t('popover.title')}
     >
       <div className={css.title}>
-        {/* 标题就是这个账户在官网的用量页入口：图标与文字本身不变，只有文字带下划线且不变色
-            （宿主没有「链接色」这种语义 token，硬套会破配色纪律）。 */}
-        <a
-          className={css.titleLabel}
-          href="https://platform.deepseek.com/usage"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <FishLogo size={14} />
-          {t('popover.title')}
-          {/* 来源标签跟在标题后面、**在同一枚链接里**：它描述的是这个数字的来路，
-              点了照样去官网用量页。标签自带括号（词典给），这里只做拼接。 */}
+        {/* 标题与来源标签**合成一组**：这一行是 space-between 的两端布局，三个并列子元素会把
+            标签推到行中间。包起来之后标签紧贴标题右侧，右端仍由那个图标按钮占着。 */}
+        <span className={css.titleMain}>
+          {/* 标题就是这个账户在官网的用量页入口：图标与文字本身不变，只有文字带下划线且不变色
+              （宿主没有「链接色」这种语义 token，硬套会破配色纪律）。 */}
+          <a
+            className={css.titleLabel}
+            href="https://platform.deepseek.com/usage"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <FishLogo size={14} />
+            {t('popover.title')}
+          </a>
+
+          {/* 来源标签是**链接外面的普通文本**：它描述这个数字的来路，不是官网用量页的入口 ——
+              放进链接里它会跟着下划线，读起来像标题的一部分。括号由词典给，这里只做拼接。 */}
           {sourceLabel === null ? null : <span className={css.sourceLabel}>{sourceLabel}</span>}
-        </a>
+        </span>
 
         {/* 右上角：无可见文字的图标按钮，点了去本插件的配置格；宿主没有那条深链服务时
             退回 Plugins 列表 —— 措辞跟着落点走，不承诺到不了的地方。

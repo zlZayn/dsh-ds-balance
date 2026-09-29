@@ -36,6 +36,8 @@ export const zh = {
   'state.unavailable': '账户不可用',
   'state.stale': '数据已过期',
   'state.error': '读取失败',
+  // 接进了官方、但这次没抓到（网络 / 上游 / 账号查询都算）—— 与「没接入」分开说。
+  'state.fetchFailed': '服务暂不可用',
   'state.empty': '尚未配置',
   'state.noKey': '尚未配置凭据',
   'state.noBalance': '暂无余额',
@@ -128,6 +130,7 @@ export const en: Record<LocaleKey, string> = {
   'state.unavailable': 'Account unavailable',
   'state.stale': 'Data is stale',
   'state.error': 'Failed to load',
+  'state.fetchFailed': 'Service unavailable',
   'state.empty': 'Not configured',
   'state.noKey': 'No credential configured',
   'state.noBalance': 'No balance',

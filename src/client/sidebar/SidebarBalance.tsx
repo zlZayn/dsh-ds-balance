@@ -200,8 +200,10 @@ export interface SidebarBalanceProps {
  * @returns 词典键，或 null 表示正常。
  */
 function stateLabelKey(response: BalanceResponse, selection: CurrencySelection): LocaleKey | null {
+  // **「没接入」与「接入了但出错」是两件事**：前者该说配置缺失，后者该说服务暂不可用。
+  // 环也一样：没接入画空环（`unknown`），接入了却抓不到才画叉（见账本的 severityOf）。
   if (response.state === 'error')
-    return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.error'
+    return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.fetchFailed'
   if (response.state === 'empty')
     return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.empty'
   if (response.state === 'stale') return 'state.stale'
