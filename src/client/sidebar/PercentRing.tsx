@@ -13,8 +13,10 @@
  * - **弧长**表达比例：余额占该币种 warn 阈值的几分之几，由 `model.ts` 的 `ringRatioOf` 算好传进来。
  *   阈值是用户自己设的刻度，所以不必再定义「满」是多少；本组件不做任何金额判断。
  * - **颜色**按 state 机械映射，取值与原生 StateDot 的 data-state 一一对应，来源只有 `severity`。
- * 账户不可用（unavailable）在这条弧上再加一个中心叉号：颜色只有四个色相可用，
- * 形状负责把「账户维度不可用」与「余额维度告急」分开。
+ * 中心记号用**形状**补颜色表达不了的那两件事，两者几何同源、只差朝向：
+ * - `cross`（斜交 45°）：账号维度读不到 —— 否定；
+ * - `plus`（正交 0°/90°）：没有接入凭据，需要用户去配置 —— 肯定／添加。
+ * 颜色只有四个色相可用，形状负责把「读不到」「待配置」「余额告急」三者分开。
  * @module dsh-ds-balance/client/sidebar/PercentRing
  */
 
@@ -59,13 +61,24 @@ const CENTER = VIEW / 2
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 /**
- * 中心叉号的半臂长（viewBox 单位）。
- *
- * 环内径取 50% 作整条对角线，半臂 = 内径 / 2 / √2。内径 = 2 × RADIUS − STROKE = 12，
- * 于是对角线长 6、半臂 ≈ 2.121。用 viewBox 单位写，所以符号跟着环一起缩放，12px 下仍清晰。
- * 写成由 RADIUS 与 STROKE 推出来（而不是写死 2.121）：环的几何一改，叉号跟着走。
+ * 内半径：环内缘到圆心的距离（不含笔画）。内径 = 2 × 它 = 12。
  */
-const CROSS_ARM = (2 * RADIUS - STROKE) / 2 / Math.SQRT2
+const INNER_RADIUS = RADIUS - STROKE / 2
+
+/**
+ * 中心记号的半臂长（viewBox 单位）。
+ *
+ * **两个记号共用这一个常量**，这是「两者同大」的唯一实现方式。
+ * 口径：整条对角线取**内径的 50%**，于是半臂 = 内径 / 2 / √2 = 内半径 / 2 / √2 ≈ 2.1213。
+ * 用 viewBox 单位写，符号跟着环一起缩放。
+ *
+ * **写成由 RADIUS 与 STROKE 推出来的表达式**（而不是写死 2.1213）：环的几何一改，记号跟着走。
+ * 历史上这里漂过 2 倍 —— 注释写着「内径」而表达式写的是 `2 * RADIUS - STROKE`（= 内径而不是
+ * 内半径），于是「约内径一半」变成了「端点顶到内壁」。守它的是
+ * [test/redlines.test.ts](../../../test/redlines.test.ts) 的「圆环几何」一组：
+ * 那条断言会**求值源码里的这个表达式**再与「内径 50%」比对，注释与实现再也漂不开。
+ */
+const MARK_ARM = INNER_RADIUS / 2 / Math.SQRT2
 
 /**
  * 保留三位小数。
@@ -131,23 +144,38 @@ export function PercentRing({
           transform={`rotate(-90 ${CENTER} ${CENTER})`}
         />
       )}
-      {/* 中心叉号：两条对角短线，颜色跟弧走（currentColor）。没有动画。 */}
-      {marker === 'cross' ? (
-        <g className={css.cross}>
-          <line
-            x1={CENTER - CROSS_ARM}
-            y1={CENTER - CROSS_ARM}
-            x2={CENTER + CROSS_ARM}
-            y2={CENTER + CROSS_ARM}
-          />
-          <line
-            x1={CENTER + CROSS_ARM}
-            y1={CENTER - CROSS_ARM}
-            x2={CENTER - CROSS_ARM}
-            y2={CENTER + CROSS_ARM}
-          />
+      {/* 中心记号：两条短线，颜色跟弧走（currentColor）。没有动画。
+          两条分支取自**同一个 MARK_ARM**，所以两者外接框逐值相等（4.2426 见方）——
+          「同大」就是这么保证的，不是靠两处各写一个数。
+          墨量不同是几何必然：叉的每一笔走对角线，比正交的 ＋ 长 √2 倍；
+          视觉轻重由「笔画宽度 + 外接框」决定，两者都相同。
+          两者的 <g> 共用 css.marker 一个类（同宽、同圆头、同无填充），
+          少一个类就少一处 stroke-width，红线「笔画条数」那条也就少一份对账。 */}
+      {marker === null ? null : (
+        <g className={css.marker}>
+          {marker === 'cross' ? (
+            <>
+              <line
+                x1={CENTER - MARK_ARM}
+                y1={CENTER - MARK_ARM}
+                x2={CENTER + MARK_ARM}
+                y2={CENTER + MARK_ARM}
+              />
+              <line
+                x1={CENTER + MARK_ARM}
+                y1={CENTER - MARK_ARM}
+                x2={CENTER - MARK_ARM}
+                y2={CENTER + MARK_ARM}
+              />
+            </>
+          ) : (
+            <>
+              <line x1={CENTER} y1={CENTER - MARK_ARM} x2={CENTER} y2={CENTER + MARK_ARM} />
+              <line x1={CENTER - MARK_ARM} y1={CENTER} x2={CENTER + MARK_ARM} y2={CENTER} />
+            </>
+          )}
         </g>
-      ) : null}
+      )}
     </svg>
   )
 }

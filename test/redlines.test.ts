@@ -670,12 +670,99 @@ describe('圆环几何', () => {
   it('两条 stroke-width 都是 STROKE，叉号与环同宽', () => {
     // svg 上的 stroke-width 由 CSS 写（组件里没有 strokeWidth 属性），所以这两条常量之外
     // 还有一份真源 —— 靠这条对账：漏改一处就是「环 1px、叉号 1.5px」或反过来。
+    // 中心记号两个取值共用 `css.marker` 一条规则，所以条数仍是 3（track / fill / marker）。
     const stroke = numberOf('STROKE')
     const widths = [...ringCss.matchAll(/stroke-width: ([0-9.]+);/g)].map((match) =>
       Number(match[1]),
     )
     expect(widths.length, 'PercentRing.module.css 里的 stroke-width 条数').toBe(3)
     for (const width of widths) expect(width).toBe(stroke)
+  })
+
+  /**
+   * 中心记号的半臂长：**求值源码里那条表达式**，而不是读一个数字字面量。
+   *
+   * 为什么必须求值：`MARK_ARM` 是 `INNER_RADIUS / 2 / Math.SQRT2` 这种派生表达式，
+   * 现有的 `numberOf()` 只认 `const X = <数字>`，读不到它 —— 于是表达式写错了也没有任何信号。
+   * 这个坑真实发生过：注释写着「取内径 50% 作对角线」，表达式却写成 `(2 * RADIUS - STROKE) / 2 / √2`
+   * （= **内径** / 2 / √2，正是注释里那条错公式），算出 4.2426 而不是 2.1213，
+   * 于是叉号端点顶到环内壁，「约内径一半」变成「占满内圆」，漂了整整 2 倍且无人发现。
+   *
+   * 实现方式：把表达式原文交给 `Function` 求值，喂进从源码读出的真实常量。
+   * 表达式里出现的标识符必须先声明，所以下面按依赖顺序逐个解析。
+   */
+  const evaluate = (expression: string, scope: Record<string, number>): number => {
+    const names = Object.keys(scope)
+    const values = names.map((name) => scope[name])
+    // 表达式只该用到我们喂进去的名字与全局 Math；`Function` 比 eval 少一层作用域污染。
+    return (Function(...names, `return (${expression})`) as (...args: number[]) => number)(
+      ...values,
+    )
+  }
+
+  /** 读 `const <name> = <表达式到行尾>` 的表达式原文。 */
+  const expressionOf = (name: string): string => {
+    const match = new RegExp(`const ${name} = (.+)$`, 'm').exec(ring)
+    expect(match, `PercentRing.tsx 里找不到 const ${name} = <表达式>`).not.toBeNull()
+    return (match?.[1] ?? '').replace(/\/\/.*$/, '').trim()
+  }
+
+  /** 按依赖顺序求值几何常量；`numberOf` 只认字面量，这里连表达式一起认。 */
+  const geometry = (): {
+    view: number
+    stroke: number
+    inset: number
+    radius: number
+    innerRadius: number
+    markArm: number
+  } => {
+    const view = numberOf('VIEW')
+    const stroke = numberOf('STROKE')
+    const inset = numberOf('RING_INSET')
+    const scope: Record<string, number> = { VIEW: view, STROKE: stroke, RING_INSET: inset }
+    for (const name of ['RADIUS', 'CENTER', 'CIRCUMFERENCE', 'INNER_RADIUS', 'MARK_ARM']) {
+      scope[name] = evaluate(expressionOf(name), scope)
+    }
+    return {
+      view,
+      stroke,
+      inset,
+      radius: scope.RADIUS,
+      innerRadius: scope.INNER_RADIUS,
+      markArm: scope.MARK_ARM,
+    }
+  }
+
+  it('记号半臂落在「内径 50% 作对角线」上，且实现与注释同源（防 2 倍漂移）', () => {
+    const { innerRadius, markArm } = geometry()
+    // 内径 = 2 × 内半径；整条对角线取它的 50%，于是半臂 = 对角线 / 2 / √2。
+    const innerDiameter = innerRadius * 2
+    const armFromHalfDiagonal = (innerDiameter * 0.5) / 2 / Math.SQRT2
+    expect(markArm, 'MARK_ARM 与「内径 50% 作对角线」的口径').toBeCloseTo(armFromHalfDiagonal, 10)
+    // 钉住绝对值：这条就是当年漂掉的那个数（写成 4.2426 时它会红）。
+    expect(markArm).toBeCloseTo(2.1213, 4)
+    // 端点必须留在环内：叉的端点半径是 arm×√2，＋ 的是 arm，两者都小于内半径。
+    expect(markArm * Math.SQRT2).toBeLessThan(innerRadius)
+    expect(markArm).toBeLessThan(innerRadius)
+    // 反向控制：当年那条错公式（内径 / 2 / √2）必须**不**等于现在这个值，
+    // 否则这条断言在实现退回旧写法时仍会通过。
+    const wrongFormula = innerDiameter / 2 / Math.SQRT2
+    expect(markArm).not.toBeCloseTo(wrongFormula, 6)
+  })
+
+  it('叉与＋取自同一个常量、共用同一条 CSS 规则（两者同大）', () => {
+    // 「两者同大」的唯一实现方式：只有一个半臂常量，两个记号都引它。
+    const armDefinitions = [...ring.matchAll(/const MARK_ARM =/g)].length
+    expect(armDefinitions, 'MARK_ARM 的定义处数（必须恰好一处）').toBe(1)
+    // 两个取值各自的 <line> 都只能用 MARK_ARM，不许出现第二个硬编码半臂。
+    for (const axis of ['CENTER - MARK_ARM', 'CENTER + MARK_ARM']) {
+      expect(ring, `记号坐标必须由 MARK_ARM 派生：${axis}`).toContain(axis)
+    }
+    // 旧常量不该再被引用（改名之后留一处就是两条几何各走各的）。
+    expect(ring, 'CROSS_ARM 已更名 MARK_ARM，不该再出现').not.toContain('CROSS_ARM')
+    // 两个记号共用一条 CSS 规则：分叉成两个类就会各自漂各自的 stroke-width。
+    expect(ringCss, '中心记号只该有一个类').not.toContain('.cross')
+    expect((ringCss.match(/\.marker\s*\{/g) ?? []).length, '.marker 规则条数').toBe(1)
   })
 })
 

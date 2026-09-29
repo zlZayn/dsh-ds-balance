@@ -25,8 +25,8 @@ export function dotStateOf(severity: Severity): DotState {
   }
 }
 
-/** 圆环中心可以画的符号。目前只有「账户不可用」用得到。 */
-export type RingMarker = 'cross'
+/** 圆环中心可以画的符号。两者几何同源（同一个 `MARK_ARM`），只差朝向。 */
+export type RingMarker = 'cross' | 'plus'
 
 /** 一个 severity 对应的环形态。 */
 export interface RingSpec {
@@ -47,6 +47,9 @@ export interface RingSpec {
  *   它拿红弧再加一个中心叉号。色盲与低分辨率下依然能分开。
  *
  * `critical` 与 `unavailable` 都是红弧，这是有意的：**别再往回改成从红系里挑两个**。
+ *
+ * `plus`（没有接入凭据）**不由 severity 产生** —— 它不是「严重度」，而是「需要用户动手配置」，
+ * 判据在处境层（`situation.ts`）。这里保留 `RingMarker` 的完整取值域，映射本体只出 `cross`。
  * @param severity - 后端给的严重度。
  * @returns 弧状态与中心符号。
  */
