@@ -80,6 +80,7 @@
 - **发布前在活宿主上打过真实上游**：余额、浮层三段、凭据徽标，以及错 key 的 `UPSTREAM_401`。
 - **2.0.0 已发布**：npm 上的 shasum 与本地 `npm pack` 一致（1.1.0 与 1.0.0 当时同样对过）。
 - **2.1.0 已发布**（2026-09-25）：tag `v2.1.0` → `7ded7f6`、Release 已建且非 prerelease；npm 侧 `latest` 与 shasum 复核等在 registry 生效后补（见待办）。
+- **2.1.3 已发布**（2026-09-30）：刷新计时三处修复；tag `v2.1.3` → `6c386fe`、Release 已建且非 prerelease、npm `latest` 已翻到 `2.1.3`，产物一致性复验通过（本地 `npm pack` 的 sha1 与 npm 上 `dist.shasum` 逐字节相同）。
 
 轮次流水记在 git log 与 [.agents/notes/](.agents/notes/) 里，不在这里堆。
 
@@ -106,6 +107,8 @@
 - [x] **深链已在本机生效**（2026-09-25）：维护者把宿主换到 provide 了那条服务的线上并重启，图标直达本插件的配置格。判据仍是**服务在不在**（三条 dist-tag 现查 `npm view @deepseek-ai/dsh dist-tags`），不是版本号
 - [x] **npm `latest` 已回填**（2026-09-25）：`dist-tags` 已翻到 `2.1.0`；产物一致性复验通过 —— 本地 `npm pack`（`7ded7f6` 那棵树）的 sha1 与 npm 上 2.1.0 的 `dist.shasum` **逐字节相同**
 - [ ] **浮层图标行为变了 → 涉及它的门面截图需重拍**（`sidebar-popover*.png`）：判据见 [assets/AGENTS.md](assets/AGENTS.md)
+- [ ] 本机 profile 升到 `2.1.3` 后实机验收本轮计时修复：浮层冷却从冷却值本身开始倒数（不再从 N+1）、按钮在截止时刻就能按、点刷新一定真的打一次上游
+- [ ] `node scripts/acceptance.mjs` 的**上游那一段**（要真实 `DEEPSEEK_API_KEY`）：本轮发布前只跑了离线四项，退出码 2
 
 ## 活跃坑
 
