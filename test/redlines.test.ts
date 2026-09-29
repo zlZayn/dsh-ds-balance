@@ -767,6 +767,144 @@ describe('圆环几何', () => {
 })
 
 /**
+ * 注释里声称「照官方」的值，必须真的等于官方那个值。
+ *
+ * **这条守的是一类安静的错误**：注释说「取值照抄官方 LanguageRow」，实际值与官方不一致 ——
+ * 代码能跑、界面也好看，只有「与官方一致」这个**承诺**是假的。它比不写注释更坏：
+ * 后来的人会相信这句话，于是不再去核。
+ *
+ * **为什么这条一度误报过（先说清楚，免得再踩）**：一次核对里拿 `ui-primitives/Pill.module.css`
+ * 去比 `fields.module.css` 的 `.selector` —— 而 `.selector` 注释里点名的是
+ * `locale/LanguageRow.module.css`。**比错了文件**，于是得出「官方 12px、我们 18px」的假结论；
+ * 真相是 LanguageRow 在 0.1.7-rc.1 及以前写的就是 `18px`，与我们的回落值一致。
+ * 教训：**判据必须绑到注释点名的那份官方文件**，所以下面按「源文件 + 选择器」显式配对，
+ * 不做「随便找个同名组件比一比」。
+ *
+ * **两条宿主线上的值可以不同**（这是本仓必须写回落值的原因）：
+ * `LanguageRow.selector` 的圆角在 0.1.7-rc.1 及以前是 `18px`，rc.2 起是 `var(--dsw-radius-md)`（12px）。
+ * 所以判据是：**token 的值 = 新线上的官方值；回落值 = 老线上的官方值**，两个都要对。
+ */
+describe('注释声称「照官方」的值必须与官方一致', () => {
+  /** 从 CSS 文本里读一个类规则体内某个属性的值（第一个匹配）。 */
+  const propertyOf = (text: string, selector: string, property: string): string => {
+    const rule = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(text)
+    expect(rule, `官方 CSS 里找不到规则 ${selector}`).not.toBeNull()
+    const declaration = new RegExp(`(?:^|;)\\s*${property}:\\s*([^;]+)`).exec(rule?.[1] ?? '')
+    expect(declaration, `规则 ${selector} 里找不到属性 ${property}`).not.toBeNull()
+    return (declaration?.[1] ?? '').trim()
+  }
+
+  /**
+   * 官方圆角刻度（`packages/client/ui-theme/src/styles/base.css` 的 `:root`）。
+   *
+   * **为什么把这张表抄进测试**：`ui-theme` 不是本仓依赖（只用它的运行时输出），
+   * 所以 node_modules 里没有那份 base.css 可读。表本身是官方常量，改它的概率极低。
+   */
+  const RADIUS_SCALE: Record<string, string> = {
+    '--dsw-radius-xs': '4px',
+    '--dsw-radius-sm': '8px',
+    '--dsw-radius-md': '12px',
+    '--dsw-radius-lg': '16px',
+    '--dsw-radius-xl': '20px',
+    '--dsw-radius-panel': '28px',
+  }
+
+  /** 把声明拆成「token 名 + 回落值」；没有 token 时 token 为 null。 */
+  const parseRadius = (value: string): { token: string | null; fallback: string | null } => {
+    const match = /var\(\s*(--dsw-radius-[a-z]+)\s*(?:,\s*([^)]+))?\)/.exec(value)
+    if (match === null) return { token: null, fallback: value.trim() }
+    return { token: match[1] ?? null, fallback: match[2]?.trim() ?? null }
+  }
+
+  const ourFields = readFileSync('src/client/settings/fields.module.css', 'utf8')
+
+  it('选择器 pill：token 值 = 新线官方值，回落值 = 老线官方值（两个都对才算「照官方」）', () => {
+    // 官方真源 = **注释里点名的那份文件的那个选择器**：locale/LanguageRow 的 .selector。
+    // 装好的 dsh-client-locale 把原始 CSS 内联进了 lib/client.js，所以从那里读。
+    const installed = readFileSync(
+      'node_modules/@deepseek-ai/dsh-client-locale/lib/client.js',
+      'utf8',
+    )
+    const officialOurs = parseRadius(
+      /\.\w+_selector\{[^}]*?border-radius:([^;}]+)/.exec(installed)?.[1] ?? '',
+    )
+    // 装的是 0.1.7-alpha.1（下限那一档）—— 官方在那儿写的就是字面量 18px。
+    expect(officialOurs.token, '老线官方是字面量，不该是 token').toBeNull()
+    expect(officialOurs.fallback, '老线（0.1.7-alpha.1）的官方圆角').toBe('18px')
+
+    const ours = parseRadius(propertyOf(ourFields, '.selector', 'border-radius'))
+    // token 的值必须等于官方刻度表里那个（= 新线上的官方值 12px）。
+    expect(ours.token, '本仓 .selector 该引语义 token').toBe('--dsw-radius-md')
+    expect(RADIUS_SCALE[ours.token ?? ''], 'token 指向的官方值').toBe('12px')
+    // 回落值必须等于**老线上的官方值**（就是上面从装好的官方包里读出来的那个）。
+    expect(ours.fallback, '回落值必须等于老线上官方的值').toBe(officialOurs.fallback)
+  })
+
+  it('凡是引「新版才有」的 token，必须带回落值（回落到老线官方的值）', () => {
+    // 这几族 token 都是宿主 0.1.7-rc.2 才进 base.css / focus.css 的，
+    // 而 package.json 声明的下限是 >=0.1.7-alpha.1 —— 那一档里它们不存在。
+    // 裸引的行为分两种，都很难看：圆角退化成 0（方角）、outline-width 退化成 0（焦点环消失）。
+    const lateTokens = [
+      '--dsw-radius-xs',
+      '--dsw-radius-sm',
+      '--dsw-radius-md',
+      '--dsw-radius-lg',
+      '--dsw-radius-xl',
+      '--dsw-radius-panel',
+      '--dsw-focus-ring-width',
+      '--dsw-focus-ring-color',
+    ]
+    const cssFiles = [
+      'src/client/sidebar/BalancePopover.module.css',
+      'src/client/sidebar/SidebarBalance.module.css',
+      'src/client/settings/fields.module.css',
+      'src/client/settings/BalanceSettingsCard.module.css',
+    ]
+    /** 命中即算裸引：token 后面紧跟 `)`（没有逗号 = 没有回落）。 */
+    let checked = 0
+    for (const file of cssFiles) {
+      const text = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      for (const token of lateTokens) {
+        const naked = text.match(new RegExp(`var\\(\\s*${token}\\s*\\)`, 'g')) ?? []
+        expect(naked.length, `${file} 里 ${token} 是裸引（缺回落值）`).toBe(0)
+        checked += (text.match(new RegExp(`var\\(\\s*${token}\\s*,`, 'g')) ?? []).length
+      }
+    }
+    // 反向控制：这条断言必须真的看到了那些带回落的使用处，否则它是空转的假绿。
+    expect(checked, '带回落地引用了这些 token 的次数').toBeGreaterThan(0)
+  })
+
+  it('声明下限与安装面必须同类（否则上面两条是在错的版本上核的）', () => {
+    // 这条不是形式主义：本仓 node_modules 装的是 ui-primitives 0.1.7-alpha.1，
+    // 而**在跑的宿主**已经是 0.2.0-rc.1 —— 两边的官方 CSS 写法不同（字面量 vs token）。
+    // 版本对不上时，「官方真源」这句话本身就没了意义，所以先把它变成可查的信号。
+    const declared = /"@deepseek-ai\/dsh-client-ui-primitives":\s*"([^"]+)"/.exec(
+      readFileSync('package.json', 'utf8'),
+    )?.[1]
+    const installed = JSON.parse(
+      readFileSync('node_modules/@deepseek-ai/dsh-client-ui-primitives/package.json', 'utf8'),
+    ) as { version: string }
+    expect(declared, 'package.json 里 ui-primitives 的声明区间').toBeDefined()
+    const floor = /(\d+\.\d+\.\d+(?:-[a-z.\d]+)?)/.exec(declared ?? '')?.[1]
+    expect(floor, '声明区间里读不出下限').toBeDefined()
+    const cmp = (a: string, b: string): number => {
+      const parse = (v: string): number[] =>
+        v
+          .split('-')[0]!
+          .split('.')
+          .map((n) => Number(n))
+      const [av, bv] = [parse(a), parse(b)]
+      for (let i = 0; i < 3; i += 1) if (av[i] !== bv[i]) return (av[i] ?? 0) - (bv[i] ?? 0)
+      return 0
+    }
+    expect(
+      cmp(installed.version, floor ?? '0.0.0'),
+      `安装的 ui-primitives ${installed.version} 低于声明下限 ${floor}`,
+    ).toBeGreaterThanOrEqual(0)
+  })
+})
+
+/**
  * 插件图标（插件页卡片、详情页与行上那个环）。
  *
  * 宿主按**图片**渲染它（读过 `package.json` 的 `icon` 之后编成 base64 data URL），所以
