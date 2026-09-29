@@ -61,6 +61,13 @@ export interface BalanceResponse {
   schemaVersion: number
   /** 这一份数字是哪条取数路给的。标题里的来源标签读它。 */
   source: BalanceSource
+  /**
+   * 处境：界面唯一的分支入口。
+   *
+   * **旧宿主没有这个字段**（客户端 HMR 换新、宿主重启才换），所以类型上可选，
+   * 读它必须过形状守卫 —— 见 [situation.ts](situation.ts) 的 `situationOfResponse`。
+   */
+  situation?: string
   state: BalanceState
   stale: boolean
   fetchedAt: number

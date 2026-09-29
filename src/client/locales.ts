@@ -33,14 +33,16 @@ export const zh = {
   'popover.action.openPlugins': '打开插件页',
   'popover.action.openPluginConfig': '打开插件配置页',
 
-  'state.unavailable': '账户不可用',
-  'state.stale': '数据已过期',
-  'state.error': '读取失败',
-  // 接进了官方、但这次没抓到（网络 / 上游 / 账号查询都算）—— 与「没接入」分开说。
-  'state.fetchFailed': '服务暂不可用',
-  'state.empty': '尚未配置',
-  'state.noKey': '尚未配置凭据',
-  'state.noBalance': '暂无余额',
+  // 处境文案：**一个处境一句**，环 / 悬停 / 浮层都从这里取。
+  // 键名前缀是 situation 而不是 state：后者是契约字段名，而「处境」是界面概念
+  // （一个处境可能吃掉多个 state + severity + error 的组合）。
+  'situation.checking': '正在获取',
+  'situation.unavailable': '服务暂不可用',
+  'situation.internalError': '插件内部错误',
+  'situation.noCredential': '尚未配置凭据',
+  'situation.accountUnavailable': '账户不可用',
+  'situation.stale': '数据已过期',
+  'situation.emptyWallet': '暂无余额',
 
   'settings.group.connection': '连接',
   'settings.group.refresh': '刷新',
@@ -127,13 +129,13 @@ export const en: Record<LocaleKey, string> = {
   'popover.action.openPlugins': 'Open the Plugins page',
   'popover.action.openPluginConfig': 'Open the plugin configuration page',
 
-  'state.unavailable': 'Account unavailable',
-  'state.stale': 'Data is stale',
-  'state.error': 'Failed to load',
-  'state.fetchFailed': 'Service unavailable',
-  'state.empty': 'Not configured',
-  'state.noKey': 'No credential configured',
-  'state.noBalance': 'No balance',
+  'situation.checking': 'Loading',
+  'situation.unavailable': 'Service unavailable',
+  'situation.internalError': 'Plugin error',
+  'situation.noCredential': 'No credential configured',
+  'situation.accountUnavailable': 'Account unavailable',
+  'situation.stale': 'Data is stale',
+  'situation.emptyWallet': 'No balance',
 
   'settings.group.connection': 'Connection',
   'settings.group.refresh': 'Refresh',

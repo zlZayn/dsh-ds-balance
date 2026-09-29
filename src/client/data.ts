@@ -60,15 +60,17 @@ export const UNREACHABLE_CODE = 'PLUGIN_UNREACHABLE'
 /**
  * 「还没拿到数据」的占位视图。
  *
- * 空态而不是错误态：首拉还没回来时不该先闪一下「读取失败」。
+ * 处境是 `checking`：首帧**不该**先闪一下「尚未配置」—— 那是「没接入」的说法，
+ * 而我们此刻只是还没问到。
  * @returns 契约形状的响应。
  */
 export function pendingView(): BalanceResponse {
   return {
     requestId: '',
     schemaVersion: 1,
-    // 占位视图没有取数路可言；界面在 `state === 'empty'` 时不渲染来源标签。
+    // 占位视图没有取数路可言；处境为 checking / offline 时界面都不渲染来源标签。
     source: 'deepseek-http',
+    situation: 'checking',
     state: 'empty',
     stale: false,
     fetchedAt: 0,
@@ -87,6 +89,8 @@ export function pendingView(): BalanceResponse {
 /**
  * 「拿不到数据」的视图。
  *
+ * 处境是 `offline` —— **插件自己的端点不可达**，这与「接入了但上游读不到」
+ * （`fetch-failed`）是两件不同的事：后者我们至少知道自己问了谁。
  * 只在**一次都没成功过**的时候用；已经有数据时宁可继续显示旧值 ——
  * 后端自己的 `state: stale` 才是「数据过期」的权威表达。
  * @param message - 面向用户的一句话。
@@ -95,6 +99,7 @@ export function pendingView(): BalanceResponse {
 export function unreachableView(message: string): BalanceResponse {
   return {
     ...pendingView(),
+    situation: 'offline',
     state: 'error',
     error: { code: UNREACHABLE_CODE, message },
   }

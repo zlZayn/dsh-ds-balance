@@ -12,6 +12,7 @@
 
 import type { BalanceSource, CacheState } from '../domain/balance.js'
 import { classify, describeError } from '../domain/errors.js'
+import { situationOf } from '../domain/situation.js'
 import type { CoreStore } from '../ports/core-store.js'
 import type { DeepSeekClient } from '../ports/deepseek-client.js'
 import type { Credentials } from '../ports/credentials.js'
@@ -86,6 +87,9 @@ async function readJsonObject(request: Request): Promise<Record<string, unknown>
 
 /**
  * 空视图：任何 handler 在彻底失败时都回它，保证响应形状仍然合法。
+ *
+ * 处境固定 `internal-error`：走到这里说明**我们自己的代码抛了**（装配错误之类），
+ * 那是「我们坏了」而不是「上游坏了」—— 两者在界面上是不同的处境，不能混。
  * @param requestId - 本次请求的标识。
  * @param error - 触发失败的异常。
  * @param state - 要报告的状态；余额端点固定 `error`。
@@ -102,6 +106,7 @@ function failureView(
     requestId,
     schemaVersion: SCHEMA_VERSION,
     source,
+    situation: 'internal-error',
     state,
     stale: false,
     fetchedAt: 0,
@@ -358,6 +363,15 @@ export async function handleHealthz(_request: Request, deps: HttpDeps): Promise<
     // 当前活跃来源：两条路并存时，这是唯一能一眼看出「现在服务的是哪条」的地方。
     source: status.source,
     state: status.state,
+    /** 活跃账本此刻会画成什么 —— 不开浏览器也能知道界面长什么样。 */
+    situation: situationOf({
+      hasSnapshot: status.hasSnapshot,
+      stale: status.state === 'stale',
+      isAvailable: status.isAvailable,
+      hasSelected: status.hasSelected,
+      severity: status.severity,
+      errorCode: status.errorCode,
+    }),
     lastSuccessAt: status.lastSuccessAt,
     consecutiveFailures: status.consecutiveFailures,
     scheduler: { running: deps.scheduler.isRunning(), nextRunAt: deps.scheduler.nextRunAt() },

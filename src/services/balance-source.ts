@@ -26,6 +26,7 @@ import {
 import { normalize } from '../domain/normalize.js'
 import { pickBalance } from '../domain/select.js'
 import { severityOf, thresholdsFor } from '../domain/severity.js'
+import { situationOf } from '../domain/situation.js'
 import type { Clock } from '../ports/clock.js'
 import type { CoreStore } from '../ports/core-store.js'
 import type { Logger } from '../ports/logger.js'
@@ -69,6 +70,16 @@ export interface BalanceStatus {
   lastSuccessAt: number | null
   /** 这一份状态属于哪条路。 */
   source: BalanceSource
+  /**
+   * 下面四项**只服务健康检查里的处境**（`GET /api/v1/healthz` 的 `situation`）：
+   * 不开浏览器也要能知道活跃账本此刻会画成什么。判定口径与 `toView` 完全同源。
+   */
+  /** 快照里的上游 `is_available`；没有快照时 `false`。 */
+  isAvailable: boolean
+  /** 按当前显示币种偏好挑得出可展示的币种吗。 */
+  hasSelected: boolean
+  /** 后端算好的严重度。 */
+  severity: Severity
 }
 
 /** `getView` 的可选参数（账本层：来源已经定好了）。 */
@@ -122,6 +133,9 @@ export class SourceLedger {
 
   /** 当前状态切片，供调度与健康检查使用。 */
   status(): BalanceStatus {
+    // 处境判定的四个事实与 `toView` 同源：这里也现算一次挑币种，不走第二套规则。
+    const preference = this.options.config.current().displayCurrency
+    const selected = this.snapshot === null ? null : pickBalance(this.snapshot.balances, preference)
     return {
       source: this.options.source,
       state: this.state,
@@ -131,6 +145,9 @@ export class SourceLedger {
       serverRefreshSeconds: this.options.config.current().serverRefreshSeconds,
       retryAfterMs: this.retryAfterMs,
       lastSuccessAt: this.snapshot?.fetchedAt ?? null,
+      isAvailable: this.snapshot?.isAvailable ?? false,
+      hasSelected: selected !== null,
+      severity: this.severityOf(selected),
     }
   }
 
@@ -318,8 +335,18 @@ export class SourceLedger {
     const thresholds = this.options.config.thresholds()
     const preference = currency ?? config.displayCurrency
     const selected = this.snapshot === null ? null : pickBalance(this.snapshot.balances, preference)
+    const severity = this.severityOf(selected)
     return {
       source: this.options.source,
+      // 处境由事实一次判出；界面拿它当唯一分支入口。
+      situation: situationOf({
+        hasSnapshot: this.snapshot !== null,
+        stale: this.state === 'stale',
+        isAvailable: this.snapshot?.isAvailable ?? false,
+        hasSelected: selected !== null,
+        severity,
+        errorCode: this.error?.code ?? null,
+      }),
       state: this.state,
       stale: this.state === 'stale',
       fetchedAt: this.snapshot?.fetchedAt ?? null,
@@ -330,7 +357,7 @@ export class SourceLedger {
       isAvailable: this.snapshot?.isAvailable ?? null,
       balances: this.snapshot?.balances ?? [],
       selected: selected === null ? null : { currency: selected.currency, total: selected.total },
-      severity: this.severityOf(selected),
+      severity,
       thresholds,
       error: this.state === 'ok' ? null : this.error,
     }
@@ -339,14 +366,15 @@ export class SourceLedger {
   /**
    * 这一份视图的严重度。
    *
-   * **没接入 ≠ 接入了但出错**，两者不能都画成叉：
-   * - 一条凭据都没有（`NO_KEY`、也没快照）→ `unknown`：没有信息可画 → 空环，文案是「尚未配置凭据」；
-   * - 有凭据但这次没抓到（网络 / 上游 / 账号查询失败）→ `unavailable`：账户读不到 → 叉，文案是「服务暂不可用」。
+   * **只服务环的颜色与弧长**；「处境」是另一个维度，由 {@link situationOf} 判，
+   * 两者不再各自决定界面形态（历史上它们是两条互相打架的链）。
    * @param selected - 选中币种的那条余额；没快照时是 `null`。
    * @returns 严重度。
    */
   private severityOf(selected: BalanceInfo | null): Severity {
     if (this.snapshot === null) {
+      // 没有快照时只有两种事实：没接入（空环）与读不到（叉）。
+      // 具体是哪一种由处境层判，这里给的 severity 只保证颜色不撒谎。
       return this.error?.code === 'NO_KEY' ? 'unknown' : 'unavailable'
     }
     const thresholds = this.options.config.thresholds()

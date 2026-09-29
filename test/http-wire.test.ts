@@ -9,6 +9,7 @@ import type { BalanceResponse } from '../src/client/api-types.ts'
 function view(patch: Partial<BalanceView> = {}): BalanceView {
   return {
     source: 'deepseek-http',
+    situation: 'ok',
     state: 'ok',
     stale: false,
     fetchedAt: 1_760_000_000_000,

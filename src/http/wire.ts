@@ -17,6 +17,7 @@ import type {
 } from '../domain/balance.js'
 import type { ErrorCode, ErrorInfo } from '../domain/errors.js'
 import { formatMoney } from '../domain/money.js'
+import type { Situation } from '../domain/situation.js'
 import { SCHEMA_VERSION } from '../version.js'
 
 /** 一个币种的余额，金额是八位小数字符串。 */
@@ -64,6 +65,13 @@ export interface WireBalanceResponse {
   schemaVersion: number
   /** 这一份数字是哪条取数路给的；界面据此在标题里标来源。 */
   source: BalanceSource
+  /**
+   * 处境：界面**唯一**的分支入口。
+   *
+   * 环 / 文案 / 来源标签都由它派生。`state` 与 `severity` 仍留在契约里（旧客户端要活），
+   * 但新界面不再读它们做形态判断 —— 见 [domain/situation.ts](../domain/situation.ts)。
+   */
+  situation: Situation
   state: CacheState
   stale: boolean
   fetchedAt: number
@@ -124,6 +132,7 @@ export function toWireBalanceView(
     requestId,
     schemaVersion: SCHEMA_VERSION,
     source: view.source,
+    situation: view.situation,
     state: view.state,
     stale: view.stale,
     fetchedAt: view.fetchedAt ?? 0,

@@ -8,6 +8,7 @@
  */
 
 import type { BalanceResponse } from '../api-types.ts'
+import { UNREACHABLE_CODE } from '../data.ts'
 
 const T0 = 1760000000000
 
@@ -24,6 +25,7 @@ function make(patch: Partial<BalanceResponse>): BalanceResponse {
     requestId: 'req_mock',
     schemaVersion: 1,
     source: 'deepseek-http',
+    situation: 'ok',
     state: 'ok',
     stale: false,
     fetchedAt: T0,
@@ -50,6 +52,7 @@ export const scenarios = {
 
   /** 余额偏低但可用。 */
   warn: make({
+    situation: 'low',
     severity: 'warn',
     balances: [cny('8.00000000', '0.00000000', '8.00000000')],
     selected: { currency: 'CNY', total: '8.00000000' },
@@ -57,21 +60,24 @@ export const scenarios = {
 
   /** 余额告急。 */
   critical: make({
+    situation: 'critical',
     severity: 'critical',
     balances: [cny('3.00000000', '0.00000000', '3.00000000')],
     selected: { currency: 'CNY', total: '3.00000000' },
   }),
 
-  /** 账户不可用（余额耗尽 / 欠费）。 */
+  /** 账户不可用（余额耗尽 / 欠费）。读到了，但上游说这个账户停用。 */
   unavailable: make({
+    situation: 'account-unavailable',
     severity: 'unavailable',
     isAvailable: false,
     balances: [cny('0.00000000', '0.00000000', '0.00000000')],
     selected: { currency: 'CNY', total: '0.00000000' },
   }),
 
-  /** 有旧值但本次刷新失败。 */
+  /** 有旧值但本次刷新失败：数字照常显示，文案说它旧。 */
   stale: make({
+    situation: 'stale',
     state: 'stale',
     stale: true,
     severity: 'unknown',
@@ -80,8 +86,9 @@ export const scenarios = {
     error: { code: 'NO_NETWORK', message: 'fetch failed' },
   }),
 
-  /** 无值失败。 */
+  /** 无值失败：接入了却读不到（没有旧快照）。环是叉。 */
   error: make({
+    situation: 'fetch-failed',
     state: 'error',
     stale: false,
     severity: 'unknown',
@@ -92,8 +99,35 @@ export const scenarios = {
     error: { code: 'UPSTREAM_5XX', message: 'upstream returned 500' },
   }),
 
-  /** 未配置。 */
+  /** 插件自己的端点不可达（旧契约里没有这个信号，靠客户端本地合成）。 */
+  offline: make({
+    situation: 'offline',
+    state: 'error',
+    stale: false,
+    severity: 'unknown',
+    isAvailable: false,
+    balances: [],
+    selected: null,
+    ageMs: 0,
+    error: { code: UNREACHABLE_CODE, message: 'balance endpoint responded 502' },
+  }),
+
+  /** 插件自己出错了（装配错误之类）：与「上游坏了」分开说。 */
+  internalError: make({
+    situation: 'internal-error',
+    state: 'error',
+    stale: false,
+    severity: 'unknown',
+    isAvailable: false,
+    balances: [],
+    selected: null,
+    ageMs: 0,
+    error: { code: 'STORAGE_ERROR', message: 'no ledger for source deepseek-account' },
+  }),
+
+  /** 未配置：尚无任何解释。 */
   empty: make({
+    situation: 'empty-wallet',
     state: 'empty',
     severity: 'unknown',
     isAvailable: false,
@@ -102,8 +136,9 @@ export const scenarios = {
     ageMs: 0,
   }),
 
-  /** 未配置且带 NO_KEY 错误。 */
+  /** 未配置且带 NO_KEY 错误 —— 需要用户去配置的那一族。 */
   noKey: make({
+    situation: 'no-credential',
     state: 'empty',
     severity: 'unknown',
     isAvailable: false,
@@ -111,6 +146,17 @@ export const scenarios = {
     selected: null,
     ageMs: 0,
     error: { code: 'NO_KEY', message: 'no API key configured' },
+  }),
+
+  /** 首帧：还没问到后端。 */
+  checking: make({
+    situation: 'checking',
+    state: 'empty',
+    severity: 'unknown',
+    isAvailable: false,
+    balances: [],
+    selected: null,
+    ageMs: 0,
   }),
 
   /** 多币种。`selected` 显式写出，不靠 `make()` 的默认值兜。 */
@@ -139,6 +185,7 @@ export const scenarios = {
 
   /** 账户完全没有余额。 */
   noBalanceAtAll: make({
+    situation: 'empty-wallet',
     severity: 'unknown',
     isAvailable: true,
     balances: [],

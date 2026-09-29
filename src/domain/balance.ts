@@ -7,6 +7,7 @@
 
 import type { ErrorInfo } from './errors.js'
 import type { Units } from './money.js'
+import type { Situation } from './situation.js'
 
 /** 币种代码，例如 `CNY` / `USD`。 */
 export type Currency = string
@@ -63,6 +64,13 @@ export interface ThresholdPair {
 export interface BalanceView {
   /** 这一份数字是哪条取数路给的。界面据此标来源。 */
   source: BalanceSource
+  /**
+   * 处境：界面唯一的分支入口。
+   *
+   * 环、文案、来源标签都从它派生 —— 界面**不再**自己组合 `state` / `severity` / `error.code`。
+   * 判定只有一处（[situation.ts](situation.ts) 的 `situationOf`）。
+   */
+  situation: Situation
   state: CacheState
   stale: boolean
   fetchedAt: number | null

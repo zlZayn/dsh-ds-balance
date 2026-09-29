@@ -25,6 +25,9 @@ function status(patch: Partial<BalanceStatus> = {}): BalanceStatus {
     retryAfterMs: null,
     lastSuccessAt: null,
     source: 'deepseek-http',
+    isAvailable: true,
+    hasSelected: true,
+    severity: 'ok',
     ...patch,
   }
 }

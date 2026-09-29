@@ -28,7 +28,7 @@ import {
   useAnchoredPosition,
   useDismissOnOutsidePointer,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { BalanceResponse, Severity } from '../api-types.ts'
+import type { BalanceResponse } from '../api-types.ts'
 import { interpolate, type LocaleKey } from '../locales.ts'
 import {
   cooldownSecondsOf,
@@ -36,12 +36,11 @@ import {
   currentAgeMs,
   formatMoney,
   ringRatioOf,
-  ringSpecOf,
   selectionOf,
   sourceLabelKeyOf,
-  type CurrencySelection,
   type RingMarker,
 } from '../model.ts'
+import { presentationOf, situationOfResponse, type Presentation } from '../situation.ts'
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
 import { CONFIG_SLOT_WARNING, type ConfigSlotProbe, type ConfigSlotState } from '../config-slot.ts'
@@ -191,38 +190,18 @@ export interface SidebarBalanceProps {
 }
 
 /**
- * 状态圆环要播报的状态名。
+ * 把处境收敛成圆环的形态。
  *
- * 一切正常时返回 null：词典里没有「一切正常」这一条（也不该新增），
- * 此时只报余额即可。
- * @param response - 当前余额响应。
- * @param selection - 币种选择结果。
- * @returns 词典键，或 null 表示正常。
- */
-function stateLabelKey(response: BalanceResponse, selection: CurrencySelection): LocaleKey | null {
-  // **「没接入」与「接入了但出错」是两件事**：前者该说配置缺失，后者该说服务暂不可用。
-  // 环也一样：没接入画空环（`unknown`），接入了却抓不到才画叉（见账本的 severityOf）。
-  if (response.state === 'error')
-    return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.fetchFailed'
-  if (response.state === 'empty')
-    return response.error?.code === 'NO_KEY' ? 'state.noKey' : 'state.empty'
-  if (response.state === 'stale') return 'state.stale'
-  if (!response.isAvailable) return 'state.unavailable'
-  if (selection.shown === null) return 'state.noBalance'
-  return null
-}
-
-/**
- * 把 severity 收敛成圆环的形态。
- *
- * 映射出自 `model.ts` 的 `ringSpecOf`；它的 `state` 类型含 `'ongoing'`，
- * 但 severity 的映射取不到那个值，这里只做类型收窄。
- * @param severity - 后端给的严重度。
+ * 形态表（[../situation.ts](../situation.ts)）的 `ring` 类型含 `'ongoing'`，
+ * 但处境映射取不到那个值，这里只做类型收窄。
+ * @param presentation - 处境形态。
  * @returns 弧状态与中心符号。
  */
-function ringSpecFor(severity: Severity): { state: RingState; marker: RingMarker | null } {
-  const spec = ringSpecOf(severity)
-  return { state: spec.state === 'ongoing' ? 'idle' : spec.state, marker: spec.marker }
+function ringSpecFor(presentation: Presentation): { state: RingState; marker: RingMarker | null } {
+  return {
+    state: presentation.ring === 'ongoing' ? 'idle' : presentation.ring,
+    marker: presentation.marker,
+  }
 }
 
 /**
@@ -549,22 +528,29 @@ export function SidebarBalance({
   const configSlotState = useConfigSlotState(configSlotProbe)
 
   const shown = selection.shown
-  const ring = ringSpecFor(response.severity)
-  // 弧长：余额占该币种 warn 阈值的几分之几。阈值只当刻度，颜色仍只由 severity 决定。
-  const ringRatio = ringRatioOf(
-    shown === null ? null : shown.total,
-    shown === null ? undefined : config.warnThresholdOf(shown.currency),
-    response.severity,
-  )
+  // **唯一的分支入口**：处境一次判出，环 / 文案 / 来源标签都从这里取。
+  // 组件里不再出现 `response.state` / `response.severity` / `error.code` 的形态判断。
+  const situation = situationOfResponse(response)
+  const presentation = presentationOf(situation, response.severity)
+  const ring = ringSpecFor(presentation)
+  // 弧长：只在 gauge 族算（余额占该币种 warn 阈值的几分之几）；其余族没有刻度可画。
+  const ringRatio =
+    presentation.arc === 'gauge'
+      ? ringRatioOf(
+          shown === null ? null : shown.total,
+          shown === null ? undefined : config.warnThresholdOf(shown.currency),
+          response.severity,
+        )
+      : 0
 
-  // 圆环的状态文案。正常时为 null —— 词典里没有对应键，也不该新增。
-  const stateKey = stateLabelKey(response, selection)
+  // 状态文案。正常时为 null —— 词典里没有「一切正常」这一条，也不该新增。
+  const stateKey = presentation.textKey
   const stateText = stateKey === null ? null : t(stateKey)
 
   let markerLabel: string | null = null
   let markerHint = ''
   if (shown === null) {
-    markerLabel = t(stateKey ?? 'state.noBalance')
+    markerLabel = t(stateKey ?? 'situation.emptyWallet')
     markerHint = markerLabel
   } else if (!selection.matchesPreference) {
     markerLabel = t('sidebar.aria.mismatch')
@@ -582,9 +568,10 @@ export function SidebarBalance({
   if (markerLabel !== null) ariaParts.push(markerLabel)
   const ariaLabel = ariaParts.join(' ')
   const cooldownSeconds = cooldownSecondsOf(cooldownUntil, now)
-  // 来源标签：只认两条官方取数路，认不出来就不标。**空态不标** —— 还没取到数时
-  // 说「这份数字是哪来的」没有意义。括号与词都在词典里。
-  const sourceKey = response.state === 'empty' ? null : sourceLabelKeyOf(response.source)
+  // 来源标签：**由处境决定，不再由 `state === 'empty'` 决定**。
+  // 它说的是「这份数字从哪来」，所以只在真的有数字时才有意义 ——
+  // 旧写法漏了「端点不可达」那条（没有任何数字却标了「（API Key）」）。
+  const sourceKey = presentation.showSource ? sourceLabelKeyOf(response.source) : null
   const sourceLabel = sourceKey === null ? null : t(sourceKey)
   // 年龄 = 收到那份响应时后端报的年龄 + 此后流逝的时间。基准随每次响应一起换，
   // 所以自动轮询带回来的新快照同样会把「多久之前」拨回「刚刚」。
