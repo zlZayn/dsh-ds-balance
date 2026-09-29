@@ -200,18 +200,38 @@ describe('失败路径', () => {
 })
 
 describe('forceRefresh', () => {
-  it('冷却期内不触发', async () => {
+  it('自动抓取不占用手动冷却：点了就真的抓', async () => {
+    // 锚点曾经是 `snapshot.fetchedAt`，于是调度每 60 秒一次的自动刷新会把用户刚按下的一下吞掉 ——
+    // 界面转了圈、倒计时也走了，上游一次没打。
     const h = harness()
     await h.service.getView()
     const result = await h.service.forceRefresh('manual')
-    expect(result.triggered).toBe(false)
-    expect(result.cooldownMs).toBe(30_000)
+    expect(result.triggered).toBe(true)
+    expect(h.client.fetchBalance).toHaveBeenCalledTimes(2)
+  })
+
+  it('手动刷新自己占冷却：连点第二下不触发', async () => {
+    const h = harness()
+    const first = await h.service.forceRefresh('manual')
+    expect(first.triggered).toBe(true)
+    const second = await h.service.forceRefresh('manual')
+    expect(second.triggered).toBe(false)
+    expect(second.cooldownMs).toBe(30_000)
     expect(h.client.fetchBalance).toHaveBeenCalledTimes(1)
+  })
+
+  it('剩余时间按「上一次手动刷新」算，不按上一次抓取', async () => {
+    const h = harness()
+    await h.service.forceRefresh('manual')
+    h.setNow(h.getNow() + 10_000)
+    const result = await h.service.forceRefresh('manual')
+    expect(result.triggered).toBe(false)
+    expect(result.cooldownMs).toBe(20_000)
   })
 
   it('冷却期过后触发', async () => {
     const h = harness()
-    await h.service.getView()
+    await h.service.forceRefresh('manual')
     h.setNow(h.getNow() + 31_000)
     const result = await h.service.forceRefresh('manual')
     expect(result.triggered).toBe(true)
@@ -219,7 +239,7 @@ describe('forceRefresh', () => {
     expect(h.client.fetchBalance).toHaveBeenCalledTimes(2)
   })
 
-  it('没有快照时不受冷却限制', async () => {
+  it('第一次手动刷新不受冷却限制（失败态也一样）', async () => {
     const h = harness()
     ;(h.client.fetchBalance as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new NetworkError('offline'),

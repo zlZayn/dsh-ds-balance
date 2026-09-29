@@ -405,7 +405,7 @@ class BalanceService {
 
 `isFresh` 判据：`state === 'ok'` 且 `now - fetchedAt < serverRefreshSeconds * 1000`。
 
-`forceRefresh` 先查冷却（`manualRefreshCooldownSeconds`），冷却中返回 `{ triggered: false, cooldownMs }`；有 inflight 则返回 `{ triggered: true, joined: true }`。
+`forceRefresh` 先查冷却（`manualRefreshCooldownSeconds`）——**锚点是上一次手动刷新，不是上一次抓取**：调度与轮询也在抓，锚在 `snapshot.fetchedAt` 上会让一次自动刷新吞掉用户刚按下的一下。冷却中返回 `{ triggered: false, cooldownMs: 剩余毫秒 }`；有 inflight 则返回 `{ triggered: true, joined: true }`；时刻取**决定触发那一刻**，比客户端「拿到结果那一刻」早一个往返。
 
 ### 6.4 Scheduler
 
@@ -819,7 +819,7 @@ import { resolveDshHome, dshHomePath, dshCachePath, dshHomeDisplay } from '@deep
 4. **handler 内部异常不能抛**：契约规定余额错误走 `200 + state: error`；抛出去会被宿主包成 500，前端拿不到 `error` 结构。**必须自己 catch 所有异常。**
 5. **`.salt` 丢失 → `accountTag` 全变 → 旧账本孤立**：文档写明，或改成从固定源派生。
 6. **UI 五条改动的先后顺序**：**先 mock → 再 `model.ts` → 再组件**。顺序错了 mock 场景会全崩。
-7. **`DS_BALANCE_TIMEOUT_MS` 每次请求读**：改环境变量后立即生效，不用重启。
+7. **`DS_BALANCE_TIMEOUT_MS` 每次请求读**：**进程内**改写这份环境后立即生效；**外部**（系统设置、另一个终端）改的环境变量，跑着的进程看不到，要重启 DSH —— 与凭据那一路是同一条边界，见[决策记录](../.agents/notes/2026-09-30-credential-change-refresh-boundary.md)。
 
 ### 阶段 0 实测结论（已并入 §3.1 / §9.2 / §10）
 

@@ -78,6 +78,8 @@ export class BalanceService {
   private error: ErrorInfo | null = null
   private failures = 0
   private retryAfterMs: number | null = null
+  /** 上一次真的触发过手动刷新的时刻；`null` 表示本进程还没有过。 */
+  private lastManualRefreshAt: number | null = null
   private inflight: Promise<BalanceView> | null = null
   /** 落盘失败只报一次，避免每轮刷新都刷屏。 */
   private persistWarned = false
@@ -152,15 +154,28 @@ export class BalanceService {
    * 手动刷新。
    *
    * 冷却中不触发；已有请求在飞时合并并回报 `joined`。
+   *
+   * **冷却的锚点是「上一次手动刷新」，不是「上一次抓取」**：调度与轮询也在抓，
+   * 拿 `snapshot.fetchedAt` 当锚点的话，一次自动刷新就会把用户刚按下的一下吞掉 ——
+   * 界面转了圈、倒计时也走了，上游却一次没打。
+   *
+   * 时刻取**决定触发那一刻**（不是抓完那一刻）：客户端从「拿到结果那一刻」起算，
+   * 两者相差一个往返 ⇒ 客户端更保守，按钮亮起时按下去一定真的会抓。
    */
   async forceRefresh(reason: string): Promise<RefreshResult> {
+    const now = this.options.clock.now()
     const cooldownMs = this.options.config.current().manualRefreshCooldownSeconds * 1000
-    const since = this.options.clock.now() - (this.snapshot?.fetchedAt ?? 0)
-    if (this.state === 'ok' && since < cooldownMs) {
+    const last = this.lastManualRefreshAt
+    if (last !== null && now - last < cooldownMs) {
+      const remaining = cooldownMs - (now - last)
       this.metrics.counter('force_rejected_total')
-      this.options.logger?.debug('ds-balance: manual refresh rejected by cooldown', { reason })
-      return { triggered: false, joined: false, cooldownMs: cooldownMs - since, state: this.state }
+      this.options.logger?.debug('ds-balance: manual refresh rejected by cooldown', {
+        reason,
+        cooldownMs: remaining,
+      })
+      return { triggered: false, joined: false, cooldownMs: remaining, state: this.state }
     }
+    this.lastManualRefreshAt = now
     if (this.inflight !== null) {
       await this.inflight
       return { triggered: true, joined: true, cooldownMs: 0, state: this.state }
