@@ -494,7 +494,10 @@ export function SidebarBalance({
         // 先让后端穿透上游抓一次，再读回它刚写好的缓存。
         const result = await requestRefresh({ reason: 'manual', provider })
         if (!result.triggered) rejectedRemainingMs = Math.max(0, result.cooldownMs)
-        const next = await requestBalance({ currency: preference })
+        // **读回必须带上同一个 provider**：后端按它选来源，漏了就会改用全局默认路由，
+        // 于是刚刷的那条与读回的那条可能不是同一条 —— 数字与标签当场换成另一个钱包，
+        // 下一轮轮询（≤clientPollSeconds）又自己跳回来。这与「展示/刷新/标签同一条」相冲。
+        const next = await requestBalance({ currency: preference, provider })
         loadedRef.current = true
         acceptBalance(next)
       } catch (error) {
