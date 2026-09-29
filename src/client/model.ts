@@ -228,3 +228,45 @@ export function currentAgeMs(seenAt: number, seenAgeMs: number, now: number): nu
   const base = Number.isFinite(seenAgeMs) ? Math.max(0, seenAgeMs) : 0
   return Math.max(0, base + (now - seenAt))
 }
+
+/** 一秒的毫秒数；冷却换算用。 */
+const MS_PER_SECOND = 1000
+
+/**
+ * 一次手动刷新之后的冷却截止时刻。
+ *
+ * **基准是「拿到结果那一刻」**，不是点击那一刻：后端的手动冷却从它收到请求起算，
+ * 客户端晚一个往返才起算 ⇒ 客户端永远比后端保守，按钮亮起来时按下去一定真的会抓。
+ *
+ * 返回的是**精确时刻**；调用方必须把展示用的「现在」与它设成同一刻（见
+ * {@link cooldownSecondsOf}）。
+ * @param now - 拿到结果那一刻的本地时刻（毫秒）。
+ * @param configuredSeconds - 配置里的手动刷新冷却秒数。
+ * @param rejectedRemainingMs - 后端拒绝（`triggered: false`）时给出的剩余毫秒；`null` 表示这次真的触发了。
+ * @returns 冷却截止的本地时刻（毫秒）。
+ */
+export function cooldownUntilOf(
+  now: number,
+  configuredSeconds: number,
+  rejectedRemainingMs: number | null,
+): number {
+  const span =
+    rejectedRemainingMs === null
+      ? Math.max(0, configuredSeconds) * MS_PER_SECOND
+      : Math.max(0, rejectedRemainingMs)
+  return now + span
+}
+
+/**
+ * 冷却剩余秒数，向上取整。
+ *
+ * **`now` 必须与设定截止时刻时用的是同一刻**：截止是精确时刻，而界面里的「现在」是每秒
+ * 采样一次的状态；拿一个最多旧一秒的值去取整，5 秒的冷却会显示成 6 秒 ——
+ * 更糟的是按钮的禁用判据也是这个值，等于真的多禁一秒。
+ * @param until - 冷却截止的本地时刻（毫秒）；0 表示没有冷却。
+ * @param now - 当前本地时刻（毫秒）。
+ * @returns 剩余秒数；已过期或没有冷却时为 0。
+ */
+export function cooldownSecondsOf(until: number, now: number): number {
+  return Math.max(0, Math.ceil((until - now) / MS_PER_SECOND))
+}

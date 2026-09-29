@@ -12,7 +12,15 @@
  * @module dsh-ds-balance/client/sidebar/SidebarBalance
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { createPortal } from 'react-dom'
 import {
   IconWarningOutlineRegular,
@@ -23,6 +31,8 @@ import {
 import type { BalanceResponse, Severity } from '../api-types.ts'
 import { interpolate, type LocaleKey } from '../locales.ts'
 import {
+  cooldownSecondsOf,
+  cooldownUntilOf,
   currentAgeMs,
   formatMoney,
   ringRatioOf,
@@ -361,10 +371,16 @@ export function SidebarBalance({
     margin: PANEL_MARGIN,
   })
 
-  // 相对时间与冷却秒数只在浮层打开时推进。
-  useEffect(() => {
+  // 相对时间与冷却秒数只在浮层打开时推进。**打开这一帧要先把「现在」拨正**：
+  // 它是上次关闭时留下的旧值，直接拿它去算会让年龄与冷却闪一下旧数；
+  // 用 layout 效果是为了赶在浏览器画之前改掉，普通效果会先画一帧。
+  useLayoutEffect(() => {
     if (!open) return
     setNow(Date.now())
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
     const id = window.setInterval(() => {
       setNow(Date.now())
     }, TICK_MS)
@@ -372,6 +388,20 @@ export function SidebarBalance({
       window.clearInterval(id)
     }
   }, [open])
+
+  // 冷却到点那一刻精确解禁一次：每秒走钟只保证「不晚于 1 秒」，
+  // 而按钮该在截止时刻就能按 —— 禁用判据不能比冷却本身长。
+  useEffect(() => {
+    if (cooldownUntil === 0) return
+    const remaining = cooldownUntil - Date.now()
+    if (remaining <= 0) return
+    const id = window.setTimeout(() => {
+      setNow(Date.now())
+    }, remaining)
+    return () => {
+      window.clearTimeout(id)
+    }
+  }, [cooldownUntil])
 
   useEffect(() => {
     if (!open) return
@@ -393,34 +423,46 @@ export function SidebarBalance({
     // 冷却中：不旋转，浮层里的就地文字已经在报剩余秒数。
     if (Date.now() < cooldownUntil) return
     setRefreshing(true)
-    // 收尾只管刷新态与冷却：时间基准由收到的响应决定，
-    // 真实路径读回的那份 ageMs 已经归零，mock 路径由 markFresh 就地拨。
-    const finish = (): void => {
+    /**
+     * 收尾：刷新态、冷却截止时刻、展示用的「现在」一起落。
+     *
+     * 时间基准由收到的响应决定（真实路径读回的 `ageMs` 已经归零，mock 路径由 markFresh 就地拨），
+     * 这里只管冷却。**截止时刻与「现在」必须同一刻设**：拿上一秒留下的旧值去取整，
+     * 5 秒的冷却会显示成 6 秒，而按钮的禁用判据也是那个值 —— 等于真的多禁一秒。
+     * @param rejectedRemainingMs - 后端拒绝时给出的剩余毫秒；`null` 表示这次真的触发了。
+     */
+    const finish = (rejectedRemainingMs: number | null): void => {
+      const at = Date.now()
       setRefreshing(false)
       setCooldownUntil(
-        Date.now() + Math.max(0, config.manualRefreshCooldownSeconds) * MS_PER_SECOND,
+        cooldownUntilOf(at, config.manualRefreshCooldownSeconds, rejectedRemainingMs),
       )
+      setNow(at)
     }
     // mock 旁路没有上游可打，用一次短延迟模拟往返，让刷新态仍然可见。
     if (mock) {
       refreshTimer.current = window.setTimeout(() => {
         refreshTimer.current = undefined
         markFresh()
-        finish()
+        finish(null)
       }, REFRESH_SIMULATION_MS)
       return
     }
     void (async () => {
+      // 冷却是**后端**的权威：它说这次没触发，就按它给的剩余时间收尾，不自己编一段新的 ——
+      // 否则后端只剩 1 秒，界面又从满格倒数一遍，越点越对不上。
+      let rejectedRemainingMs: number | null = null
       try {
         // 先让后端穿透上游抓一次，再读回它刚写好的缓存。
-        await requestRefresh({ reason: 'manual' })
+        const result = await requestRefresh({ reason: 'manual' })
+        if (!result.triggered) rejectedRemainingMs = Math.max(0, result.cooldownMs)
         const next = await requestBalance({ currency: preference })
         loadedRef.current = true
         acceptBalance(next)
       } catch (error) {
         if (!loadedRef.current) showUnreachable(error)
       } finally {
-        finish()
+        finish(rejectedRemainingMs)
       }
     })()
   }, [
@@ -497,7 +539,7 @@ export function SidebarBalance({
   if (stateText !== null && stateText !== markerLabel) ariaParts.push(stateText)
   if (markerLabel !== null) ariaParts.push(markerLabel)
   const ariaLabel = ariaParts.join(' ')
-  const cooldownSeconds = Math.max(0, Math.ceil((cooldownUntil - now) / MS_PER_SECOND))
+  const cooldownSeconds = cooldownSecondsOf(cooldownUntil, now)
   // 年龄 = 收到那份响应时后端报的年龄 + 此后流逝的时间。基准随每次响应一起换，
   // 所以自动轮询带回来的新快照同样会把「多久之前」拨回「刚刚」。
   const ageMs = currentAgeMs(view.seenAt, view.seenAgeMs, now)

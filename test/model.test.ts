@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { BalanceResponse } from '../src/client/api-types.ts'
 import {
   ageBucket,
+  cooldownSecondsOf,
+  cooldownUntilOf,
   currencySymbol,
   currentAgeMs,
   dotStateOf,
@@ -240,5 +242,52 @@ describe('ringRatioOf', () => {
     for (const bad of ['', 'abc', '1.2.3', '--1']) {
       expect(ringRatioOf(bad, 5, 'warn'), bad).toBe(0.75)
     }
+  })
+})
+
+describe('cooldownUntilOf', () => {
+  it('这次真的触发了：按配置的秒数', () => {
+    expect(cooldownUntilOf(1000, 5, null)).toBe(6000)
+  })
+
+  it('后端拒绝：用它给的剩余毫秒，不自己编一段新的', () => {
+    expect(cooldownUntilOf(1000, 5, 3200)).toBe(4200)
+  })
+
+  it('后端拒绝且它说已经可以了：就没有冷却', () => {
+    expect(cooldownUntilOf(1000, 5, 0)).toBe(1000)
+  })
+
+  it('负数一律当 0，不产生倒退的截止时刻', () => {
+    expect(cooldownUntilOf(1000, -5, null)).toBe(1000)
+    expect(cooldownUntilOf(1000, 5, -100)).toBe(1000)
+  })
+})
+
+describe('cooldownSecondsOf', () => {
+  const at = 1_760_000_000_000
+
+  it('同时刻取值：5 秒就是 5，不是 6', () => {
+    // 守的是那条真实缺陷：截止是精确时刻，而「现在」是每秒采样一次的旧值，
+    // 两者不同刻时 ceil 会凭空多出一秒 —— 显示与按钮禁用都跟着多一秒。
+    expect(cooldownSecondsOf(cooldownUntilOf(at, 5, null), at)).toBe(5)
+  })
+
+  it('拿旧一刻的采样值去算，就是会多算一秒（所以调用方必须同刻设）', () => {
+    expect(cooldownSecondsOf(cooldownUntilOf(at, 5, null), at - 400)).toBe(6)
+  })
+
+  it('到点与过点都回 0；没有冷却也回 0', () => {
+    const until = cooldownUntilOf(at, 5, null)
+    expect(cooldownSecondsOf(until, until)).toBe(0)
+    expect(cooldownSecondsOf(until, until + 1)).toBe(0)
+    expect(cooldownSecondsOf(0, at)).toBe(0)
+  })
+
+  it('未满一秒也算一秒，倒计时不提前归零', () => {
+    expect(cooldownSecondsOf(at + 1, at)).toBe(1)
+    expect(cooldownSecondsOf(at + 999, at)).toBe(1)
+    expect(cooldownSecondsOf(at + 1000, at)).toBe(1)
+    expect(cooldownSecondsOf(at + 1001, at)).toBe(2)
   })
 })
