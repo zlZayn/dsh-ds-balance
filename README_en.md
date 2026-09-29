@@ -159,7 +159,12 @@ When it comes from the launch environment (an environment variable) the field is
 - with neither decidable, **key first, account as the fallback**;
 - only when both are missing does it read "no credential configured".
 
-The parenthesised label after the popover title is where that number came from: `(API key)` / `(account sign-in)`.
+The parenthesised label to the right of the popover title is where that number came from: `(API key)` / `(account sign-in)`.
+**Whichever is shown is also the one that gets refreshed and named** — display, refresh and label never disagree.
+
+**This plugin only tracks the official number**, so if the preferred route has nothing to show it falls back to the other official one: as long as either the account or an API key works, you still see a balance (even a slightly older snapshot). **You are only told about it when neither route can produce a number** — that is what "not connected to official" means.
+
+The two kinds of "nothing to show" are told apart as well: **not connected** asks you to configure a credential, **connected but unreachable** says the service is temporarily unavailable.
 
 **How long a key change takes to land follows DSH's own layers — this plugin deliberately adds nothing on top:**
 

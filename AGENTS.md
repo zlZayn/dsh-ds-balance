@@ -117,6 +117,7 @@
 - **`sidebar.footer.action` 的宿主容器是 row flex（宿主遗漏）**：官方 cordis 面板（`packages/extensions/ui-cordis/src/client/`）把根节点写成满宽且不收缩，横排下条目会被挤到 0 宽。我们已用 `:has()` 反选父元素把它改回纵向堆叠 → [决策](.agents/notes/2026-09-17-footer-stack-override.md)。依赖 `:has()` 与该锚点属性稳定。
 - **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包写进 profile 的 `dsh.profile.bundles`**，而 bundle 层与 patch 层的 insert 行**只在启动时读** —— 两条同时存在就是**双挂载**。开发期靠「不声明 `dsh.bundle`」躲开它，发布态不能这么干（包里必须有 bundle 层）。所以装法只能选一种：**`dsh plugin add` 或手写 patch 行，不要都做**。改本机 profile 前先看 `dsh.profile.bundles`。
 - **本地起验证实例前先确认端口空闲**：端口被占时 `dsh` 会以 `EADDRINUSE` 启动失败（webserver 是必需插件，`exit code 1`），**但本插件仍然装载、照常抓数** —— 日志里看着像跑起来了，其实没有可访问的 URL。重启前先查 `Get-NetTCPConnection -State Listen -LocalPort <port>`，或直接换端口。
+- **兜底会多打一次上游，别写成循环**：取不到数字时按 `FALLBACK_ORDER` 退到另一条官方路，一轮最多「首选一次 + 兜底一次」。以后往里加来源时如果把兜底写成「再试一遍」，两条路会互相触发、上游请求量翻倍（有单测守着：两条都失败时各只打一次）。
 - **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。  **同理别整读 `~/.npmrc`**：它通常带着一枚 `//registry.npmjs.org/:_authToken=`（本轮踩过 —— token 就这么进了对话记录，只能靠轮换补救）。
   要确认 registry 就问 `npm config get registry`，不要 `Get-Content` 整个文件。
 - dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 与 `@deepseek-ai/cordis` / `@deepseek-ai/cordis-plugin-loader` **不在宿主那条线上**（各有自己的版本号），所以 `compat-swap` 的替换面不覆盖它们，改它们要手工看。实际版本现查：`node scripts/compat-swap.mjs check`。
