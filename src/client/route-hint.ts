@@ -9,6 +9,10 @@
  * 2. **同一会话内换模型**：订阅那个会话的 `modelSelection` 投影（换会话时重绑）；
  * 3. 读不到就什么都不说 —— 后端回落到全局默认路由，界面照常，只是少了「跟着会话走」。
  *
+ * **服务由调用方经 `ctx.inject` 递进来**（构造参数是一个 getter），本模块绝不碰 `ctx`：
+ * cordis 不许读没 `inject` 过的服务，直接访问会抛 —— 而这个读发生在**渲染期**，
+ * 抛出去等于整条左下角条目被停用（真机踩过：条目注册了、但 `active: false`）。
+ *
  * 形状**全部鸭子类型**：`uiSession` 与 `sessions` 是宿主自己的客户端服务，跨版本会动，
  * 而本仓不为它们新增依赖（见 [AGENTS.md](AGENTS.md) 的跨插件服务约定）。读不出来只降级，不抛错。
  * @module dsh-ds-balance/client/route-hint
@@ -29,7 +33,11 @@ interface SessionBindingLike {
   }
 }
 
-/** 这条提示要读的宿主面。 */
+/**
+ * 这条提示要读的宿主面。
+ *
+ * 两个字段都可缺席：宿主没装相应插件、或服务还没到位时，整条提示退化成 `undefined`。
+ */
 export interface RouteHintContext {
   uiSession?: { adapter?: { current?: Observable } }
   sessions?: { binding?: (id: unknown) => SessionBindingLike | undefined }
@@ -43,25 +51,38 @@ export interface RouteHint {
   subscribe(listener: () => void): () => void
 }
 
-/** 当前会话的 id；读不到回 `undefined`。 */
-function currentSessionKey(ctx: RouteHintContext): unknown {
-  const current = ctx.uiSession?.adapter?.current?.getSnapshot?.() as { key?: unknown } | undefined
-  return current?.key
+/**
+ * 读一次；任何异常都当「读不到」。
+ *
+ * 宿主客户端服务的形状跨版本会动，读坏了只该让这条提示缺席，不该让界面消失。
+ * @param read - 读取动作。
+ * @returns 读到的值，或 `undefined`。
+ */
+function safely<T>(read: () => T | undefined): T | undefined {
+  try {
+    return read()
+  } catch {
+    return undefined
+  }
 }
 
 /** 当前会话的模型选择投影。 */
 function projectionOf(ctx: RouteHintContext): Observable | undefined {
-  const key = currentSessionKey(ctx)
-  if (key === undefined) return undefined
-  return ctx.sessions?.binding?.(key)?.session?.projections?.faceOf?.('modelSelection')
+  return safely(() => {
+    const current = ctx.uiSession?.adapter?.current?.getSnapshot?.() as
+      { key?: unknown } | undefined
+    const key = current?.key
+    if (key === undefined) return undefined
+    return ctx.sessions?.binding?.(key)?.session?.projections?.faceOf?.('modelSelection')
+  })
 }
 
 /**
  * 造一个路由提示。
- * @param ctx - 客户端根上下文（只用到其中两个可选服务）。
+ * @param services - 取当前宿主服务面的函数（由 `ctx.inject` 填的那个可变句柄）。
  * @returns 提示对象；宿主没有这些服务时永远回 `undefined`。
  */
-export function createRouteHint(ctx: RouteHintContext): RouteHint {
+export function createRouteHint(services: () => RouteHintContext): RouteHint {
   const listeners = new Set<() => void>()
   let stopCurrent: (() => void) | undefined
   let stopProjection: (() => void) | undefined
@@ -73,14 +94,16 @@ export function createRouteHint(ctx: RouteHintContext): RouteHint {
   /** 绑当前会话的模型投影；换会话必须重绑（绑的是那个会话自己的投影）。 */
   const bindProjection = (): void => {
     stopProjection?.()
-    stopProjection = projectionOf(ctx)?.subscribe?.(notify)
+    stopProjection = safely(() => projectionOf(services())?.subscribe?.(notify))
   }
 
   const start = (): void => {
-    stopCurrent = ctx.uiSession?.adapter?.current?.subscribe?.(() => {
-      bindProjection()
-      notify()
-    })
+    stopCurrent = safely(() =>
+      services().uiSession?.adapter?.current?.subscribe?.(() => {
+        bindProjection()
+        notify()
+      }),
+    )
     bindProjection()
   }
 
@@ -93,9 +116,13 @@ export function createRouteHint(ctx: RouteHintContext): RouteHint {
 
   return {
     getSnapshot() {
-      const provider = projectionOf(ctx)?.getSnapshot?.() as
-        { next?: { provider?: unknown } } | undefined
-      const value = provider?.next?.provider
+      const value = safely(
+        () =>
+          (
+            projectionOf(services())?.getSnapshot?.() as
+              { next?: { provider?: unknown } } | undefined
+          )?.next?.provider,
+      )
       return typeof value === 'string' && value !== '' ? value : undefined
     },
     subscribe(listener) {

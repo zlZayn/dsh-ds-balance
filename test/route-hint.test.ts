@@ -45,22 +45,39 @@ function host() {
 describe('createRouteHint', () => {
   it('读当前会话的模型选择；没有覆盖时回 undefined', () => {
     const h = host()
-    const hint = createRouteHint(h.ctx)
+    const hint = createRouteHint(() => h.ctx)
     expect(hint.getSnapshot()).toBeUndefined()
     h.projectionFor('s1').getSnapshot = () => ({ next: { provider: 'deepseek-account' } })
     expect(hint.getSnapshot()).toBe('deepseek-account')
   })
 
   it('没有宿主服务时永远回 undefined，不抛', () => {
-    const hint = createRouteHint({})
+    const hint = createRouteHint(() => ({}))
     expect(hint.getSnapshot()).toBeUndefined()
     expect(() => hint.subscribe(() => {})()).not.toThrow()
+  })
+
+  it('服务读到一半抛错也只降级（cordis 的 inject 门禁就是这么抛的）', () => {
+    // 真机踩过：在渲染期直接读没 inject 过的服务会抛，抛出去的表现是左下角整条条目被停用。
+    const hostile = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error('cannot get property "uiSession" without inject')
+        },
+      },
+    ) as RouteHintContext
+    const hint = createRouteHint(() => hostile)
+    expect(hint.getSnapshot()).toBeUndefined()
+    const listener = vi.fn()
+    expect(() => hint.subscribe(listener)()).not.toThrow()
+    expect(listener).not.toHaveBeenCalled()
   })
 
   it('**切模型**（同一会话内）立刻通知', () => {
     const h = host()
     const projection = h.projectionFor('s1')
-    const hint = createRouteHint(h.ctx)
+    const hint = createRouteHint(() => h.ctx)
     const listener = vi.fn()
     const off = hint.subscribe(listener)
 
@@ -75,7 +92,7 @@ describe('createRouteHint', () => {
   it('**切会话**立刻通知，并且改读新会话的投影', () => {
     const h = host()
     h.projectionFor('s1').getSnapshot = () => ({ next: { provider: 'deepseek-account' } })
-    const hint = createRouteHint(h.ctx)
+    const hint = createRouteHint(() => h.ctx)
     const listener = vi.fn()
     const off = hint.subscribe(listener)
     expect(hint.getSnapshot()).toBe('deepseek-account')
@@ -92,7 +109,7 @@ describe('createRouteHint', () => {
 
   it('退订之后不再收到通知', () => {
     const h = host()
-    const hint = createRouteHint(h.ctx)
+    const hint = createRouteHint(() => h.ctx)
     const listener = vi.fn()
     hint.subscribe(listener)()
     for (const notify of [...h.current.listeners]) notify()

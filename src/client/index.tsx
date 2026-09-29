@@ -400,8 +400,23 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => () => configSlotProbe.dispose(), 'ds-balance: config slot probe')
 
   // 「当前会话在用哪条路由」这条提示：后端据此决定余额走 Key 还是走账号登录。
-  // 侧栏是壳层座位、不在会话作用域里，所以提示自己去宿主客户端服务上读（鸭子类型，读不到只降级）。
-  const routeHint = createRouteHint(ctx as unknown as RouteHintContext)
+  // 侧栏是壳层座位、不在会话作用域里，所以提示自己去宿主客户端服务上读。
+  //
+  // **两个服务一律经 ctx.inject 把门**：cordis 不许读没 inject 过的服务，而这次读发生在
+  // 渲染期 —— 直接访问会抛，抛出去的表现是左下角整条条目被停用（注册在、`active: false`）。
+  // 服务缺席只让提示退化（后端回落全局默认路由），界面照常。
+  const routeServices: RouteHintContext = {}
+  for (const name of ['uiSession', 'sessions'] as const) {
+    ctx.inject([name], (serviceCtx) => {
+      serviceCtx.effect(() => {
+        routeServices[name] = (serviceCtx as unknown as RouteHintContext)[name]
+        return () => {
+          delete routeServices[name]
+        }
+      }, `ds-balance: route hint (${name})`)
+    })
+  }
+  const routeHint = createRouteHint(() => routeServices)
 
   // 「切到 Plugins 页」的入口：宿主把它放在跨插件服务 `ctx.layout` 上
   // （宿主 `ui-layout/src/client/service.ts:28-52`：cross-plugin panel-action face behind ctx.layout）。
