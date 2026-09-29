@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { nextSnapshotId, normalize, parseErrorBody } from '../src/domain/normalize.ts'
+import type { BalanceSource } from '../src/domain/balance.ts'
 import { ParseError, ShapeError } from '../src/domain/errors.ts'
 import { formatMoney } from '../src/domain/money.ts'
 
@@ -15,9 +16,17 @@ const good = {
   ],
 }
 
+/** 本文件多数用例只关心形状；来源单独两条守。 */
+const norm = (
+  raw: unknown,
+  tag: string,
+  now: number,
+  source: BalanceSource = 'deepseek-http',
+): ReturnType<typeof normalize> => normalize(raw, tag, now, source)
+
 describe('normalize', () => {
   it('解析出最小单位金额', () => {
-    const snapshot = normalize(good, 'tag', 1760000000000)
+    const snapshot = norm(good, 'tag', 1760000000000)
     expect(snapshot.accountTag).toBe('tag')
     expect(snapshot.fetchedAt).toBe(1760000000000)
     expect(snapshot.isAvailable).toBe(true)
@@ -27,26 +36,28 @@ describe('normalize', () => {
     expect(formatMoney(snapshot.balances[0]!.toppedUp, 2)).toBe('100.00')
   })
 
+  it('来源照调用方给的记，不写死', () => {
+    expect(norm(good, 'tag', 1, 'deepseek-account').source).toBe('deepseek-account')
+  })
+
   it('保留原始响应供审计', () => {
-    expect(normalize(good, 'tag', 1).raw).toBe(good)
+    expect(norm(good, 'tag', 1).raw).toBe(good)
   })
 
   it('接受空币种列表', () => {
-    expect(normalize({ is_available: false, balance_infos: [] }, 'tag', 1).balances).toEqual([])
+    expect(norm({ is_available: false, balance_infos: [] }, 'tag', 1).balances).toEqual([])
   })
 
   it('结构不符抛 ShapeError', () => {
-    expect(() => normalize(null, 't', 1)).toThrow(ShapeError)
-    expect(() => normalize([], 't', 1)).toThrow(ShapeError)
-    expect(() => normalize({ balance_infos: [] }, 't', 1)).toThrow(ShapeError)
-    expect(() => normalize({ is_available: 'yes', balance_infos: [] }, 't', 1)).toThrow(ShapeError)
-    expect(() => normalize({ is_available: true }, 't', 1)).toThrow(ShapeError)
-    expect(() => normalize({ is_available: true, balance_infos: [null] }, 't', 1)).toThrow(
+    expect(() => norm(null, 't', 1)).toThrow(ShapeError)
+    expect(() => norm([], 't', 1)).toThrow(ShapeError)
+    expect(() => norm({ balance_infos: [] }, 't', 1)).toThrow(ShapeError)
+    expect(() => norm({ is_available: 'yes', balance_infos: [] }, 't', 1)).toThrow(ShapeError)
+    expect(() => norm({ is_available: true }, 't', 1)).toThrow(ShapeError)
+    expect(() => norm({ is_available: true, balance_infos: [null] }, 't', 1)).toThrow(ShapeError)
+    expect(() => norm({ is_available: true, balance_infos: [{ currency: '' }] }, 't', 1)).toThrow(
       ShapeError,
     )
-    expect(() =>
-      normalize({ is_available: true, balance_infos: [{ currency: '' }] }, 't', 1),
-    ).toThrow(ShapeError)
   })
 
   it('金额坏掉抛 ParseError 并指出字段', () => {
@@ -54,13 +65,13 @@ describe('normalize', () => {
       is_available: true,
       balance_infos: [{ ...good.balance_infos[0], total_balance: 'abc' }],
     }
-    expect(() => normalize(bad, 't', 1)).toThrow(ParseError)
-    expect(() => normalize(bad, 't', 1)).toThrow(/total_balance/)
+    expect(() => norm(bad, 't', 1)).toThrow(ParseError)
+    expect(() => norm(bad, 't', 1)).toThrow(/total_balance/)
   })
 
   it('金额缺失抛 ShapeError 而不是归零', () => {
     const missing = { is_available: true, balance_infos: [{ currency: 'CNY' }] }
-    expect(() => normalize(missing, 't', 1)).toThrow(ShapeError)
+    expect(() => norm(missing, 't', 1)).toThrow(ShapeError)
   })
 })
 

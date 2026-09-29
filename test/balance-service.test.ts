@@ -1,13 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BalanceService } from '../src/services/balance-service.ts'
+import { SourceLedger } from '../src/services/balance-source.ts'
+import { accountReader, keyReader } from '../src/services/source-readers.ts'
 import { ConfigService } from '../src/services/config-service.ts'
 import { KeyResolver } from '../src/services/key-resolver.ts'
 import type { Config } from '../src/config.ts'
-import type { BalanceSnapshot } from '../src/domain/balance.ts'
+import type { BalanceSnapshot, BalanceSource } from '../src/domain/balance.ts'
 import type { Clock } from '../src/ports/clock.ts'
+import type { AccountSource } from '../src/ports/account.ts'
 import type { CoreStore } from '../src/ports/core-store.ts'
 import type { DeepSeekClient } from '../src/ports/deepseek-client.ts'
 import { NetworkError, UpstreamError } from '../src/domain/errors.ts'
+import { formatMoney } from '../src/domain/money.ts'
+import { ACCOUNT_PROVIDER, KEY_PROVIDER } from '../src/services/source-selector.ts'
 
 const SALT = 'test-salt'
 
@@ -37,7 +42,11 @@ const goodRaw = {
   ],
 }
 
-function harness(configPatch: Partial<Config> = {}, key = 'sk-test') {
+function harness(
+  configPatch: Partial<Config> = {},
+  key = 'sk-test',
+  options: { route?: string | null } = {},
+) {
   let now = 1_000_000
   const clock: Clock = { now: () => now, timezone: () => 'Asia/Shanghai' }
   const config = new ConfigService({
@@ -58,12 +67,46 @@ function harness(configPatch: Partial<Config> = {}, key = 'sk-test') {
     health: vi.fn().mockResolvedValue({ ok: true }),
     close: vi.fn().mockResolvedValue(undefined),
   }
-  const service = new BalanceService({ client, store, keys, config, clock, salt: SALT })
+  /** 账号那条路默认「未登录」：多数用例走 Key，账号用例自己翻这个替身。 */
+  const account: AccountSource = {
+    signedIn: async () => false,
+    accountId: async () => null,
+    readBalance: async () => null,
+  }
+  const ledgers = new Map<BalanceSource, SourceLedger>([
+    [
+      'deepseek-http',
+      new SourceLedger({
+        source: 'deepseek-http',
+        reader: keyReader({ keys, client, config, salt: SALT }),
+        store,
+        config,
+        clock,
+      }),
+    ],
+    [
+      'deepseek-account',
+      new SourceLedger({
+        source: 'deepseek-account',
+        reader: accountReader({ account: () => account, salt: SALT }),
+        store,
+        config,
+        clock,
+      }),
+    ],
+  ])
+  // 路由读不到 → 固定顺序（Key 优先），这正是多数用例要的那条路。
+  const service = new BalanceService({ ledgers, routeProvider: () => options.route ?? null })
   return {
     service,
     client,
     store,
     clock,
+    account,
+    /** 翻账号那条路的替身：多数用例不关心它，选源用例自己设。 */
+    setAccount: (patch: Partial<AccountSource>) => {
+      Object.assign(account, patch)
+    },
     setNow: (value: number) => {
       now = value
     },
@@ -247,6 +290,103 @@ describe('forceRefresh', () => {
     await h.service.getView()
     const result = await h.service.forceRefresh('manual')
     expect(result.triggered).toBe(true)
+  })
+})
+
+describe('选源', () => {
+  /** 账号那条路的替身：已登录、有 50 元充值。 */
+  const signedIn = {
+    signedIn: async () => true,
+    accountId: async () => 'user-1',
+    readBalance: async () => ({
+      wallets: [{ currency: 'CNY', balance: '50.00000000' }],
+      bonusWallets: [],
+    }),
+  }
+
+  it('路由点名账号、账号已登录 → 这一份数字来自账号', async () => {
+    const h = harness({}, 'sk-test', { route: ACCOUNT_PROVIDER })
+    h.setAccount(signedIn)
+    const view = await h.service.getView()
+    expect(view.source).toBe('deepseek-account')
+    expect(h.service.activeSource()).toBe('deepseek-account')
+    // 账号那条路不打官方余额端点。
+    expect(h.client.fetchBalance).not.toHaveBeenCalled()
+    expect(formatMoney(view.selected!.total, 2)).toBe('50.00')
+  })
+
+  it('路由点名账号、但账号没登录 → 回落 Key，不空转', async () => {
+    const h = harness({}, 'sk-test', { route: ACCOUNT_PROVIDER })
+    const view = await h.service.getView()
+    expect(view.source).toBe('deepseek-http')
+    expect(h.client.fetchBalance).toHaveBeenCalledTimes(1)
+  })
+
+  it('别家供应商 → 固定顺序：Key 优先，哪怕账号也在', async () => {
+    const h = harness({}, 'sk-test', { route: 'opencode-go' })
+    h.setAccount(signedIn)
+    const view = await h.service.getView()
+    expect(view.source).toBe('deepseek-http')
+  })
+
+  it('会话提示优先于全局默认路由，且切提示就切来源', async () => {
+    const h = harness({}, 'sk-test', { route: 'other' })
+    h.setAccount(signedIn)
+    expect((await h.service.getView({ providerHint: ACCOUNT_PROVIDER })).source).toBe(
+      'deepseek-account',
+    )
+    expect((await h.service.getView({ providerHint: KEY_PROVIDER })).source).toBe('deepseek-http')
+    expect(h.service.activeSource()).toBe('deepseek-http')
+  })
+
+  it('两条路各记各的状态：一条失败不影响另一条', async () => {
+    const h = harness({}, 'sk-test', { route: ACCOUNT_PROVIDER })
+    h.setAccount(signedIn)
+    await h.service.getView()
+    expect(h.service.status().state).toBe('ok')
+    // 切回 Key 那条：它自己的状态还是空的，不该继承账号那条的 ok。
+    await h.service.getView({ providerHint: KEY_PROVIDER })
+    expect(h.service.status().hasSnapshot).toBe(true)
+    expect(h.service.status().source).toBe('deepseek-http')
+  })
+
+  it('定时刷新只刷当前活跃来源，不重新解析', async () => {
+    const h = harness({}, 'sk-test', { route: ACCOUNT_PROVIDER })
+    h.setAccount(signedIn)
+    await h.service.getView({ providerHint: ACCOUNT_PROVIDER })
+    await h.service.refreshActive()
+    expect(h.service.activeSource()).toBe('deepseek-account')
+    expect(h.client.fetchBalance).not.toHaveBeenCalled()
+  })
+
+  it('来源还没定过时，调度自己解析一次', async () => {
+    const h = harness({}, 'sk-test', { route: ACCOUNT_PROVIDER })
+    h.setAccount(signedIn)
+    await h.service.refreshActive()
+    expect(h.service.activeSource()).toBe('deepseek-account')
+  })
+
+  it('服务晚到：作废「已定」之后再刷就切到刚到位的那条', async () => {
+    // 宿主刚起来时账号服务还没到，那次解析只能按兜底走（这台机器没有 Key → 报 NO_KEY）；
+    // 服务到齐后装配处会 invalidateSource() + 重排一轮，这里守的就是那一步。
+    const h = harness({}, '', { route: ACCOUNT_PROVIDER })
+    await h.service.refreshActive()
+    expect(h.service.activeSource()).toBe('deepseek-http')
+    h.setAccount(signedIn)
+    h.service.invalidateSource()
+    await h.service.refreshActive()
+    expect(h.service.activeSource()).toBe('deepseek-account')
+  })
+
+  it('服务晚到：不作废也会自愈 —— 下一轮发现活跃来源不可用就重判', async () => {
+    // 真机上「账号服务已注册、凭据还没读出来」是常态：那一刻 signedIn() 还是 false。
+    // 所以自愈不能只靠到达事件，必须落在每一轮的判据上。
+    const h = harness({}, '', { route: ACCOUNT_PROVIDER })
+    await h.service.refreshActive()
+    expect(h.service.activeSource()).toBe('deepseek-http')
+    h.setAccount(signedIn)
+    await h.service.refreshActive()
+    expect(h.service.activeSource()).toBe('deepseek-account')
   })
 })
 

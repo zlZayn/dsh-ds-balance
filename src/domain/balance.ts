@@ -11,6 +11,16 @@ import type { Units } from './money.js'
 /** 币种代码，例如 `CNY` / `USD`。 */
 export type Currency = string
 
+/**
+ * 余额来源：官方的两条取数路。
+ *
+ * - `deepseek-http`：官方余额端点 `GET /user/balance`，凭据是 API Key（解析链见 `KeyResolver`）。
+ * - `deepseek-account`：宿主账号服务的钱包查询，凭据是账号登录态。
+ *
+ * **取值是追加式的**：已落盘的记录里只有前者，所以它必须一直是合法值（域版本不抬）。
+ */
+export type BalanceSource = 'deepseek-http' | 'deepseek-account'
+
 /** 缓存状态。闭集。 */
 export type CacheState = 'empty' | 'ok' | 'stale' | 'error'
 
@@ -38,7 +48,7 @@ export interface BalanceSnapshot {
   /** 全币种余额。 */
   balances: BalanceInfo[]
   /** 数据来源。 */
-  source: 'deepseek-http'
+  source: BalanceSource
   /** 原始响应，审计用。 */
   raw: unknown
 }
@@ -51,6 +61,8 @@ export interface ThresholdPair {
 
 /** 给前端的余额视图。 */
 export interface BalanceView {
+  /** 这一份数字是哪条取数路给的。界面据此标来源。 */
+  source: BalanceSource
   state: CacheState
   stale: boolean
   fetchedAt: number | null

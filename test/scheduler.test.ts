@@ -24,6 +24,7 @@ function status(patch: Partial<BalanceStatus> = {}): BalanceStatus {
     serverRefreshSeconds: 60,
     retryAfterMs: null,
     lastSuccessAt: null,
+    source: 'deepseek-http',
     ...patch,
   }
 }
@@ -164,7 +165,7 @@ describe('Scheduler', () => {
   function harness(targetPatch: Partial<SchedulerTarget> = {}) {
     const clock = fakeTimers()
     const target: SchedulerTarget = {
-      getView: vi.fn().mockResolvedValue({}),
+      refreshActive: vi.fn().mockResolvedValue({}),
       status: () => status(),
       ...targetPatch,
     }
@@ -189,7 +190,7 @@ describe('Scheduler', () => {
     const h = harness()
     h.scheduler.start()
     await h.clock.advance(INITIAL_DELAY_MS)
-    expect(h.target.getView).toHaveBeenCalledWith({ force: true })
+    expect(h.target.refreshActive).toHaveBeenCalledTimes(1)
     expect(h.clock.pending()).toEqual([HEALTHY_60S])
   })
 
@@ -205,7 +206,7 @@ describe('Scheduler', () => {
     h.scheduler.start()
     h.scheduler.stop()
     await h.clock.advance(INITIAL_DELAY_MS * 10)
-    expect(h.target.getView).not.toHaveBeenCalled()
+    expect(h.target.refreshActive).not.toHaveBeenCalled()
     expect(h.scheduler.nextRunAt()).toBeNull()
     expect(h.scheduler.isRunning()).toBe(false)
   })
@@ -215,7 +216,7 @@ describe('Scheduler', () => {
     h.scheduler.start()
     h.scheduler.reset()
     await h.clock.advance(0)
-    expect(h.target.getView).toHaveBeenCalledTimes(1)
+    expect(h.target.refreshActive).toHaveBeenCalledTimes(1)
   })
 
   it('失败态用退避间隔', async () => {
@@ -226,7 +227,7 @@ describe('Scheduler', () => {
   })
 
   it('目标抛错也不会断链', async () => {
-    const h = harness({ getView: vi.fn().mockRejectedValue(new Error('boom')) })
+    const h = harness({ refreshActive: vi.fn().mockRejectedValue(new Error('boom')) })
     h.scheduler.start()
     await h.clock.advance(INITIAL_DELAY_MS)
     expect(h.clock.pending()).toEqual([HEALTHY_60S])
@@ -234,7 +235,7 @@ describe('Scheduler', () => {
 
   it('tick 期间被 stop 就不再排下一轮', async () => {
     const h = harness({
-      getView: vi.fn().mockImplementation(async () => {
+      refreshActive: vi.fn().mockImplementation(async () => {
         h.scheduler.stop()
         return {}
       }),

@@ -12,13 +12,21 @@
   - **无 credentials seam 时吞掉异常继续往下**，不让它变成整个插件的失败。
   - **每次调用现读配置**，用户改了立刻生效。
 - `config-service.ts`：`ConfigService` 与 `ConfigSource`。薄封装设置作用域：现读、订阅、派生阈值；`timeoutMs()` **每次现读环境变量**。
-- `balance-service.ts`：`BalanceService`、`RefreshResult`、`BalanceStatus`、`GetViewOptions`。
+- `balance-source.ts`：`SourceLedger` 与 `SourceReader`。**一个来源一份账本**：快照、状态机、失败退避、手动冷却都在这里。
   - **对外永不抛错**：一切失败变成 `view.state` 与 `view.error`。
   - `getView` 合并并发请求（`inflight`）；不 force 且**可服务缓存**时直接返回。
   - **两个新鲜度谓词不能混**：`withinWindow()` 只看时间（`restore` 用）；`canServeCache()` 额外要求 `state === 'ok'`（`getView` 用）—— 混用会让一次失败之后永远不再重试。
   - `restore()` 按 `accountTag` 过滤恢复快照；凭据轮换后旧快照视为不存在。
   - 手动刷新的冷却**锚在上一次手动刷新**（`lastManualRefreshAt`），不是上一次抓取：锚在 `fetchedAt` 上时，一次自动刷新会把用户刚按下的一下吞掉 —— 界面转了圈、上游一次没打。
-  - 只在**首次失败**打 warn，避免日志刷屏。
+  - 只在**首次失败**打 warn，避免日志刷屏；指标键带 `source` 标签，两条路各自可看。
+  - `SourceReader` 是**换来源要换的那一件**：`available()` / `tag()` / `read()`，前两个是本地读、只有 `read()` 打上游。
+- `source-readers.ts`：两条路的读取策略 —— `keyReader`（解析链 → 官方余额端点）与 `accountReader`（账号登录态 → 钱包查询 → 投影）。
+  - 账号账本的 `tag` 用 `account:<userId>` 前缀，与密钥那条**永不共账本**；id 拿不到时退 `account:unknown`（那种情况下换账号不换账本，下一轮自愈）。
+- `source-selector.ts`：**选源判据的唯一一处**。`routeOf(provider)` 把宿主路由翻成来源；`pickSource` 走四层回落（会话 → 全局默认 → `FALLBACK_ORDER` → 默认来源）。新增一个来源只动这里 + 装配处。
+- `balance-service.ts`：`BalanceService`（门面）、`RefreshResult`、`BalanceStatus`、`GetViewOptions`。
+  - 门面**不持状态、不抓数据**：解析这一轮谁活跃，然后把活交给那条路的账本。
+  - `refreshActive()` 刷当前活跃来源（调度用）；发现活跃来源不可用时**重判一次** —— 宿主刚起来时「服务已注册」不等于「它自己的凭据已可读」，那一刻只按兜底走。
+  - `invalidateSource()` 作废「来源已定」，让下一次调度重新解析。
 - `scheduler.ts`：`Scheduler`、`nextDelayMs`、`jitter`、`jitterWithin` 与常量。
   - `setTimeout` 链而非 `setInterval`：跑完才排下一轮，退避与 `Retry-After` 才生效。
   - 间隔优先级：`Retry-After` → 缺密钥快速重试 → 失败指数退避 → 配置频率。退避与缺密钥重试带对称 ±20% 抖动。

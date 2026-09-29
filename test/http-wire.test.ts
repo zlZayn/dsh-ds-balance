@@ -8,6 +8,7 @@ import type { BalanceResponse } from '../src/client/api-types.ts'
 /** 造一个视图；只覆写关心的字段。 */
 function view(patch: Partial<BalanceView> = {}): BalanceView {
   return {
+    source: 'deepseek-http',
     state: 'ok',
     stale: false,
     fetchedAt: 1_760_000_000_000,

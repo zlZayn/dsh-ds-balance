@@ -10,7 +10,7 @@
  * @module dsh-ds-balance/http/handlers
  */
 
-import type { CacheState } from '../domain/balance.js'
+import type { BalanceSource, CacheState } from '../domain/balance.js'
 import { classify, describeError } from '../domain/errors.js'
 import type { CoreStore } from '../ports/core-store.js'
 import type { DeepSeekClient } from '../ports/deepseek-client.js'
@@ -89,16 +89,19 @@ async function readJsonObject(request: Request): Promise<Record<string, unknown>
  * @param requestId - 本次请求的标识。
  * @param error - 触发失败的异常。
  * @param state - 要报告的状态；余额端点固定 `error`。
+ * @param source - 当时活跃的来源；取不到就按 Key 那条报（界面只拿它选来源标签）。
  * @returns 契约 §8.3 的响应体。
  */
 function failureView(
   requestId: string,
   error: unknown,
   state: CacheState = 'error',
+  source: BalanceSource = 'deepseek-http',
 ): WireBalanceResponse {
   return {
     requestId,
     schemaVersion: SCHEMA_VERSION,
+    source,
     state,
     stale: false,
     fetchedAt: 0,
@@ -137,27 +140,31 @@ export async function handleBalance(request: Request, deps: HttpDeps): Promise<R
   const requestId = newRequestId()
   try {
     const currency = queryParam(request, 'currency')
-    const view = await deps.service.getView(
-      currency === null || currency === '' ? {} : { currency },
-    )
+    const providerHint = queryParam(request, 'provider')
+    const view = await deps.service.getView({
+      ...(currency === null || currency === '' ? {} : { currency }),
+      providerHint,
+    })
     return json(toWireBalanceView(view, deps.service.accountTag8() ?? '', requestId))
   } catch (error) {
     deps.logger?.error('ds-balance: balance handler failed', {
       requestId,
       error: describeError(error),
     })
-    return json(failureView(requestId, error))
+    return json(failureView(requestId, error, 'error', deps.service.activeSource()))
   }
 }
 
-/** `POST /api/v1/balance/refresh`。请求体 `{ reason }`，可省略。 */
+/** `POST /api/v1/balance/refresh`。请求体 `{ reason, provider }`，都可省略。 */
 export async function handleRefresh(request: Request, deps: HttpDeps): Promise<Response> {
   const requestId = newRequestId()
   try {
     const body = await readJsonObject(request)
     const rawReason = body?.reason
     const reason = typeof rawReason === 'string' && rawReason !== '' ? rawReason : 'manual'
-    const result = await deps.service.forceRefresh(reason)
+    const rawProvider = body?.provider
+    const providerHint = typeof rawProvider === 'string' ? rawProvider : null
+    const result = await deps.service.forceRefresh(reason, providerHint)
     return json({ requestId, schemaVersion: SCHEMA_VERSION, ...result, error: null })
   } catch (error) {
     deps.logger?.error('ds-balance: refresh handler failed', {
@@ -348,6 +355,8 @@ export async function handleHealthz(_request: Request, deps: HttpDeps): Promise<
     requestId,
     schemaVersion: SCHEMA_VERSION,
     version: PLUGIN_VERSION,
+    // 当前活跃来源：两条路并存时，这是唯一能一眼看出「现在服务的是哪条」的地方。
+    source: status.source,
     state: status.state,
     lastSuccessAt: status.lastSuccessAt,
     consecutiveFailures: status.consecutiveFailures,

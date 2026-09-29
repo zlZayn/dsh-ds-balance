@@ -1,105 +1,73 @@
 /**
- * 余额缓存与状态机。
+ * 余额服务门面：**决定这一轮走哪条取数路**，然后把活交给那条路的账本。
  *
- * 职责：把「拿密钥 → 调上游 → 归一化 → 落快照」包成一次可合并的请求，并维护缓存状态。
- * **对外永不抛错**：一切失败都变成 `view.state` 与 `view.error`。
+ * 门面自己不持状态、不抓数据 —— 两份状态在 {@link SourceLedger} 里，一个来源一份。
+ * 选源规则是四层回落（会话路由 → 全局默认路由 → Key 优先 → 都没有），判据是纯函数
+ * [source-selector.ts](source-selector.ts)；两条路的读取策略在
+ * [source-readers.ts](source-readers.ts)。
  * @module dsh-ds-balance/services/balance-service
  */
 
-import type { BalanceSnapshot, BalanceView, CacheState } from '../domain/balance.js'
-import {
-  classify,
-  describeError,
-  parseRetryAfter,
-  type ErrorCode,
-  type ErrorInfo,
-} from '../domain/errors.js'
-import { normalize } from '../domain/normalize.js'
-import { pickBalance } from '../domain/select.js'
-import { severityOf, thresholdsFor } from '../domain/severity.js'
-import type { Clock } from '../ports/clock.js'
-import type { CoreStore } from '../ports/core-store.js'
-import type { DeepSeekClient } from '../ports/deepseek-client.js'
+import type { BalanceSource, BalanceView } from '../domain/balance.js'
 import type { Logger } from '../ports/logger.js'
-import { noopMetrics, type Metrics } from '../ports/metrics.js'
-import { endpointOf } from '../config.js'
-import { accountTag8, computeAccountTag } from './account-tag.js'
-import type { ConfigService } from './config-service.js'
-import type { KeyResolver } from './key-resolver.js'
+import type {
+  BalanceStatus,
+  LedgerViewOptions,
+  RefreshResult,
+  SourceLedger,
+} from './balance-source.js'
+import { pickSource, routeOf } from './source-selector.js'
 
-/** `forceRefresh` 的返回值，形状对齐契约 §8.4。 */
-export interface RefreshResult {
-  triggered: boolean
-  joined: boolean
-  cooldownMs: number
-  state: CacheState
-}
-
-/** 调度器需要的状态切片。 */
-export interface BalanceStatus {
-  state: CacheState
-  errorCode: ErrorCode | null
-  consecutiveFailures: number
-  hasSnapshot: boolean
-  serverRefreshSeconds: number
-  /** 上游给的 `Retry-After`，优先于自算退避。 */
-  retryAfterMs: number | null
-  /** 最近一次成功抓取的时刻；从未成功过是 `null`。健康检查要用。 */
-  lastSuccessAt: number | null
-}
+export type { BalanceStatus, RefreshResult, SourceReader } from './balance-source.js'
 
 /** `getView` 的可选参数。 */
-export interface GetViewOptions {
-  /** 跳过新鲜度判据强制拉一次。 */
-  force?: boolean
-  /** 覆盖展示币种偏好；缺省读配置。 */
-  currency?: string
+export interface GetViewOptions extends LedgerViewOptions {
+  /**
+   * 客户端给的**当前会话路由 id**（宿主 provider 名）。
+   *
+   * 只当提示用：认不出来或没给，就回落到全局默认路由 —— 客户端读不到会话时，
+   * 界面不该因此失去来源。
+   */
+  providerHint?: string | null
 }
 
 /** 构造参数。 */
 export interface BalanceServiceOptions {
-  client: DeepSeekClient
-  store: CoreStore
-  keys: KeyResolver
-  config: ConfigService
-  clock: Clock
-  /** 服务端盐，用来算 `accountTag`。 */
-  salt: string
+  /** 两条账本；两个 id 都要在。 */
+  ledgers: ReadonlyMap<BalanceSource, SourceLedger>
+  /** 全局默认路由 id（宿主 `agentDefaultModel.currentSelection().provider`）；读不到回 `null`。 */
+  routeProvider: () => string | null
   logger?: Logger | undefined
-  metrics?: Metrics | undefined
 }
 
-/** 余额缓存与状态机。 */
+/** 余额服务门面。 */
 export class BalanceService {
   private readonly options: BalanceServiceOptions
-  private readonly metrics: Metrics
-  private snapshot: BalanceSnapshot | null = null
-  private state: CacheState = 'empty'
-  private error: ErrorInfo | null = null
-  private failures = 0
-  private retryAfterMs: number | null = null
-  /** 上一次真的触发过手动刷新的时刻；`null` 表示本进程还没有过。 */
-  private lastManualRefreshAt: number | null = null
-  private inflight: Promise<BalanceView> | null = null
-  /** 落盘失败只报一次，避免每轮刷新都刷屏。 */
-  private persistWarned = false
+  /** 当前活跃来源；由最近一次解析决定，调度与健康检查读它。 */
+  private active: BalanceSource = 'deepseek-http'
+  /**
+   * 来源判据是否已经定下来过。
+   *
+   * 宿主刚起来时两个可选服务（账号、默认模型）可能还没到，那一次解析只能按兜底走；
+   * 服务到齐后由装配处调 {@link invalidateSource} + `scheduler.reset()` 重新定一次。
+   * 一旦有请求解析过就以请求为准 —— 调度不拿全局默认去顶会话级的来源。
+   */
+  private resolved = false
+  /** 每条路只恢复一次（存储扫描不便宜，来回切来源不该重复扫）。 */
+  private readonly restores = new Map<BalanceSource, Promise<void>>()
 
   constructor(options: BalanceServiceOptions) {
     this.options = options
-    this.metrics = options.metrics ?? noopMetrics
   }
 
-  /** 当前状态切片，供调度与健康检查使用。 */
+  /** 当前活跃来源。诊断与测试用。 */
+  activeSource(): BalanceSource {
+    return this.active
+  }
+
+  /** 当前活跃账本的状态切片，供调度与健康检查使用。 */
   status(): BalanceStatus {
-    return {
-      state: this.state,
-      errorCode: this.error?.code ?? null,
-      consecutiveFailures: this.failures,
-      hasSnapshot: this.snapshot !== null,
-      serverRefreshSeconds: this.options.config.current().serverRefreshSeconds,
-      retryAfterMs: this.retryAfterMs,
-      lastSuccessAt: this.snapshot?.fetchedAt ?? null,
-    }
+    return this.ledger(this.active).status()
   }
 
   /**
@@ -108,205 +76,94 @@ export class BalanceService {
    * **只回前 8 位**：完整 tag 是账本作用域标识，没有对外的理由。
    */
   accountTag8(): string | null {
-    const tag = this.snapshot?.accountTag
-    return tag === undefined ? null : accountTag8(tag)
+    return this.ledger(this.active).accountTag8()
   }
 
-  /**
-   * 从存储恢复最近快照（挂载时调一次）。
-   *
-   * **按 `accountTag` 过滤**：凭据轮换后 tag 变了，旧快照视为不存在，不混用。
-   * 没有密钥可算 tag 时静默跳过。
-   */
+  /** 从存储恢复最近快照（挂载时调一次，恢复的是**当前活跃来源**那条账本）。 */
   async restore(): Promise<void> {
-    try {
-      const apiKey = await this.options.keys.resolve()
-      const accountTag = computeAccountTag(this.options.salt, apiKey)
-      const stored = await this.options.store.loadLatestSnapshot(accountTag)
-      if (stored === null) return
-      this.snapshot = stored
-      this.state = this.withinWindow() ? 'ok' : 'stale'
-      this.publishGauge()
-    } catch (error) {
-      this.options.logger?.debug('ds-balance: no snapshot restored', {
-        error: describeError(error),
-      })
-    }
+    await this.restoreLedger(await this.resolve(undefined))
   }
 
   /**
    * 取当前视图。
    *
-   * 有在飞的请求就合并；不 force 且未过期就返回缓存；否则拉一次。
+   * `providerHint` 一变（用户切了会话、切了模型）就重新解析来源 —— 这是「跟着会话走」的入口。
    */
   async getView(options: GetViewOptions = {}): Promise<BalanceView> {
-    if (this.inflight !== null) return this.inflight
-    if (options.force !== true && this.canServeCache()) return this.toView(options.currency)
-
-    const run = this.fetchOnce(options.currency).finally(() => {
-      this.inflight = null
-    })
-    this.inflight = run
-    return run
+    const id = await this.resolve(options.providerHint)
+    await this.restoreLedger(id)
+    return this.ledger(id).getView({ force: options.force, currency: options.currency })
   }
 
   /**
-   * 手动刷新。
+   * 定时刷新：刷**当前活跃来源**。
    *
-   * 冷却中不触发；已有请求在飞时合并并回报 `joined`。
-   *
-   * **冷却的锚点是「上一次手动刷新」，不是「上一次抓取」**：调度与轮询也在抓，
-   * 拿 `snapshot.fetchedAt` 当锚点的话，一次自动刷新就会把用户刚按下的一下吞掉 ——
-   * 界面转了圈、倒计时也走了，上游却一次没打。
-   *
-   * 时刻取**决定触发那一刻**（不是抓完那一刻）：客户端从「拿到结果那一刻」起算，
-   * 两者相差一个往返 ⇒ 客户端更保守，按钮亮起时按下去一定真的会抓。
+   * 来源还没定过（宿主刚起来、可选服务未到齐）时先解析一次；定过之后**不重新解析** ——
+   * 节拍属于「这份数据」，不属于某一次请求，每轮都按全局默认重算会把会话级的来源无声顶掉。
    */
-  async forceRefresh(reason: string): Promise<RefreshResult> {
-    const now = this.options.clock.now()
-    const cooldownMs = this.options.config.current().manualRefreshCooldownSeconds * 1000
-    const last = this.lastManualRefreshAt
-    if (last !== null && now - last < cooldownMs) {
-      const remaining = cooldownMs - (now - last)
-      this.metrics.counter('force_rejected_total')
-      this.options.logger?.debug('ds-balance: manual refresh rejected by cooldown', {
-        reason,
-        cooldownMs: remaining,
-      })
-      return { triggered: false, joined: false, cooldownMs: remaining, state: this.state }
-    }
-    this.lastManualRefreshAt = now
-    if (this.inflight !== null) {
-      await this.inflight
-      return { triggered: true, joined: true, cooldownMs: 0, state: this.state }
-    }
-    await this.getView({ force: true })
-    return { triggered: true, joined: false, cooldownMs: 0, state: this.state }
-  }
-
-  /** 快照是否还在 `serverRefreshSeconds` 窗口内。**只看时间，不看状态。** */
-  private withinWindow(): boolean {
-    if (this.snapshot === null) return false
-    const window = this.options.config.current().serverRefreshSeconds * 1000
-    return this.options.clock.now() - this.snapshot.fetchedAt < window
+  async refreshActive(): Promise<BalanceView> {
+    let id = this.resolved ? this.active : await this.resolve(undefined)
+    // **服务晚到的自愈点**：宿主刚起来时判据可能还没齐（账号服务已注册、但它自己的凭据
+    // 还没读出来），那一轮会落在一条不可用的路上。下一轮发现仍旧不可用就再解析一次 ——
+    // 不必等界面来请求，也不必靠外部作废。
+    if (!(await this.ledger(id).available())) id = await this.resolve(undefined)
+    await this.restoreLedger(id)
+    return this.ledger(id).getView({ force: true })
   }
 
   /**
-   * 能否直接拿缓存顶上。
+   * 作废「来源已定」这件事，让下一次调度重新解析。
    *
-   * 与 {@link withinWindow} 分开：`restore` 要在状态还是 `empty` 时用纯时间判据，
-   * 而这里必须要求 `ok` —— 否则一次失败之后，窗口内的旧快照会让 `getView`
-   * 永远不再重试。
+   * 装配处在可选服务（账号 / 默认模型）到位时调它：那一刻判据才齐，之前那次解析是兜底。
    */
-  private canServeCache(): boolean {
-    return this.state === 'ok' && this.withinWindow()
+  invalidateSource(): void {
+    this.resolved = false
   }
 
-  /** 跑一次真实抓取。**所有异常都在这里被吸收。** */
-  private async fetchOnce(currency: string | undefined): Promise<BalanceView> {
-    const startedAt = this.options.clock.now()
-    try {
-      const apiKey = await this.options.keys.resolve()
-      const config = this.options.config.current()
-      const raw = await this.options.client.fetchBalance({
-        baseUrl: endpointOf(config),
-        apiKey,
-        timeoutMs: this.options.config.timeoutMs(),
-      })
-      const snapshot = normalize(
-        raw,
-        computeAccountTag(this.options.salt, apiKey),
-        this.options.clock.now(),
-      )
-      // 落盘失败不算这次抓取失败：快照留在内存里，界面照常显示，
-      // 代价只是重启后不恢复。存储是可降级的一层。
-      await this.persist(snapshot)
-      this.snapshot = snapshot
-      this.state = 'ok'
-      this.error = null
-      this.failures = 0
-      this.retryAfterMs = null
-      this.metrics.counter('balance_fetch_total', { result: 'ok' })
-      this.metrics.histogram('balance_fetch_duration_ms', {}, this.options.clock.now() - startedAt)
-      this.publishGauge()
-      return this.toView(currency)
-    } catch (error) {
-      this.applyFailure(error, startedAt)
-      return this.toView(currency)
-    }
+  /** 手动刷新：与 {@link getView} 同一条解析路径；冷却由该来源的账本自己管。 */
+  async forceRefresh(reason: string, providerHint?: string | null): Promise<RefreshResult> {
+    const id = await this.resolve(providerHint)
+    await this.restoreLedger(id)
+    return this.ledger(id).forceRefresh(reason)
   }
 
-  /**
-   * 把快照落盘。
-   *
-   * **失败只记一次 warn，不往上抛**：存储层降级不该让整个余额功能不可用。
-   * @param snapshot - 刚归一化出来的快照。
-   */
-  private async persist(snapshot: BalanceSnapshot): Promise<void> {
-    try {
-      await this.options.store.saveSnapshot(snapshot)
-    } catch (error) {
-      if (this.persistWarned) return
-      this.persistWarned = true
-      this.options.logger?.warn('ds-balance: snapshot not persisted, continuing in memory', {
-        error: describeError(error),
+  /** 解析这一轮用哪条路，并把它记为活跃来源。 */
+  private async resolve(hint: string | null | undefined): Promise<BalanceSource> {
+    const routed = routeOf(hint ?? this.options.routeProvider())
+    // 问**每一条**账本自己「此刻可用吗」：新增来源时这里一行都不用改。
+    const availability = new Map<BalanceSource, boolean>()
+    await Promise.all(
+      [...this.options.ledgers].map(async ([id, ledger]) => {
+        availability.set(id, await ledger.available())
+      }),
+    )
+    const picked = pickSource({ routed, available: (id) => availability.get(id) === true })
+    this.resolved = true
+    if (picked !== this.active) {
+      this.options.logger?.debug('ds-balance: balance source switched', {
+        from: this.active,
+        to: picked,
+        routed,
       })
     }
+    this.active = picked
+    return picked
   }
 
-  /** 记录一次失败，并把状态推到 `stale` 或 `error`。 */
-  private applyFailure(error: unknown, startedAt: number): void {
-    const info = classify(error)
-    this.failures += 1
-    this.error = info
-    this.state = this.snapshot === null ? 'error' : 'stale'
-    this.retryAfterMs = retryAfterOf(error, this.options.clock.now())
-    // 只在首次失败打 warn，避免日志刷屏。
-    if (this.failures === 1) {
-      this.options.logger?.warn('ds-balance: balance fetch failed', { code: info.code })
+  /** 取账本；缺一条属于装配错误，直接抛（静默降级会让界面永远停在空态）。 */
+  private ledger(id: BalanceSource): SourceLedger {
+    const ledger = this.options.ledgers.get(id)
+    if (ledger === undefined) throw new Error(`ds-balance: no ledger for source ${id}`)
+    return ledger
+  }
+
+  /** 首次用到某条路时才恢复它的快照；并发调用合并成一次。 */
+  private restoreLedger(id: BalanceSource): Promise<void> {
+    let pending = this.restores.get(id)
+    if (pending === undefined) {
+      pending = this.ledger(id).restore()
+      this.restores.set(id, pending)
     }
-    this.metrics.counter('balance_fetch_total', { result: 'error' })
-    this.metrics.histogram('balance_fetch_duration_ms', {}, this.options.clock.now() - startedAt)
-    this.publishGauge()
+    return pending
   }
-
-  /** 把缓存状态推成指标。 */
-  private publishGauge(): void {
-    this.metrics.gauge('cache_state', { state: this.state }, 1)
-  }
-
-  /** 把缓存折成对外视图。 */
-  private toView(currency: string | undefined): BalanceView {
-    const config = this.options.config.current()
-    const thresholds = this.options.config.thresholds()
-    const preference = currency ?? config.displayCurrency
-    const selected = this.snapshot === null ? null : pickBalance(this.snapshot.balances, preference)
-    return {
-      state: this.state,
-      stale: this.state === 'stale',
-      fetchedAt: this.snapshot?.fetchedAt ?? null,
-      ageMs:
-        this.snapshot === null
-          ? null
-          : Math.max(0, this.options.clock.now() - this.snapshot.fetchedAt),
-      isAvailable: this.snapshot?.isAvailable ?? null,
-      balances: this.snapshot?.balances ?? [],
-      selected: selected === null ? null : { currency: selected.currency, total: selected.total },
-      severity: severityOf(
-        selected,
-        this.snapshot?.isAvailable ?? false,
-        thresholdsFor(selected?.currency ?? '', thresholds),
-      ),
-      thresholds,
-      error: this.state === 'ok' ? null : this.error,
-    }
-  }
-}
-
-/** 从上游错误里抽 `Retry-After`；抽不到返回 `null`。 */
-function retryAfterOf(error: unknown, now: number): number | null {
-  if (typeof error !== 'object' || error === null || !('headers' in error)) return null
-  const headers = error.headers
-  if (!(headers instanceof Headers)) return null
-  return parseRetryAfter(headers, now) ?? null
 }

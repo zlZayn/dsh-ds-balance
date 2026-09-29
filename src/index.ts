@@ -43,6 +43,12 @@ import { BalanceService } from './services/balance-service.js'
 import { ConfigService, type ConfigSource } from './services/config-service.js'
 import { KeyResolver } from './services/key-resolver.js'
 import { Scheduler } from './services/scheduler.js'
+import { createAccountSource, type HostAccountFace } from './adapters/host-account.js'
+import type { BalanceSource } from './domain/balance.js'
+import type { AccountSource } from './ports/account.js'
+import { SourceLedger } from './services/balance-source.js'
+import { accountReader, keyReader } from './services/source-readers.js'
+import { PLUGIN_VERSION } from './version.js'
 
 export { Config, ENTRY_ID } from './config.js'
 export { CURRENCY_AUTO } from './config.js'
@@ -217,6 +223,87 @@ function connectStorage(ctx: Context): DomainOpener {
   }
 }
 /**
+ * 接上账号登录态这条可选接缝。
+ *
+ * 与 `connectStorage` 同一套把门方式：`deepseekAccount` 可能在插件装载之后才就绪，
+ * 所以句柄是可变的、缺席时读回 `undefined`（账号那条账本据此判「这条路此刻不可用」）。
+ *
+ * 服务面按鸭子类型收窄（见 [host-account.ts](adapters/host-account.ts) 的说明）。
+ * @param ctx - 宿主上下文。
+ * @param logger - 日志端口。
+ * @returns 取当前端口实现的函数。
+ */
+function connectAccount(
+  ctx: Context,
+  logger: Logger,
+): { current: () => AccountSource | undefined; onReady: (handler: () => void) => void } {
+  const handle: { source?: AccountSource } = {}
+  const handlers = new Set<() => void>()
+  ctx.inject(['deepseekAccount'], (accountCtx) => {
+    accountCtx.effect(() => {
+      const service = (accountCtx as unknown as { deepseekAccount: HostAccountFace })
+        .deepseekAccount
+      handle.source = createAccountSource({
+        service,
+        version: PLUGIN_VERSION,
+        // 只选 Platform 那边的服务端文案；界面文案由本插件自己的词典给。
+        locale: 'zh-CN',
+        timezoneOffsetSeconds: () => -new Date().getTimezoneOffset() * 60,
+        logger,
+      })
+      for (const handler of [...handlers]) handler()
+      return () => {
+        handle.source = undefined
+      }
+    }, 'ds-balance: account source')
+  })
+  return {
+    current: () => handle.source,
+    onReady: (handler) => {
+      handlers.add(handler)
+      // 服务可能早就到位（inject 回调同步跑过），那就当场通知一次。
+      if (handle.source !== undefined) handler()
+    },
+  }
+}
+
+/**
+ * 接上「当前默认模型走哪条路由」这条可选接缝。
+ *
+ * 只用来定**全局默认来源**；会话级的来源由客户端当提示带上来（见 `GetViewOptions.providerHint`）。
+ * 服务缺席时读回 `null`，选源就只按「Key 优先，账号兜底」走。
+ * @param ctx - 宿主上下文。
+ * @returns 读当前 provider id 的函数。
+ */
+function connectRoute(ctx: Context): {
+  current: () => string | null
+  onReady: (handler: () => void) => void
+} {
+  const handle: { read?: () => string | null } = {}
+  const handlers = new Set<() => void>()
+  ctx.inject(['agentDefaultModel'], (routeCtx) => {
+    routeCtx.effect(() => {
+      const model = (
+        routeCtx as unknown as { agentDefaultModel: { currentSelection(): { provider?: string } } }
+      ).agentDefaultModel
+      // 现读：宿主的这个服务每次都从它自己的配置引用里取，不做缓存。
+      handle.read = () => model.currentSelection().provider ?? null
+      for (const handler of [...handlers]) handler()
+      return () => {
+        handle.read = undefined
+      }
+    }, 'ds-balance: model route')
+  })
+  return {
+    current: () => handle.read?.() ?? null,
+    onReady: (handler) => {
+      handlers.add(handler)
+      if (handle.read !== undefined) handler()
+    },
+  }
+}
+
+/**
  * 组装并交出生命周期。
  *
  * 异步是因为盐要从磁盘读；读失败会降级，不阻断挂载。
@@ -247,17 +334,49 @@ export async function apply(ctx: Context, refs: ConfigRefs): Promise<void> {
   // 默认组合没有指标 sink，所以用内存登记表把聚合值留下来，
   // 由 healthz 的 metrics 段暴露（见 .agents/notes 的决策）。
   const metrics = new MemoryMetrics()
-  const service = new BalanceService({
-    client,
-    store,
-    keys,
-    config: configService,
-    clock: systemClock,
-    salt,
-    logger,
-    metrics,
-  })
+  // 两条取数路各持一份账本；选源由门面按四层回落决定。
+  const account = connectAccount(ctx, logger)
+  const route = connectRoute(ctx)
+  const ledgers = new Map<BalanceSource, SourceLedger>([
+    [
+      'deepseek-http',
+      new SourceLedger({
+        source: 'deepseek-http',
+        reader: keyReader({ keys, client, config: configService, salt }),
+        store,
+        config: configService,
+        clock: systemClock,
+        logger,
+        metrics,
+      }),
+    ],
+    [
+      'deepseek-account',
+      new SourceLedger({
+        source: 'deepseek-account',
+        reader: accountReader({ account: () => account.current(), salt }),
+        store,
+        config: configService,
+        clock: systemClock,
+        logger,
+        metrics,
+      }),
+    ],
+  ])
+  const service = new BalanceService({ ledgers, routeProvider: () => route.current(), logger })
   const scheduler = new Scheduler({ target: service, logger })
+  /**
+   * 可选服务到位时把来源判据重定一次。
+   *
+   * 宿主刚起来时账号与默认模型可能都还没就绪，那一次解析只能按兜底走；服务到齐后
+   * 作废「已定」并立刻重排一轮，免得首屏那一分钟一直在刷错的那条账本。
+   */
+  const reselectSource = (): void => {
+    service.invalidateSource()
+    scheduler.reset()
+  }
+  account.onReady(reselectSource)
+  route.onReady(reselectSource)
 
   ctx.effect(() => {
     // 排程只看这几项。事件给的是「真的变了的路径」，比原来的全量 diff 更准，

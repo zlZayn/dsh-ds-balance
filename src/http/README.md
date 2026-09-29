@@ -17,12 +17,15 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/v1/balance` | 余额视图；`currency` 查询参数覆盖 `displayCurrency` |
-| POST | `/api/v1/balance/refresh` | 手动刷新；请求体 `{ reason }` 可省略 |
+| GET | `/api/v1/balance` | 余额视图；`currency` 覆盖 `displayCurrency`，`provider` 是**当前会话路由**这条提示（缺席则按全局默认判） |
+| POST | `/api/v1/balance/refresh` | 手动刷新；请求体 `{ reason, provider }` 都可省略 |
 | GET | `/api/v1/config` | 读配置（`apiKey` 只回掩码 + 一段 `credential` 只读事实） |
 | POST | `/api/v1/config` | 写配置；形状或取值不合法一律 `422` |
 | POST | `/api/v1/test-connection` | 测连接；**不动活动缓存** |
-| GET | `/api/v1/healthz` | 状态 / 调度 / 存储健康 / 版本 / 指标聚合值 |
+| GET | `/api/v1/healthz` | 状态 / **当前活跃来源** / 调度 / 存储健康 / 版本 / 指标聚合值 |
+
+`provider` 只当提示：认不出来或没给就按全局默认路由判，两条都不可用按固定顺序兜底 —— 见 §6.3。
+响应里的 `source` 是**这一份数字的来源**（`deepseek-http` / `deepseek-account`），界面拿它出括号标签。
 
 **写配置走 POST 而不是 PUT**：平台只支持 `GET` / `HEAD` / `POST` 三档方法。
 契约文档写的是 PUT，以平台实际能力为准。

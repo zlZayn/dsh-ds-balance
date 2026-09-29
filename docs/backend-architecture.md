@@ -407,6 +407,20 @@ class BalanceService {
 
 `forceRefresh` 先查冷却（`manualRefreshCooldownSeconds`）——**锚点是上一次手动刷新，不是上一次抓取**：调度与轮询也在抓，锚在 `snapshot.fetchedAt` 上会让一次自动刷新吞掉用户刚按下的一下。冷却中返回 `{ triggered: false, cooldownMs: 剩余毫秒 }`；有 inflight 则返回 `{ triggered: true, joined: true }`；时刻取**决定触发那一刻**，比客户端「拿到结果那一刻」早一个往返。
 
+**来源选择（两条官方取数路）**：服务的形态是**门面 + 每来源一份账本**（`SourceLedger`）——
+门面只决定「这一轮谁活跃」，账本各自持快照、状态、失败退避与手动冷却，互不影响。
+判据是四层回落：
+
+1. 客户端带上来的**当前会话路由**（`provider` 提示）；
+2. **全局默认路由**（宿主 `agentDefaultModel.currentSelection().provider`）；
+3. **固定顺序** `FALLBACK_ORDER`（Key 优先，账号兜底）；
+4. 一条都不可用 → 回默认来源，由它自然报 `NO_KEY`。
+
+调度刷**当前活跃来源**（不重新解析，否则会话级的来源会被全局默认无声顶掉），
+并在发现活跃来源不可用时重判一次 —— 宿主刚起来时判据可能还没齐：
+**「服务已注册」不等于「它自己的凭据已可读」**，那一刻只按兜底走，下一轮自愈。
+判据只有一处：`src/services/source-selector.ts`；新增一个来源 = 那里加一行 + 装配处多一份 reader 与账本。
+
 ### 6.4 Scheduler
 
 **`setTimeout` 链，不用 `setInterval`。**
@@ -518,7 +532,10 @@ JSON 解析失败时退回纯文本前 200 字符。
 
 ### 8.3 `GET /api/v1/balance`
 
-**Query**：`currency`（可选；前端传 `displayCurrency`）
+**Query**：`currency`（可选；前端传 `displayCurrency`）、`provider`（可选；客户端把**当前会话在用的模型路由**当提示带上）。
+
+`provider` 只当提示：认不出来或没给，就按全局默认路由判；两条路都不可用时按固定顺序回落（Key 优先）。
+选源规则见 §6.3，来源写在响应的 `source` 字段里。
 
 **响应 200**：
 
@@ -526,6 +543,7 @@ JSON 解析失败时退回纯文本前 200 字符。
 {
   "requestId": "req_...",
   "schemaVersion": 1,
+  "source": "deepseek-http",
   "state": "ok",
   "stale": false,
   "fetchedAt": 1760000000000,
@@ -545,11 +563,15 @@ JSON 解析失败时退回纯文本前 200 字符。
 }
 ```
 
+`source` 取 `deepseek-http`（API Key 那条）或 `deepseek-account`（账号登录那条）：界面据此在标题里标来源。
+**空态不标** —— 还没取到数时说「这份数字是哪来的」没有意义。
+
 **状态码始终 `200`**，业务错误走 `state` + `error`。理由：UI 需要拿到 `error` 结构展示，不应被 HTTP 错误吞掉。
 
 ### 8.4 `POST /api/v1/balance/refresh`
 
-请求 `{ "reason": "manual" }`；响应 `{ triggered, joined, cooldownMs, state }`。
+请求 `{ "reason": "manual", "provider": "deepseek-account" }`（两个字段都可省略）；响应 `{ triggered, joined, cooldownMs, state }`。
+`provider` 与读取端点同义：刷新要刷**用户正在看的那个来源**。
 
 ### 8.5 `GET /api/v1/config`
 
@@ -568,7 +590,8 @@ JSON 解析失败时退回纯文本前 200 字符。
 
 ### 8.8 `GET /api/v1/healthz`
 
-返回 `state` / `lastSuccessAt` / `consecutiveFailures` / `scheduler.nextRunAt` / `store.ok` / `version`。
+返回 `state` / **`source`（当前活跃来源）** / `lastSuccessAt` / `consecutiveFailures` / `scheduler.nextRunAt` / `store.ok` / `version`。
+两条路并存时，`source` 是唯一能一眼看出「现在服务的是哪条」的地方；指标键也带 `source` 标签。
 
 ---
 

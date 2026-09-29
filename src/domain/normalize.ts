@@ -6,7 +6,7 @@
  * @module dsh-ds-balance/domain/normalize
  */
 
-import type { BalanceInfo, BalanceSnapshot, RawBalanceResponse } from './balance.js'
+import type { BalanceInfo, BalanceSnapshot, BalanceSource, RawBalanceResponse } from './balance.js'
 import { ParseError, ShapeError } from './errors.js'
 import { parseMoney } from './money.js'
 
@@ -63,11 +63,17 @@ function parseAmount(value: unknown, field: string): bigint {
  * @param raw - 上游 JSON，未经信任。
  * @param accountTag - 账本作用域标识。
  * @param now - 抓取时刻。
+ * @param source - 这份数据是哪条取数路给的。
  * @returns 不可变快照。
  * @throws {ShapeError} 结构不符。
  * @throws {ParseError} 金额不是十进制定点。
  */
-export function normalize(raw: unknown, accountTag: string, now: number): BalanceSnapshot {
+export function normalize(
+  raw: unknown,
+  accountTag: string,
+  now: number,
+  source: BalanceSource,
+): BalanceSnapshot {
   if (raw === null || typeof raw !== 'object') throw new ShapeError('response is not an object')
   const body = raw as Partial<RawBalanceResponse>
   if (typeof body.is_available !== 'boolean') throw new ShapeError('is_available is not a boolean')
@@ -79,7 +85,7 @@ export function normalize(raw: unknown, accountTag: string, now: number): Balanc
     fetchedAt: now,
     isAvailable: body.is_available,
     balances: body.balance_infos.map((entry, index) => toBalanceInfo(entry, index)),
-    source: 'deepseek-http',
+    source,
     raw,
   }
 }

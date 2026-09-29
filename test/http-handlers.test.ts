@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { CONFIG_FIELDS, DEFAULT_TIMEOUT_MS, type Config } from '../src/config.ts'
-import type { BalanceSnapshot, RawBalanceResponse } from '../src/domain/balance.ts'
+import type { BalanceSnapshot, BalanceSource, RawBalanceResponse } from '../src/domain/balance.ts'
 import type { Clock } from '../src/ports/clock.ts'
+import type { AccountSource } from '../src/ports/account.ts'
 import type { CoreStore } from '../src/ports/core-store.ts'
 import type { DeepSeekClient, TestConnectionResult } from '../src/ports/deepseek-client.ts'
 import type { Metrics } from '../src/ports/metrics.ts'
 import { MemoryMetrics } from '../src/adapters/memory-metrics.ts'
 import { BalanceService } from '../src/services/balance-service.ts'
+import { SourceLedger } from '../src/services/balance-source.ts'
+import { accountReader, keyReader } from '../src/services/source-readers.ts'
 import { ConfigService, type ConfigSource } from '../src/services/config-service.ts'
 import { KeyResolver } from '../src/services/key-resolver.ts'
 import { Scheduler } from '../src/services/scheduler.ts'
@@ -147,18 +150,40 @@ function harness(options: HarnessOptions = {}): Harness {
     },
     async close() {},
   }
-  const service = new BalanceService({
-    client,
-    store,
-    keys,
-    config,
-    clock,
-    salt: 'test-salt',
-    metrics: options.metrics,
-  })
+  // 账号那条路在 handler 层的用例里默认不可用：这些用例守的是端点形状与 Key 那条链。
+  const account: AccountSource = {
+    signedIn: async () => false,
+    accountId: async () => null,
+    readBalance: async () => null,
+  }
+  const ledgers = new Map<BalanceSource, SourceLedger>([
+    [
+      'deepseek-http',
+      new SourceLedger({
+        source: 'deepseek-http',
+        reader: keyReader({ keys, client, config, salt: 'test-salt' }),
+        store,
+        config,
+        clock,
+        metrics: options.metrics,
+      }),
+    ],
+    [
+      'deepseek-account',
+      new SourceLedger({
+        source: 'deepseek-account',
+        reader: accountReader({ account: () => account, salt: 'test-salt' }),
+        store,
+        config,
+        clock,
+        metrics: options.metrics,
+      }),
+    ],
+  ])
+  const service = new BalanceService({ ledgers, routeProvider: () => null })
   const scheduler = new Scheduler({
     target: {
-      getView: (callOptions) => service.getView(callOptions),
+      refreshActive: () => service.refreshActive(),
       status: () => service.status(),
     },
     timers: { set: () => 0, clear: () => {} },
@@ -232,6 +257,7 @@ describe('GET /api/v1/balance', () => {
       service: {
         getView: () => Promise.reject(new Error('exploded')),
         accountTag8: () => null,
+        activeSource: () => 'deepseek-http',
       } as unknown as BalanceService,
     }
     const response = await handleBalance(get('/api/v1/balance'), broken)
@@ -464,9 +490,10 @@ describe('指标', () => {
     const h = harness({ metrics })
     await handleBalance(get('/api/v1/balance'), h.deps)
     const json = await readJson(await handleHealthz(get('/api/v1/healthz'), { ...h.deps, metrics }))
-    expect(json.metrics.counters['balance_fetch_total{result=ok}']).toBe(1)
-    expect(json.metrics.gauges['cache_state{state=ok}']).toBe(1)
-    expect(json.metrics.histograms['balance_fetch_duration_ms'].count).toBe(1)
+    // 指标键带上来源标签：两条路各记各的（标签按键名排序）。
+    expect(json.metrics.counters['balance_fetch_total{result=ok,source=deepseek-http}']).toBe(1)
+    expect(json.metrics.gauges['cache_state{source=deepseek-http,state=ok}']).toBe(1)
+    expect(json.metrics.histograms['balance_fetch_duration_ms{source=deepseek-http}'].count).toBe(1)
   })
 })
 

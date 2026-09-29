@@ -9,7 +9,7 @@
 import type { BalanceView } from '../domain/balance.js'
 import { describeError } from '../domain/errors.js'
 import type { Logger } from '../ports/logger.js'
-import type { BalanceStatus, GetViewOptions } from './balance-service.js'
+import type { BalanceStatus } from './balance-service.js'
 
 /** 首拉延迟。 */
 export const INITIAL_DELAY_MS = 1000
@@ -46,7 +46,13 @@ export interface SchedulerTimers {
 
 /** 调度器需要的最小服务面。 */
 export interface SchedulerTarget {
-  getView(options?: GetViewOptions): Promise<BalanceView>
+  /**
+   * 抓一轮**当前活跃来源**。
+   *
+   * 调度**不重新解析来源**：节拍属于「这份数据」，不属于某一次请求 —— 每轮都按全局默认重算的话，
+   * 会话级的来源会被无声地顶掉。
+   */
+  refreshActive(): Promise<BalanceView>
   status(): BalanceStatus
 }
 
@@ -216,7 +222,7 @@ export class Scheduler {
     this.nextAt = null
     if (!this.running) return
     try {
-      await this.options.target.getView({ force: true })
+      await this.options.target.refreshActive()
     } catch (error) {
       // 服务承诺永不抛错；这里是防御，不让调度链断掉。
       this.options.logger?.error('ds-balance: scheduler tick threw', {

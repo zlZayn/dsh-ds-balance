@@ -8,6 +8,7 @@
 
 import { randomUUID } from 'node:crypto'
 import type {
+  BalanceSource,
   BalanceView,
   CacheState,
   Currency,
@@ -61,6 +62,8 @@ export interface WireCredentialInfo {
 export interface WireBalanceResponse {
   requestId: string
   schemaVersion: number
+  /** 这一份数字是哪条取数路给的；界面据此在标题里标来源。 */
+  source: BalanceSource
   state: CacheState
   stale: boolean
   fetchedAt: number
@@ -120,6 +123,7 @@ export function toWireBalanceView(
   return {
     requestId,
     schemaVersion: SCHEMA_VERSION,
+    source: view.source,
     state: view.state,
     stale: view.stale,
     fetchedAt: view.fetchedAt ?? 0,

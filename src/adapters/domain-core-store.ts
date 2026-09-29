@@ -10,7 +10,7 @@
 
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import { z } from 'zod'
-import type { BalanceInfo, BalanceSnapshot } from '../domain/balance.js'
+import type { BalanceInfo, BalanceSnapshot, BalanceSource } from '../domain/balance.js'
 import { StorageError, describeError } from '../domain/errors.js'
 import { formatMoney, parseMoney } from '../domain/money.js'
 import type { CoreStore, StoreHealth } from '../ports/core-store.js'
@@ -26,7 +26,7 @@ export interface StoredSnapshot {
   fetchedAt: number
   isAvailable: boolean
   balances: Array<{ currency: string; total: string; granted: string; toppedUp: string }>
-  source: 'deepseek-http'
+  source: BalanceSource
 }
 
 const storedBalanceSchema = z.object({
@@ -42,7 +42,9 @@ const storedSnapshotSchema = z.object({
   fetchedAt: z.number(),
   isAvailable: z.boolean(),
   balances: z.array(storedBalanceSchema),
-  source: z.literal('deepseek-http'),
+  // **取值只增不改**：域版本一动，已落盘的账本会在 open 时直接 `version-mismatch` 拒开。
+  // 旧记录里只有 `deepseek-http`，它必须一直是合法值。
+  source: z.enum(['deepseek-http', 'deepseek-account']),
 })
 
 /**
