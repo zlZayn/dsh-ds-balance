@@ -10,6 +10,7 @@
 
 import type { BalanceSource, BalanceView } from '../domain/balance.js'
 import type { Logger } from '../ports/logger.js'
+import type { Metrics } from '../ports/metrics.js'
 import type {
   BalanceStatus,
   LedgerViewOptions,
@@ -38,6 +39,8 @@ export interface BalanceServiceOptions {
   /** 全局默认路由 id（宿主 `agentDefaultModel.currentSelection().provider`）；读不到回 `null`。 */
   routeProvider: () => string | null
   logger?: Logger | undefined
+  /** 指标；来源切换计数用它（界面刻意不给提示，这是唯一观测出口）。 */
+  metrics?: Metrics | undefined
 }
 
 /** 余额服务门面。 */
@@ -175,6 +178,13 @@ export class BalanceService {
   private mark(id: BalanceSource): void {
     if (id !== this.active) {
       this.options.logger?.debug('ds-balance: balance source switched', {
+        from: this.active,
+        to: id,
+      })
+      // 来源摆动（首选那条时好时坏）在界面上**刻意不给提示**（见决策记录
+      // `.agents/notes/2026-10-01-boundaries-left-as-is.md`），所以这里是唯一的观测出口：
+      // 没有这个计数器，「来源在摆」只能靠翻日志发现。
+      this.options.metrics?.counter('balance_source_switch_total', {
         from: this.active,
         to: id,
       })

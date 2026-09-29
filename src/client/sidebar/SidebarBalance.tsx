@@ -317,7 +317,8 @@ export function SidebarBalance({
   )
 
   // 真实数据：首拉一次，然后按 clientPollSeconds 轮询。
-  // 轮询读的是后端缓存，不穿透到上游 —— 上游节奏由 serverRefreshSeconds 决定。
+  // 轮询正常时读的是后端缓存；**但缓存不可服务时（state 不是 ok）它会穿透到上游抓一次** ——
+  // 这是恢复可见性的来源，是有意保留的已知边界，见 .agents/notes/2026-10-01-boundaries-left-as-is.md。
   useEffect(() => {
     if (mock) return
     let cancelled = false

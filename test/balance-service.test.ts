@@ -13,6 +13,7 @@ import type { DeepSeekClient } from '../src/ports/deepseek-client.ts'
 import { NetworkError, UpstreamError } from '../src/domain/errors.ts'
 import { formatMoney } from '../src/domain/money.ts'
 import { ACCOUNT_PROVIDER, DEFAULT_SOURCE, KEY_PROVIDER } from '../src/services/source-selector.ts'
+import { MemoryMetrics } from '../src/adapters/memory-metrics.ts'
 
 const SALT = 'test-salt'
 
@@ -96,13 +97,21 @@ function harness(
     ],
   ])
   // 路由读不到 → 固定顺序（Key 优先），这正是多数用例要的那条路。
-  const service = new BalanceService({ ledgers, routeProvider: () => options.route ?? null })
+  // 指标接上 MemoryMetrics：来源切换计数器是「界面刻意不提示」那条决策的唯一观测出口，
+  // 所以它得真的能被断言到（见 mark() 与 .agents/notes/2026-10-01-boundaries-left-as-is.md）。
+  const metrics = new MemoryMetrics()
+  const service = new BalanceService({
+    ledgers,
+    routeProvider: () => options.route ?? null,
+    metrics,
+  })
   return {
     service,
     client,
     store,
     clock,
     account,
+    metrics,
     /** 翻账号那条路的替身：多数用例不关心它，选源用例自己设。 */
     setAccount: (patch: Partial<AccountSource>) => {
       Object.assign(account, patch)
@@ -454,6 +463,30 @@ describe('选源', () => {
     h.setAccount(signedIn)
     await h.service.refreshActive()
     expect(h.service.activeSource()).toBe('deepseek-account')
+  })
+
+  it('来源切换记一个计数器 —— 界面刻意不提示，这是唯一观测出口', async () => {
+    const h = harness({}, '', { route: ACCOUNT_PROVIDER })
+    // 首轮：路由指账号但账号不可用 → 落 Key 那条（从默认值切过去，记一笔）。
+    await h.service.refreshActive()
+    expect(h.service.activeSource()).toBe('deepseek-http')
+    h.setAccount(signedIn)
+    await h.service.refreshActive()
+    expect(h.service.activeSource()).toBe('deepseek-account')
+    // 标签按键名排序，所以键的形状是确定的。
+    const counters = h.metrics.snapshot().counters
+    const key = 'balance_source_switch_total{from=deepseek-http,to=deepseek-account}'
+    expect(counters[key], Object.keys(counters).join(' | ')).toBe(1)
+  })
+
+  it('没切换就不记 —— 计数器不能变成「每轮都涨」', async () => {
+    const h = harness()
+    await h.service.refreshActive()
+    await h.service.refreshActive()
+    const switches = Object.keys(h.metrics.snapshot().counters).filter((k) =>
+      k.startsWith('balance_source_switch_total'),
+    )
+    expect(switches).toEqual([])
   })
 })
 

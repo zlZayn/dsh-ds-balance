@@ -67,7 +67,7 @@ export const zh = {
   'settings.hint.threshold': '后端判定；界面颜色跟随返回的严重度。',
   'settings.hint.thresholdPair': '告急值必须低于预警值',
   'settings.hint.serverRefreshSeconds': '访问官方接口的间隔。',
-  'settings.hint.clientPollSeconds': '刷新显示的间隔；只读本地缓存，不访问上游。',
+  'settings.hint.clientPollSeconds': '刷新显示的间隔；正常时只读缓存，读不到时才访问上游。',
   'settings.hint.manualRefreshCooldownSeconds': '两次手动刷新之间的最短间隔。',
   'settings.currency.auto': '自动（跟随账户）',
   // 凭据行的**状态徽章**：两条逐字用官方措辞 —— 取自 ui-settings-plugins 的
@@ -160,7 +160,7 @@ export const en: Record<LocaleKey, string> = {
   'settings.hint.threshold': 'Decided on the server; the UI colour follows the returned severity.',
   'settings.hint.thresholdPair': 'Critical must be lower than warning',
   'settings.hint.serverRefreshSeconds': 'How often the official API is called.',
-  'settings.hint.clientPollSeconds': 'How often the display refreshes; local cache only.',
+  'settings.hint.clientPollSeconds': 'How often the display refreshes; cache-only while healthy.',
   'settings.hint.manualRefreshCooldownSeconds': 'Minimum gap between two manual refreshes.',
   'settings.currency.auto': 'Automatic (follow account)',
   'settings.credential.configured': 'A key is configured.',

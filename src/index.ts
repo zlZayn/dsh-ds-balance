@@ -363,7 +363,12 @@ export async function apply(ctx: Context, refs: ConfigRefs): Promise<void> {
       }),
     ],
   ])
-  const service = new BalanceService({ ledgers, routeProvider: () => route.current(), logger })
+  const service = new BalanceService({
+    ledgers,
+    routeProvider: () => route.current(),
+    logger,
+    metrics,
+  })
   const scheduler = new Scheduler({ target: service, logger })
   /**
    * 可选服务到位时把来源判据重定一次。
