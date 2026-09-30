@@ -36,9 +36,21 @@ export const zh = {
   // 处境文案：**一个处境一句**，环 / 悬停 / 浮层都从这里取。
   // 键名前缀是 situation 而不是 state：后者是契约字段名，而「处境」是界面概念
   // （一个处境可能吃掉多个 state + severity + error 的组合）。
+  //
+  // **措辞是给用户看的，不是给开发者看的**。这七句里只有「没有金额」那几句会真的
+  // 出现在**悬停气泡**里（有金额时气泡显示金额本身，见 SidebarBalance 的 `hoverLabel`），
+  // 所以每一句都要能单独回答「**为什么这里没有数字**」：
+  //
+  // - 不写「插件内部错误」：用户不知道也不关心是哪个组件坏了，他要的是「现在拿不到」。
+  //   改「服务异常」—— 说的是同一件事，但主语是这个功能，不是我们的代码。
+  // - `unavailable` 刻意**不带「暂时」**。它接住的是 `fetch-failed` 那一整片错误码，
+  //   里面既有等一等就好的（网络 / 超时 / 429 / 5xx），也有**等不好的**：
+  //   `UPSTREAM_401`（key 失效）与 `UPSTREAM_402`（欠费）。对后者说「暂时」是假话，
+  //   而且是有害的假话 —— 用户该去改凭据、去充值，不是在原地等。
+  //   宁可少说一层时间性，也不能说反。
   'situation.checking': '正在获取',
-  'situation.unavailable': '服务暂不可用',
-  'situation.internalError': '插件内部错误',
+  'situation.unavailable': '读不到余额',
+  'situation.internalError': '服务异常',
   'situation.noCredential': '尚未配置凭据',
   'situation.accountUnavailable': '账户不可用',
   'situation.stale': '数据已过期',
@@ -129,9 +141,12 @@ export const en: Record<LocaleKey, string> = {
   'popover.action.openPlugins': 'Open the Plugins page',
   'popover.action.openPluginConfig': 'Open the plugin configuration page',
 
+  // 与 zh 逐条对应，理由写在 zh 那一段。
+  // `unavailable` 同样**不带 Temporarily**：它接住 401（key 失效）/ 402（欠费）这类
+  // 「等不好」的错误，说「暂时」会把人劝去干等。
   'situation.checking': 'Loading',
-  'situation.unavailable': 'Service unavailable',
-  'situation.internalError': 'Plugin error',
+  'situation.unavailable': 'Balance unavailable',
+  'situation.internalError': 'Service error',
   'situation.noCredential': 'No credential configured',
   'situation.accountUnavailable': 'Account unavailable',
   'situation.stale': 'Data is stale',

@@ -192,16 +192,14 @@ export interface SidebarBalanceProps {
 /**
  * 把处境收敛成圆环的形态。
  *
- * 形态表（[../situation.ts](../situation.ts)）的 `ring` 类型含 `'ongoing'`，
- * 但处境映射取不到那个值，这里只做类型收窄。
+ * 形态表（[../situation.ts](../situation.ts)）的 `ring` 类型与圆环的状态**同一个取值域**，
+ * 所以这里不需要收窄 —— 从前 `ongoing` 是个到不了的值，得手动折成 `idle`；
+ * 现在它是 `checking` 的真形态（转弧），收窄反而会把它抹掉。
  * @param presentation - 处境形态。
  * @returns 弧状态与中心符号。
  */
 function ringSpecFor(presentation: Presentation): { state: RingState; marker: RingMarker | null } {
-  return {
-    state: presentation.ring === 'ongoing' ? 'idle' : presentation.ring,
-    marker: presentation.marker,
-  }
+  return { state: presentation.ring, marker: presentation.marker }
 }
 
 /**
@@ -582,13 +580,23 @@ export function SidebarBalance({
   // 所以自动轮询带回来的新快照同样会把「多久之前」拨回「刚刚」。
   const ageMs = currentAgeMs(view.seenAt, view.seenAgeMs, now)
 
-  // 折叠态只有环、没有任何可见文字，用原生 title 补一条悬停提示；
-  // 展开态轮到 Tooltip 承担「悬浮看到余额」这件事（下面那层包装）。
+  // 折叠态只有环、没有任何可见文字，用原生 title 补一条悬停提示。
+  //
+  // **原生 title 与展开态那条 Tooltip 的分工**（这条分工是本轮定下来的）：
+  // - **有没有数字**决定气泡说什么：有数字就显示那个数字，没有数字才显示状态文案。
+  //   数字比状态更具体，有数字时再叠一句状态是废话。
+  // - **来源（API Key / 账号登录）不进悬停**：它属于浮层标题那一行。
+  //   原生 title 的长度与换行都不受控，两句拼一起会长得离谱。
+  // - **rail 用原生 title、展开态用官方 Tooltip 原语**：rail 没有文字可看，
+  //   必须自带一条提示；展开态已经有可见标签，提示是锦上添花，交给原语是为了
+  //   底色跟着主题走（自绘黑底会跟主题脱节）。
   const ringTitle =
     !wide && stateText !== null ? `${t('sidebar.aria.ring')} ${stateText}` : undefined
 
   // 悬浮气泡的内容：只放「Balance 那一条」的金额（浮层第一行同一份数据，同一个 formatMoney）。
-  // 没有金额时回落到已有的状态文案 —— 不留一个空气泡；两者都没有就不挂 Tooltip。
+  // 没有金额时回落到状态文案 —— 不留一个空气泡；两者都没有就不挂 Tooltip。
+  // 状态文案是**唯一**解释「为什么是 --」的地方：浮层自己没有 error / situation 入参，
+  // 它只会把那三行金额画成 `--`，从不说明原因。
   const hoverLabel = shown === null ? stateText : formatMoney(shown.total, shown.currency)
 
   // 刻意不写 aria-haspopup="dialog"：
