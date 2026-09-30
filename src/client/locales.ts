@@ -9,7 +9,6 @@ export const NS = 'ds-balance'
 /** 中文词典（键集真源）。 */
 export const zh = {
   'sidebar.label': 'DeepSeek 余额',
-  'sidebar.aria.balance': 'DeepSeek 余额',
   'sidebar.aria.ring': 'DeepSeek 余额状态',
   'sidebar.aria.refresh': '刷新余额',
   'sidebar.aria.mismatch': '显示的币种与你选择的不一致',
@@ -71,11 +70,9 @@ export const zh = {
   'settings.field.cnyCritical': 'CNY 告急',
   'settings.field.usdWarn': 'USD 预警',
   'settings.field.usdCritical': 'USD 告急',
-  'settings.hint.apiKey': '留空则改用引用名从凭据存储读取。',
   'settings.hint.apiKeyRef': '凭据存储里的条目名；非空时优先于 API Key。',
   'settings.hint.baseUrl': '留空则使用提供方默认地址。',
   'settings.hint.displayCurrency': '所选币种不存在时，回落到账户实际持有的币种。',
-  'settings.hint.number': '请填数字；留空表示使用默认值。',
   'settings.hint.threshold': '后端判定；界面颜色跟随返回的严重度。',
   'settings.hint.thresholdPair': '告急值必须低于预警值',
   'settings.hint.serverRefreshSeconds': '访问官方接口的间隔。',
@@ -106,13 +103,14 @@ export const zh = {
   'settings.reset': '重置',
   'settings.invalidNumber': '请填数字；留空表示使用默认值。',
   'settings.hint.refreshAdvanced': '不常改：默认值适用于大多数情况。',
-  'settings.currencyMismatch': '当前账户无 {wanted} 余额，实际显示 {shown}',
   // 这里曾有一条 'settings.summary'（该行 Configure 子页的说明行）。回退到
   // plugins.bundle.config 之后没有任何渲染路径会问 summary 档，于是连同它一起删了 ——
   // 详见 src/client/index.tsx 的 SettingsSeat。
-
-  'dev.title': '开发场景',
-  'dev.hint': '仅用于 UI 开发；不影响真实配置。',
+  // 本轮又删掉四条**孤儿键**（词典里有、全仓没人引用）：`sidebar.aria.balance`
+  // （与 sidebar.label 逐字相同，rail 的 aria 走 aria.ring）、`settings.hint.apiKey`
+  // （那一行用的是 settings.hint.credential）、`settings.hint.number`
+  // （真正用的是 settings.invalidNumber，两者文案原本就重复）、
+  // `settings.currencyMismatch`（出到屏幕的是 popover.mismatch）。
 } as const
 
 /** 词典键。 */
@@ -121,7 +119,6 @@ export type LocaleKey = keyof typeof zh
 /** 英文词典。缺键会在编译期报错。 */
 export const en: Record<LocaleKey, string> = {
   'sidebar.label': 'DeepSeek balance',
-  'sidebar.aria.balance': 'DeepSeek balance',
   'sidebar.aria.ring': 'DeepSeek balance status',
   'sidebar.aria.refresh': 'Refresh balance',
   'sidebar.aria.mismatch': 'Shown currency differs from your selection',
@@ -167,11 +164,9 @@ export const en: Record<LocaleKey, string> = {
   'settings.field.cnyCritical': 'CNY critical',
   'settings.field.usdWarn': 'USD warning',
   'settings.field.usdCritical': 'USD critical',
-  'settings.hint.apiKey': 'Leave empty to resolve from the credential reference instead.',
   'settings.hint.apiKeyRef': 'Credential store entry name; takes precedence over the API key.',
   'settings.hint.baseUrl': 'Leave blank to use the provider default.',
   'settings.hint.displayCurrency': 'Falls back to a currency the account actually holds.',
-  'settings.hint.number': 'Enter a number; leave empty to use the default.',
   'settings.hint.threshold': 'Decided on the server; the UI colour follows the returned severity.',
   'settings.hint.thresholdPair': 'Critical must be lower than warning',
   'settings.hint.serverRefreshSeconds': 'How often the official API is called.',
@@ -199,10 +194,7 @@ export const en: Record<LocaleKey, string> = {
   'settings.reset': 'Reset',
   'settings.invalidNumber': 'Enter a number; leave empty to use the default.',
   'settings.hint.refreshAdvanced': 'Rarely changed: the defaults suit most setups.',
-  'settings.currencyMismatch': 'The account has no {wanted} balance; showing {shown}',
-
-  'dev.title': 'Dev scenario',
-  'dev.hint': 'UI development only; does not affect real configuration.',
+  // 与 zh 同批删掉四条孤儿键，以及 `dev.*`（见 zh 那段末尾的说明）。
 }
 
 /** 取词典。未知语言回落英文。 */

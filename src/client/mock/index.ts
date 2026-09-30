@@ -14,9 +14,6 @@ import { defaultScenario, isScenarioKey, scenarios, type ScenarioKey } from './s
 /** URL 查询参数名。 */
 export const SCENARIO_PARAM = 'dsb'
 
-/** 开发模式参数名：出现即显示场景切换器。 */
-export const DEV_PARAM = 'dsb-dev'
-
 /** `?dsb=` 的这个取值表示「回到真实端点」，并顺手清掉已存的场景。 */
 export const LIVE_PARAM_VALUE = 'live'
 
@@ -79,22 +76,23 @@ export function resolveScenario(): ScenarioKey | null {
   return readStored()
 }
 
-/** 当前生效的场景键；走真实端点时回落到默认场景，供切换器显示。 */
-export function currentScenario(): ScenarioKey {
+/** 当前生效的场景键；走真实端点时回落到默认场景。 */
+function currentScenario(): ScenarioKey {
   return resolveScenario() ?? defaultScenario
 }
 
-/** 切换场景并持久化；刷新页面后仍生效。 */
-export function setScenario(key: ScenarioKey): void {
-  writeStored(key)
-}
-
-/** 是否处于开发模式（显示场景切换器）。 */
-export function isDevMode(): boolean {
-  return readParam(DEV_PARAM) !== null
-}
-
-/** 订阅场景变化。回调立即收到一次当前值，返回退订函数。 */
+/**
+ * 订阅场景变化。回调**立即收到一次当前值**，返回退订函数。
+ *
+ * 现有调用方（`SidebarBalance`）只用它那一次立即回调来对账「现在走不走 mock」——
+ * 因为**场景在运行期不会变**：唯一的入口是 URL 参数（刷新页面才重新解析）。
+ *
+ * **想加回场景切换器**（曾经的 `?dsb-dev` + `setScenario()` + `notifyScenario()` 三件套，
+ * 见 [README.md](README.md)）时：把那两个函数加回来、在这里调 `notifyScenario(key)` 即可 ——
+ * 注册表与订阅语义都还在下面。本轮把它们删掉是因为它们**全仓零引用**
+ * （`isDevMode` / `DEV_PARAM` / `setScenario` / `notifyScenario`），
+ * 而配套的两条词典键也是孤儿键。
+ */
 export function subscribeScenario(listener: (key: ScenarioKey) => void): () => void {
   listeners.add(listener)
   listener(currentScenario())
@@ -104,11 +102,6 @@ export function subscribeScenario(listener: (key: ScenarioKey) => void): () => v
 }
 
 const listeners = new Set<(key: ScenarioKey) => void>()
-
-/** 通知所有订阅者场景已变。 */
-export function notifyScenario(key: ScenarioKey): void {
-  for (const listener of listeners) listener(key)
-}
 
 /** 取当前场景的数据快照。 */
 export function currentBalance(): BalanceResponse {
