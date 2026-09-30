@@ -86,8 +86,10 @@
 - **界面已由维护者实机验收**：圆环 / 浮层 / 折叠分组 / 与邻居插件共存；
   窄视口 360 / 480 / 600 / 700 / 721 五个宽度浮层都落在视口内。
 - **发布前在活宿主上打过真实上游**：余额、浮层三段、凭据徽标，以及错 key 的 `UPSTREAM_401`。
-- **产物的发布后复核**：每次发版在 bump 提交里记一行 —— 本地 `npm pack` 的 sha1 与 npm 上
-  `dist.shasum` 是否逐字节相同。历史各版不在这里堆（见顶部「已发布到哪一版一律现查」）。
+- **产物的发布后复核**：每次发版把「本地 `npm pack` 的 sha1 与 npm 上 `dist.shasum` 是否逐字节相同」
+  记进**那一版的 GitHub Release 正文**（`gh release edit v<版本> --notes-file …`）。
+  记在那里而不是 bump 提交里：**这个检查只能发生在发布之后**，而 bump 提交在发布之前就已经推上去了 ——
+  写「记在 bump 提交」是一条做不到的规则。历史各版不在这里堆（见顶部「已发布到哪一版一律现查」）。
 
 轮次流水记在 git log 与 [.agents/notes/](.agents/notes/) 里，不在这里堆。
 
@@ -125,9 +127,11 @@
   账户不可用 / 数据已过期 / 暂无余额」。**注意 `stale` 与 `account-unavailable` 有数字也显文案**。
   mock 逐形态一眼过用 `?dsb=<处境键>`（**11 个处境全造得出来**，含 `checking` / `offline`；
   见 [docs/ui-handoff.md](docs/ui-handoff.md) §八）
-- [ ] **这一轮还没发版**：档位按判定链是 **minor**（新增对外可见能力 + 界面行为变化），
-  版本号已 bump 到 `2.2.0`（`package.json` / `package-lock.json` / `src/version.ts` 三处），push + release.yml 待办。
-  **注意这次同时抬了宿主下限**（alpha 线用户要升到 RC 线），那一条在判定链里按 Q2 记在同一个 minor 上
+- [x] **这一轮已发版（2026-10-01）**：档位按判定链是 **minor** ——
+  Q0 有可观察变化；Q1 配置 / 数据 / 习惯**不失效**；Q2 新增「账号登录」来源 + 界面行为变化。
+  bump 与发布是两步（**bump 提交 → push → dispatch release.yml**，workflow 只发不 bump）。
+  发布后复核已按上面那条规则记进 GitHub Release 正文。
+  **这一版同时抬了宿主下限**（alpha 线用户要升到 RC 线），那一条按 Q2 记在同一个 minor 上
 - [x] **承诺线已换到 RC 线（2026-10-01）**：`engines.dsh` 与全部 23 条 `@deepseek-ai/dsh-*`
   一起抬到那条线的起点（下限**现查** `package.json`）、删掉那批 token 回落值、README 安装指引改成 `@next`、
   `check-declaration.mjs` 的 `TRACKED_LINE` 与 `compat.yml` 的矩阵都改成 `next`（alpha 停测）。
