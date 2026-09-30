@@ -31,8 +31,11 @@ import { fileURLToPath } from 'node:url'
 /**
  * 我们告诉用户去装的那条 dist-tag 线。README 的「版本兼容」章节与它对齐。
  * 这是一条**线名**不是版本号 —— 会漂的是版本，现查即可，所以不写在这里。
+ *
+ * **2026-10-01 从 `alpha` 换到 `next`**：`next` 就是 RC 线（npm 上**没有 `rc` 这个 tag**，
+ * RC 版本全挂在 `next` 上）。换线的连带面见 `.agents/notes/2026-10-01-track-rc-line.md`。
  */
-export const TRACKED_LINE = 'alpha'
+export const TRACKED_LINE = 'next'
 
 /** 声明面里的宿主本体：`engines.dsh` 描述的就是它。 */
 const HOST_PACKAGE = '@deepseek-ai/dsh'

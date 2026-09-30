@@ -213,7 +213,7 @@ Q0 是这道链上最常被跳过的一问：一个几百行的内部重构，�
 | 工作流 | 触发 | 跑什么 |
 |---|---|---|
 | [ci.yml](../.github/workflows/ci.yml) | 每次推 main 与每个 PR | 锁文件版本校验、typecheck、测试 |
-| [compat.yml](../.github/workflows/compat.yml) | 每周一 02:00 UTC | 声明面先单独判一次（`declaration`，不装任何依赖），再把 `@deepseek-ai/dsh-*` 换到 alpha / next 线后重跑 |
+| [compat.yml](../.github/workflows/compat.yml) | 每周一 02:00 UTC | 声明面先单独判一次（`declaration`，不装任何依赖），再把 `@deepseek-ai/dsh-*` 换到 `next`（RC 线）后重跑 |
 | [contract.yml](../.github/workflows/contract.yml) | 每周一 01:00 UTC | 打真实上游，核对响应指纹 |
 | [release.yml](../.github/workflows/release.yml) | 手动 | 上面那条发版流程 |
 
@@ -226,11 +226,13 @@ compat 巡检**不阻断任何 PR**（它根本不在 PR 上跑），但**失败
 
 ## 兼容性
 
-`@deepseek-ai/dsh-*` 的 dist-tag 语义与常规认知相反：
+`@deepseek-ai/dsh-*` 的 dist-tag 语义与常规认知不同：
 
-- `alpha` —— 本插件声明的那条线（`engines.dsh` 与全部 peer 都在它上面）。
-- `next` —— 实测比 `alpha` **旧**。
-- `latest` —— 指向很旧的版本。
+- `next` —— **本插件声明的那条线**（`engines.dsh` 与全部 peer 都写在它上面）。
+  **RC 线就是它**：npm 上**没有 `rc` 这个 tag**，RC 版本全挂在 `next` 上。
+- `alpha` —— 换线之前声明的那条，现在**低于我们的下限**，是我们不支持的旧线。
+- `latest` —— 逐包看指向很旧的版本（宿主本体 `@deepseek-ai/dsh` 上它恰好与 `next` 同值，
+  但那是巧合，**不要照它装**）。
 
 **具体版本号不写在这里**：它会漂，抄一次就得手动跟一次。要现查就跑下面这条，
 它读 npm registry 的三条线并逐包打印：
@@ -240,14 +242,15 @@ node scripts/compat-swap.mjs check
 ```
 
 推论有两条：**装依赖必须点名版本线**（跟着 `latest` 走会装到很久以前的版本）；
-哪条线该跟、主次怎么定，见[决策记录](../.agents/notes/2026-09-17-compat-lines-advisory.md)。
+哪条线该跟、主次怎么定，见[决策记录](../.agents/notes/2026-10-01-track-rc-line.md)。
 
 compat 巡检红了怎么办：
 
-两条线**目前都只记录**：实测 `next` 比 `alpha` 旧，说明声明面与承诺线是错位的，主次还没法定。
-判据与恢复条件见[决策记录](../.agents/notes/2026-09-17-compat-lines-advisory.md)。
+**只有 `next`（承诺线）一个作业，它红了就红、就修** —— 声明面判的就是这条线，
+`swap` 也在它上面换包实跑。`alpha` 已停测：换线之后它是我们不支持的旧线，测它等于测一个装不上的宿主。
+判据与恢复条件见[决策记录](../.agents/notes/2026-10-01-track-rc-line.md)。
 
-这不算取消守卫：`swap` 内部的 `verify` 在任何一条线上都会拦「装到旧版本还报绿」。
+这不算取消守卫：`swap` 内部的 `verify` 会拦「装到旧版本还报绿」。
 
 恢复主次之后，两条线的预期处置是：
 

@@ -8,14 +8,14 @@
 #   swap        —— 真的换线、真的装、真的跑测试。
 #   两者混在一起会互相遮蔽：声明面过期与代码真的跑不起来是两回事。
 #
-# 主次（2026-09-20 定）：**alpha 是承诺线，红了就红** —— `engines.dsh` 声明的就是它、
-# 宿主在跑的也是它，当日实测 swap / typecheck / test 全绿。
-# **next 已停**：它每周把声明换到 rc.2 —— 低于我们 `engines.dsh` 的下限，测的是
-# 我们已经不支持的宿主。停它是因为**语义错位**，不是因为它红（实测它装得上、
-# 代码只差一个图标；将来若要「旧宿主降级运行」的能力，修掉图标即可恢复）。
-# 历史决策：.agents/notes/2026-09-17-compat-lines-advisory.md（已被本次取代）
-# 本次决策：.agents/notes/2026-09-20-compat-mainline.md
-# **版本号不写在这里**（会漂），要现查跑：node scripts/compat-swap.mjs check
+# 主次（2026-10-01 改）：**`next` 是承诺线** —— 它就是 RC 线（npm 上没有 `rc` 这个 tag，
+# RC 版本全挂在 `next` 上）。`engines.dsh` 与全部 peer 的下限就写在 package.json 里、
+# 落在这一条线上，宿主在跑的也是这条线。它红了就红、就修。
+# **`alpha` 已停**：换线之后它是**我们已经不支持**的旧线（声明下限在它之上），
+# 继续测等于测一个装不上的宿主。停它的理由与当初停 `next` 的理由同型，只是方向反了过来。
+# 历史决策：.agents/notes/2026-09-20-compat-mainline.md（alpha 升为承诺线）
+# 本次决策：.agents/notes/2026-10-01-track-rc-line.md
+# **版本号不写在这里**（会漂，红线会红），要现查跑：node scripts/compat-swap.mjs check
 #
 # 「只记录」不等于「没人看」：任何一个作业红了都会开或更新**一条固定标题的跟踪 issue**
 # （scripts/report-compat-failure.mjs，同一处失败不重复刷评论）—— 这就是
@@ -66,8 +66,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # next 已停：语义错位（见文件头）。只剩承诺线 alpha，它红了就红、就修。
-        line: [alpha]
+        # alpha 已停：换承诺线之后它是我们不支持的旧线（见文件头）。只剩 next（RC 线）。
+        line: [next]
     steps:
       - uses: actions/checkout@v7
 

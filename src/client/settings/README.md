@@ -49,7 +49,7 @@
 - 职责：字段行、行容器、控件与提示的样式；**纵向节奏的唯一所有者**。
 - 关键规则：`.group`（顶部 12px）、`.groupLast`（尾部 12px）、`.groupNote`（margin-top 4px）、`.fields > * + *`（字段间 0.5px 分隔线）、`.field`（padding 12px 0）、`.row`（整行选择型，padding 12px 0）、`.input`（h34 r8）、`.selector`（h36 r18）。
 - 被谁依赖：`fields.tsx`；`BalanceSettingsCard.tsx` 另用它的 `.field` 包住测试连接那一行。
-- 改后必测：新增元素的纵向间距必须落在 12px 这一档；中性实线边框 0.5px、状态色边框 1px；控件圆角走 `--dsw-radius-*`（带下限回落）、**不写** `corner-shape`（继承宿主全局 superellipse）；只有必须是真的圆才成对写 `50%` + `corner-shape: round`。
+- 改后必测：新增元素的纵向间距必须落在 12px 这一档；中性实线边框 0.5px、状态色边框 1px；控件圆角走 `--dsw-radius-*`（**裸引，不写回落** —— 声明的那条线上它们一定存在）、**不写** `corner-shape`（继承宿主全局 superellipse）；只有必须是真的圆才成对写 `50%` + `corner-shape: round`。
 
 ### use-credential-state.ts
 

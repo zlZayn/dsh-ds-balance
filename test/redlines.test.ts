@@ -397,11 +397,38 @@ describe('文档不抄实测值', () => {
   })
 
   it('守卫跟着宿主线走：宿主换主版本号时这条会红，来改 HOST_VERSION', () => {
-    // 形状是「可选运算符 + 0.」：0.1.7 起声明面统一写成 >=0.1.7-alpha.1，
+    // 形状是「可选运算符 + 0.」：声明面统一写成 `>=<线起点>`（如 `>=0.2.0-rc.1`），
     // 所以这里必须收 >。改回 [~^]? 会让这条在 >= 上必红。
     expect(pkg.engines?.dsh, '宿主已不在 0.x 线上，HOST_VERSION 的形状要跟着改').toMatch(
       /^[~^>]*=?0\./,
     )
+  })
+
+  it('README 让用户装的那条线，必须与 TRACKED_LINE 同名', () => {
+    // 这两处漂开过一次（README 指 `@alpha` 而声明线已经换掉），
+    // 而漂开的后果是用户照着 README 装到一个**落在声明范围之外**的宿主 —— 不报错、只是不支持。
+    // 判据只比「线名」：README 那条命令是本仓唯一告诉用户去哪儿装的地方。
+    //
+    // **从脚本源码里读那个常量，不 import**：`scripts/` 是 `.mjs`、没有类型声明，
+    // 而 tsconfig 的测试项目要求类型完整（同 compat-swap.test.ts 走进程调用而非 import 的原因）。
+    // 读不到就报错，不会静默放过。
+    const tracked = /export const TRACKED_LINE = '([a-z]+)'/.exec(
+      readFileSync('scripts/check-declaration.mjs', 'utf8'),
+    )?.[1]
+    expect(tracked, 'scripts/check-declaration.mjs 里读不出 TRACKED_LINE').toBeDefined()
+
+    const readmes = ['README.md', 'README_en.md'].map((file) => readFileSync(file, 'utf8'))
+    let seen = 0
+    for (const text of readmes) {
+      for (const match of text.matchAll(/npm install -g @deepseek-ai\/dsh@([a-z]+)/g)) {
+        seen += 1
+        expect(match[1], `README 让用户装 @${match[1]}，而 TRACKED_LINE 是 ${tracked}`).toBe(
+          tracked,
+        )
+      }
+    }
+    // 反向控制：README 里必须真的有这条命令（否则上面是空转的假绿）。
+    expect(seen, 'README 里 `npm install -g @deepseek-ai/dsh@<线>` 的出现次数').toBeGreaterThan(1)
   })
 })
 
@@ -780,13 +807,14 @@ describe('圆环几何', () => {
  * **为什么这条一度误报过（先说清楚，免得再踩）**：一次核对里拿 `ui-primitives/Pill.module.css`
  * 去比 `fields.module.css` 的 `.selector` —— 而 `.selector` 注释里点名的是
  * `locale/LanguageRow.module.css`。**比错了文件**，于是得出「官方 12px、我们 18px」的假结论；
- * 真相是 LanguageRow 在 0.1.7-rc.1 及以前写的就是 `18px`，与我们的回落值一致。
+ * 真相是 LanguageRow 在 0.1.7-rc.1 及以前写的就是 `18px`。
  * 教训：**判据必须绑到注释点名的那份官方文件**，所以下面按「源文件 + 选择器」显式配对，
  * 不做「随便找个同名组件比一比」。
  *
- * **两条宿主线上的值可以不同**（这是本仓必须写回落值的原因）：
- * `LanguageRow.selector` 的圆角在 0.1.7-rc.1 及以前是 `18px`，rc.2 起是 `var(--dsw-radius-md)`（12px）。
- * 所以判据是：**token 的值 = 新线上的官方值；回落值 = 老线上的官方值**，两个都要对。
+ * **换承诺线之后（2026-10-01）判据简化了**：以前官方在两条宿主线上写法不同
+ * （老线写字面量 `18px`、新线写 token），所以本仓得写「token + 老线回落」两个值并各自核对。
+ * 现在声明的是 RC 线，官方在那条线上写的就是 token，于是判据只剩一条：
+ * **我们引的 token 必须与官方在声明线上写的逐字相同，且同样不写回落值**。
  */
 describe('注释声称「照官方」的值必须与官方一致', () => {
   /** 从 CSS 文本里读一个类规则体内某个属性的值（第一个匹配）。 */
@@ -822,33 +850,32 @@ describe('注释声称「照官方」的值必须与官方一致', () => {
 
   const ourFields = readFileSync('src/client/settings/fields.module.css', 'utf8')
 
-  it('选择器 pill：token 值 = 新线官方值，回落值 = 老线官方值（两个都对才算「照官方」）', () => {
+  it('选择器 pill：圆角必须与官方在声明线上写的逐字相同（同一个 token，同样不写回落）', () => {
     // 官方真源 = **注释里点名的那份文件的那个选择器**：locale/LanguageRow 的 .selector。
     // 装好的 dsh-client-locale 把原始 CSS 内联进了 lib/client.js，所以从那里读。
     const installed = readFileSync(
       'node_modules/@deepseek-ai/dsh-client-locale/lib/client.js',
       'utf8',
     )
-    const officialOurs = parseRadius(
-      /\.\w+_selector\{[^}]*?border-radius:([^;}]+)/.exec(installed)?.[1] ?? '',
-    )
-    // 装的是 0.1.7-alpha.1（下限那一档）—— 官方在那儿写的就是字面量 18px。
-    expect(officialOurs.token, '老线官方是字面量，不该是 token').toBeNull()
-    expect(officialOurs.fallback, '老线（0.1.7-alpha.1）的官方圆角').toBe('18px')
+    const officialRaw = /\.\w+_selector\{[^}]*?border-radius:([^;}]+)/.exec(installed)?.[1] ?? ''
+    const official = parseRadius(officialRaw)
+    // 声明线（RC）上官方写的就是 token，且**不带回落**。
+    expect(official.token, '官方在声明线上该引语义 token').toBe('--dsw-radius-md')
+    expect(official.fallback, '官方在声明线上不写回落值').toBeNull()
+    expect(RADIUS_SCALE[official.token ?? ''], 'token 指向的官方值').toBe('12px')
 
     const ours = parseRadius(propertyOf(ourFields, '.selector', 'border-radius'))
-    // token 的值必须等于官方刻度表里那个（= 新线上的官方值 12px）。
-    expect(ours.token, '本仓 .selector 该引语义 token').toBe('--dsw-radius-md')
-    expect(RADIUS_SCALE[ours.token ?? ''], 'token 指向的官方值').toBe('12px')
-    // 回落值必须等于**老线上的官方值**（就是上面从装好的官方包里读出来的那个）。
-    expect(ours.fallback, '回落值必须等于老线上官方的值').toBe(officialOurs.fallback)
+    // 逐字相同：同一个 token，同样不写回落（下限那条线上该 token 一定存在 → 回落是死代码）。
+    expect(ours.token, '本仓 .selector 该引与官方同一个 token').toBe(official.token)
+    expect(ours.fallback, '本仓也不该写回落值').toBeNull()
   })
 
-  it('凡是引「新版才有」的 token，必须带回落值（回落到老线官方的值）', () => {
-    // 这几族 token 都是宿主 0.1.7-rc.2 才进 base.css / focus.css 的，
-    // 而 package.json 声明的下限是 >=0.1.7-alpha.1 —— 那一档里它们不存在。
-    // 裸引的行为分两种，都很难看：圆角退化成 0（方角）、outline-width 退化成 0（焦点环消失）。
-    const lateTokens = [
+  it('引这几族 token 时必须**裸引**（不许写回落值 —— 回落是死代码）', () => {
+    // 换线之前反过来：那时声明的是 alpha 线，这几族 token 在那一档不存在，
+    // 裸引会让圆角退化成 0、`outline-width` 退化成 0（焦点环整条消失，不报错），所以必须带回落。
+    // 现在声明的是 RC 线，token 在声明范围内一定存在 —— 带回落只是留一段永远取不到的代码，
+    // 而且会让「声明什么就支持什么」这句话变含糊。判据随之反转。
+    const tokens = [
       '--dsw-radius-xs',
       '--dsw-radius-sm',
       '--dsw-radius-md',
@@ -864,24 +891,27 @@ describe('注释声称「照官方」的值必须与官方一致', () => {
       'src/client/settings/fields.module.css',
       'src/client/settings/BalanceSettingsCard.module.css',
     ]
-    /** 命中即算裸引：token 后面紧跟 `)`（没有逗号 = 没有回落）。 */
+    /** 命中即算「带了回落」：token 后面跟逗号。 */
     let checked = 0
     for (const file of cssFiles) {
       const text = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-      for (const token of lateTokens) {
-        const naked = text.match(new RegExp(`var\\(\\s*${token}\\s*\\)`, 'g')) ?? []
-        expect(naked.length, `${file} 里 ${token} 是裸引（缺回落值）`).toBe(0)
-        checked += (text.match(new RegExp(`var\\(\\s*${token}\\s*,`, 'g')) ?? []).length
+      for (const token of tokens) {
+        const withFallback = text.match(new RegExp(`var\\(\\s*${token}\\s*,`, 'g')) ?? []
+        expect(
+          withFallback.length,
+          `${file} 里 ${token} 带了回落值（声明线上取不到，是死代码）`,
+        ).toBe(0)
+        checked += (text.match(new RegExp(`var\\(\\s*${token}\\s*\\)`, 'g')) ?? []).length
       }
     }
-    // 反向控制：这条断言必须真的看到了那些带回落的使用处，否则它是空转的假绿。
-    expect(checked, '带回落地引用了这些 token 的次数').toBeGreaterThan(0)
+    // 反向控制：这条断言必须真的看到了那些裸引的使用处，否则它是空转的假绿。
+    expect(checked, '裸引了这些 token 的次数').toBeGreaterThan(0)
   })
 
   it('声明下限与安装面必须同类（否则上面两条是在错的版本上核的）', () => {
-    // 这条不是形式主义：本仓 node_modules 装的是 ui-primitives 0.1.7-alpha.1，
-    // 而**在跑的宿主**已经是 0.2.0-rc.1 —— 两边的官方 CSS 写法不同（字面量 vs token）。
-    // 版本对不上时，「官方真源」这句话本身就没了意义，所以先把它变成可查的信号。
+    // 这条不是形式主义：换线之前本仓 node_modules 装的还是 alpha 档，而**在跑的宿主**已经是 RC，
+    // 两边的官方 CSS 写法不同（字面量 vs token）——「官方真源」这句话那时是错位的。
+    // 版本对不上时判据本身就没了意义，所以先把它变成可查的信号。
     const declared = /"@deepseek-ai\/dsh-client-ui-primitives":\s*"([^"]+)"/.exec(
       readFileSync('package.json', 'utf8'),
     )?.[1]

@@ -48,12 +48,12 @@
   弧的读法（`strokeDasharray` + `rotate(-90 …)`）也照它。四档颜色逐条对齐官方 `StateDot` 的
   `data-state`，`idle` 走官方为它新增的那条 `--dsw-alias-state-idle-primary`。
   几何口径由 [test/redlines.test.ts](../test/redlines.test.ts) 的「圆环几何」一组守住，别在组件里另写一套数。
-- **引官方 token 必须带回落值，且回落值是「老线上官方的值」**：圆角与焦点环那两族 token 比本仓
-  声明的下限**晚三个版本**才存在 —— 在下限那一档里裸引会让圆角变直角、`outline-width` 变 0
-  （焦点环整条消失）。两条线上官方的值**本身也不同**（同一个官方规则老线写像素、新线写 token），
-  所以回落不能取 token 自己的值。版本号一律现查（`package.json` 的 `engines.dsh` /
-  `node scripts/compat-swap.mjs check`），事实与替代方案见
-  [决策记录](../.agents/notes/2026-10-01-declaration-floor-vs-running-version.md)；
+- **引官方 token 一律裸引，不写回落值**：本仓声明的宿主线（RC 线，现查 `package.json` 的 `engines.dsh`）
+  上，圆角与焦点环那两族 token **一定存在** —— 回落值永远取不到，是死代码，
+  还会让「声明什么就支持什么」这句话变含糊。换线之前反过来（那时声明的是 alpha 线，
+  那两族 token 比下限晚三个版本才有，裸引会让圆角变直角、`outline-width` 变 0、焦点环整条消失），
+  判据随之反转，是随声明线走的。版本号一律现查（`node scripts/compat-swap.mjs check`），
+  事实与替代方案见[决策记录](../.agents/notes/2026-10-01-track-rc-line.md)；
   口径由 [test/redlines.test.ts](../test/redlines.test.ts) 的「注释声称照官方」一组守着。
 - **菜单材质必须成对**：凡用 `--dsw-specific-menu` 画填充的表面，必须在**同一条规则**里带
   `backdrop-filter: var(--dsw-menu-backdrop-filter)` —— 官方把菜单材质拆成了这两条 token（填充半透明、
@@ -99,7 +99,7 @@
 - 主题由 `body[data-ds-dark-theme]` 承载，插件直接读 CSS 变量，不写主题选择器。
 - 构建 = `tsc` + `tsc -p tsconfig.client.json` + 自研 esbuild 打包（复刻 `window.__ModuleLoader__.load` 信封）。
 - `sidebar.footer.action` 的宿主容器缺 `flex-direction`，插件侧用 `:has()` 反选父元素补成纵向堆叠；这是唯一一处插件覆盖宿主布局的地方。
-- 依赖锚点跟随宿主运行的 alpha 线。
+- 依赖锚点跟随宿主运行的 **RC 线**（dist-tag 是 `next`；npm 上没有 `rc` 这个 tag）。
 - **配置表单只做能力探测，不查宿主版本号**：客户端半边拿不到宿主版本，而「卡片拿不拿得到 form」当场可观测。
   更早的宿主没有配置服务、这个 profile 里没装 Plugins 页 —— 两种情形对使用者是同一个现象，探测把它们归成一句话。
   **探测盯的是 `configForms` 服务，不是槽名**（本轮定案，推翻上一轮）：`plugins.bundle.config` 在宿主两条线上
@@ -222,9 +222,9 @@
   客户端 `client/situation.ts` 的形态表（`Record<Situation, …>` 漏值编译不过）、以及 locales 的文案键。
 - 折叠态与展开态都必须能吃下所有处境，未知值回落 `unknown`。
 - **引官方 token / 组件 / 符号之前先确认它在声明下限那一档存在**（下限见 `package.json` 的 `engines.dsh`）。
-  比「存在」更容易漏的是**值**：同一个官方规则在两条宿主线上可以写不同的值
-  （回落必须取**老线上官方的值**，不是 token 自己的值）。口径由「注释声称照官方」那组红线守着，
-  事实与死区间实测见 [决策记录](../.agents/notes/2026-10-01-declaration-floor-vs-running-version.md)。
+  存在就**裸引**；下限上不存在的 token 根本不该引（要用就先抬下限，见换线那条决策）。
+  口径由「注释声称照官方」那组红线守着，
+  事实与替代方案见 [决策记录](../.agents/notes/2026-10-01-track-rc-line.md)。
 - 组件拿不到 `ctx`；数据只能走注册项的 `inject` 工厂。
 - 跨插件值导入会被 bundle-purity gate 拒绝，只能用公共导出。
 - **不许把 `backdrop-filter` 写在带 fixed 浮层的容器上**：它会成为那些后代的包含块，把按视口算好的坐标变成

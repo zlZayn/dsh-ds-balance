@@ -39,7 +39,7 @@
 - 关键导出：`BalancePopover`、`BalancePopoverProps`（除 `configSlotWarning` 外，还有 `useShownDisabled` 与 `pluginsAction`；`onOpenPlugins` / `onOpenSettings` 已随落点改档与「去设置」删掉）、`PluginsAction`（动作 + 落点，见下）、`BALANCE_PLACEHOLDER`。
 - `configSlotWarning` 非 null 时复用既有的 `notice` / `noticeText` 渲染一行英文 `[WARN]`（无动作按钮、无新增样式）。
 - 标题行是外链：`https://platform.deepseek.com/usage`，`target="_blank"` + `rel="noopener noreferrer"`，新标签页打开官网用量页；文字带下划线但**颜色 `inherit`**（宿主没有「链接色」这类语义 token，硬套会破配色纪律），图标是 svg、不吃 `text-decoration`。
-- **标题行右端的 Plugins 图标按钮**：无可见文字，`aria-label` 与 tooltip **逐字同源**（同一个 `pluginsLabel`）；图标 `IconPluginPinwheelOutlineRegular` 与宿主侧栏 Plugins 条目同字形（图标按**笔画粗细**分 `Regular` / `Medium`，尺寸走 `size` prop），样式逐值照抄宿主 `.iconButton`（28×28、圆角 `var(--dsw-radius-sm, 50%)` —— **token 是新线的值、回落是老线官方的正圆**；不写 `corner-shape`，继承宿主全局 superellipse；hover 用 `--dsw-alias-interactive-bg-hover`），并显式 `cursor: pointer`（浮层面板自己写了 `cursor: default`）。点它跳转并**关闭浮层**。
+- **标题行右端的 Plugins 图标按钮**：无可见文字，`aria-label` 与 tooltip **逐字同源**（同一个 `pluginsLabel`）；图标 `IconPluginPinwheelOutlineRegular` 与宿主侧栏 Plugins 条目同字形（图标按**笔画粗细**分 `Regular` / `Medium`，尺寸走 `size` prop），样式逐值照抄宿主 `.iconButton`（28×28、圆角 `var(--dsw-radius-sm)` —— **裸引，不写回落**：声明的那条线上该 token 一定存在，换线前它才带 `50%` 回落；不写 `corner-shape`，继承宿主全局 superellipse；hover 用 `--dsw-alias-interactive-bg-hover`），并显式 `cursor: pointer`（浮层面板自己写了 `cursor: default`）。点它跳转并**关闭浮层**。
 - **落点是两档，措辞跟着分档**（`PluginsAction.reachesConfig`，由 [../index.tsx](../index.tsx) 的 `createPluginsNavigation` 按**服务在不在**给出）：
   ① 宿主 provide 了跨插件深链服务 `pluginNavigation.openBundle(包名)` 时**直达本插件的配置格**，话术是「打开插件配置页」；
   ② 服务缺席（更早的宿主线）或深链抛错时退回 `ctx.layout.selectPanel('plugins')` 的 **Plugins 列表页**，话术跟着退回「打开插件页」。

@@ -49,7 +49,7 @@ That ring is "what is going on right now" — five shapes, each with a different
 | Grey ring + a gap rotating | Fetching; no answer yet | **Wait** |
 | Grey ring + a **+** in the middle | Nothing connected | **Configure** (an API key, or sign in) |
 | Grey, empty ring | Connected, the account simply has no balance | **Nothing** |
-| Red ring + a **×** in the middle | This number cannot be obtained | **Wait, investigate, or check the account** |
+| Red ring + a **×** in the middle | No usable number here | **Wait, investigate, or check the account** |
 
 **Hover it and it tells you what this spot means right now** (the same sentence whether you hover the
 56px rail ring or the expanded entry with its label):
@@ -103,16 +103,16 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
 
 ### Requirements
 
-- **DSH**: the range is whatever [package.json](package.json) declares; this plugin follows the alpha line the host is on.
+- **DSH**: the range is whatever [package.json](package.json) declares; this plugin follows the host's current **RC line** (the dist-tag is `next`).
 - **Node**: `>= 20` (declared in the same place).
 
-Install the host by **naming the version line explicitly**: the `latest` tag of `@deepseek-ai/dsh` is older than the line this plugin requires — a default install lands outside the declared range.
+Install the host by **naming the version line explicitly**: neither `alpha` nor `latest` of `@deepseek-ai/dsh` is the line we declare — a default install lands outside the declared range.
 
 ```bash
-npm install -g @deepseek-ai/dsh@alpha     # the line this plugin promises to support
+npm install -g @deepseek-ai/dsh@next      # the line this plugin promises to support (the RC line; there is no `rc` tag on npm)
 ```
 
-Compatibility is measured, not inferred: every week [compat.yml](.github/workflows/compat.yml) swaps packages onto the `alpha` and `next` lines and reruns the existing tests, and one separate job judges whether the declared ranges still cover the line; a red patrol opens or updates a tracking issue with a fixed title. The current verdict, and what to do when it goes red, are in [Compatibility](docs/PUBLISHING.md#兼容性); the Host-version watershed is in [Version compatibility](#version-compatibility).
+Compatibility is measured, not inferred: every week [compat.yml](.github/workflows/compat.yml) swaps packages onto the `next` (RC) line and reruns the existing tests, and one separate job judges whether the declared ranges still cover the line; a red patrol opens or updates a tracking issue with a fixed title. The current verdict, and what to do when it goes red, are in [Compatibility](docs/PUBLISHING.md#兼容性); the Host-version watershed is in [Version compatibility](#version-compatibility).
 
 ### From npm
 
@@ -143,10 +143,12 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 ## Version compatibility
 
-- **Which Host version is required**: whatever [package.json](package.json) declares; this plugin follows the alpha line the host is on.
-  To get the configuration page, upgrade the Host to that version or higher: `npm install -g @deepseek-ai/dsh@alpha`.
+- **Which Host version is required**: whatever [package.json](package.json) declares; this plugin follows the host's current **RC line**.
+  To get the configuration page, upgrade the Host to that version or higher: `npm install -g @deepseek-ai/dsh@next`.
 - **The declaration is narrow**: the floor is the version we actually tested, written as `>=` with **no ceiling** —
-  it claims neither "everything in the future counts" nor anything earlier. Why it is written that way is in [Compatibility](docs/PUBLISHING.md#兼容性).
+  it claims no "everything in the future counts".
+  (It does cover later prereleases **within the same `major.minor.patch`**; once the host moves a patch position and
+  ships another prerelease, this floor no longer covers it and has to be raised again. Why: [Compatibility](docs/PUBLISHING.md#兼容性).)
 - **Why the floor moved**: not a change of where the UI lives, but a change of the **settings seam**
   (without the two things this plugin relies on, the whole client half never renders — the ring and the popover go with it).
   The plugin never reads a Host version; it **probes that capability live**, and when it is absent the popover carries
@@ -182,7 +184,9 @@ Saving applies immediately; there is no need to restart DSH.
 
 - How full the ring is = the current balance as a fraction of that currency's **warning line**, capped at 100%; the critical line takes no part in drawing it — it already decided the colour.
 - Colour carries state only, never an amount: normal, low and critical each get one hue; an account that cannot be read gets a ring with a cross instead.
-- A currency with no threshold configured falls back to state: full ring for normal and unavailable, 3/4 for low, 1/4 for critical, empty for unknown.
+- A currency with no threshold configured falls back to state: **a full ring for normal, 3/4 for low, 1/4 for critical**.
+  (Only the family with a balance to look at draws an arc — those three, plus the old number while data is stale;
+  an unreadable account, a suspended account, nothing connected, an account with no balance: none of those draw an arc.)
 - Why colour is never computed from an amount, and why thresholds are only a scale → [Data flow](docs/ARCHITECTURE.md#数据流).
 
 ### Credentials

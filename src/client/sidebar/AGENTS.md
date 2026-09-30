@@ -42,10 +42,10 @@ sidebar/ 特有约束：
   - 它们是**形状通道**，为的是不依赖颜色也能区分处境（同 `critical` / `unavailable` 靠叉区分那条纪律）。
 - 样式只写 CSS Modules 类与 `--dsw-alias-*` 语义 token。
   - 禁止字面色值；禁止 `[data-ds-dark-theme]` 与 `prefers-color-scheme` 选择器。
-- **引官方 token 一律带回落值，回落取「老线上官方的值」**：`--dsw-radius-*` 与 `--dsw-focus-ring-*`
-  比本仓声明的下限**晚三个版本**才存在 —— 裸引会让圆角变直角、`outline-width` 变 0
-  （焦点环整条消失）。两条线上官方的值**本身也不同**，所以回落不能取 token 自己的值。
-  见 [决策记录](../../../.agents/notes/2026-10-01-declaration-floor-vs-running-version.md)。
+- **引官方 token 一律裸引，不写回落值**：本仓声明的宿主线（RC 线）上
+  `--dsw-radius-*` 与 `--dsw-focus-ring-*` 一定存在 —— 回落值永远取不到，是死代码。
+  下限上不存在的 token 根本不该引；要用就先抬下限。
+  见 [决策记录](../../../.agents/notes/2026-10-01-track-rc-line.md)。
 - **`corner-shape` 只给真正的圆点写**：控件圆角（矩形、pill、图标按钮）**不写** —— 它们继承宿主
   `*` 上的全局 `var(--dsw-corner-shape)`（superellipse(1.5)），写 `round` 会掰回 superellipse(1)、与官方不一致。
   只有「必须是真的圆」的元素（5px 状态点、全圆图标按钮）才成对写 `50%` + `corner-shape: round`。

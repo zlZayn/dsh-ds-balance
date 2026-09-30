@@ -209,13 +209,9 @@
 
 /* 选择器触发 pill（标准控件尺寸 h36）。
    **取值照官方 shipped 代码**：packages/client/locale/src/client/LanguageRow.module.css 的 `.selector`
-   —— height:36px、padding:0 14px、gap:12px。
-   **圆角在两条宿主线上值不同**，所以 token + 回落，各给一条线上官方的值：
-   · 0.1.7-alpha 线（本仓 `engines.dsh` 的下限、README 承诺的那条）：`border-radius: 18px`
-     （h36 配 r18 = 全圆 pill；实测 alpha.1 / alpha.2 / rc.1 三个 tag 逐字相同）；
-   · 0.1.7-rc.2 起（token 化之后）：`var(--dsw-radius-md)` = 12px 的圆角矩形。
-   回落的语义是**「这个组件在老线上的官方值」**，不是「token 自己的值」——
-   两者在 h36 这一档恰好不同（18 vs 12），写成 12px 会让老线渲染出官方没有的形状。
+   —— height:36px、padding:0 14px、gap:12px，圆角 `var(--dsw-radius-md)`（裸引，不写回落：
+   本仓声明的是 RC 线，该 token 在声明范围内一定存在，回落值永远取不到）。
+   值的真源是官方刻度表；「注释声称照官方」那组红线会逐值比对。
    不写 corner-shape：圆角矩形继承宿主全局的 superellipse。 */
 .selector {
   display: inline-flex;
@@ -226,7 +222,7 @@
   height: 36px;
   padding: 0 14px;
   border: none;
-  border-radius: var(--dsw-radius-md, 18px);
+  border-radius: var(--dsw-radius-md);
   background: var(--dsw-alias-bg-module-platform);
   font: inherit;
   font-size: 14px;
