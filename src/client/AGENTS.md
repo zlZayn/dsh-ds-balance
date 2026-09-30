@@ -11,8 +11,11 @@ src/client/ 特有约束：
   唯一例外是 `gauge` 族的**颜色** —— 那是余额高低的编码，由 `presentationOf` 内部读一次 `severity`。
 - 处境闭集与宿主 [../domain/situation.ts](../domain/situation.ts) 逐字同形（两半体不共享值，靠测试对账）；
   **新增处境必须同步改形态表与 locales**，`Record<Situation, …>` 漏值编译不过。
-- **同族合并是有意的**：收起态只有 4 个视觉族，`test/client-situation.test.ts` 把同族关系写死 ——
+- **同族合并与拆开都是有意的**：收起态现在是 5 个视觉族（`gauge` / `pending` / `unreadable` /
+  `needs-credential` / `empty`），`test/client-situation.test.ts` 把同族关系写死 ——
   要拆要合都得先改那张断言并说明理由，不许静默漂。
+  **不变量是「跨族同形 = 歧义」**，由 `test/render-matrix.test.ts` **渲真组件**验证：
+  从前只看形态表，两边同源就一起错（`checking` 与 `empty-wallet` 曾逐像素相同）。
 - 唯一允许读阈值的地方是 [model.ts](model.ts) 的 `ringRatioOf`（只定弧长、只读 `warn`，金额比较走整数不走浮点）；其余任何地方不许拿阈值做判断或配色。
 - 主题直接读 `--dsw-*` CSS 变量，禁止写 `[data-ds-dark-theme]` 或 `prefers-color-scheme` 选择器。
 - 不许 import `ui-settings-plugins` 等官方包的内部构件；只能照抄模式。

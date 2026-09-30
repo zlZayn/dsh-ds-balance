@@ -188,7 +188,7 @@ describe('失败路径', () => {
     const view = await h.service.getView()
     expect(view.state).toBe('error')
     expect(view.stale).toBe(false)
-    // 「接入了但出错」画叉（unavailable），文案是「服务暂不可用」—— 与「没接入」分开。
+    // 「接入了但出错」画叉（unavailable），文案是「读不到余额」—— 与「没接入」分开。
     expect(view.severity).toBe('unavailable')
     expect(view.error?.code).toBe('NO_NETWORK')
     expect(view.error?.retryable).toBe(true)
@@ -251,8 +251,10 @@ describe('失败路径', () => {
     expect(h.service.status().source).toBe('deepseek-account')
   })
 
-  it('**没接入**与**接入了但出错**不是同一个环：没接入画空环', async () => {
-    // 一条凭据都没有 → 没有信息可画（unknown = 空环），文案是「尚未配置凭据」。
+  it('**没接入**与**接入了但出错**不是同一个环：没接入是灰环 + ＋', async () => {
+    // 一条凭据都没有 → 处境 no-credential（灰环 + 中心＋），文案是「尚未配置凭据」。
+    // 注意这里的 `severity === 'unknown'` 只是**契约字段**的值，不再直接决定环的形态：
+    // 收起态的环由处境定死（见 client/situation.ts 的形态表），`severity` 只给 gauge 族上色。
     const h = harness({}, '')
     const view = await h.service.getView()
     expect(view.error?.code).toBe('NO_KEY')

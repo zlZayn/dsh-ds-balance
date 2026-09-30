@@ -1,7 +1,9 @@
 # UI 侧契约与移交
 
-本文面向后端架构师。
-**可原样转发**：全文自包含，不依赖本仓库其它文件即可读懂。
+本文是**界面侧的 home**，面向后端架构师。
+**活文档**：改了界面（处境表、通道映射、来源标签规则、mock 覆盖）就在同一次改动里同步它 ——
+这些都必须与代码一致，`test/client-situation.test.ts` 的分层表断言与 §四 逐行对账。
+**正文自包含**：不点开任何链接就能读懂这套契约；文中的相对链接只是深入阅读的入口。
 
 ## 一、一句话
 
@@ -46,12 +48,18 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 - `situation` 是**界面唯一的分支入口**，闭集 11 个取值：宿主判 9 个
   （`internal-error` / `no-credential` / `fetch-failed` / `account-unavailable` / `stale` /
   `empty-wallet` / `ok` / `low` / `critical`），客户端补 2 个本地事实
-  （`checking` 首帧、`offline` 插件端点不可达）。出现未知值时 UI 回落 `checking`（最保守：不谎报状态）。
+  （`checking` 首帧、`offline` 插件端点不可达）。
+  **取不到 `situation`（旧宿主）或它不是闭集里的值时，回落是「按旧字段现推处境」**
+  （`legacySituationOf`），不是一个固定的 `checking` —— 它推出来可能是任意一个旧契约可达的处境。
+  （`checking` 只在一种很窄的形状下才推得出来：没快照 + 没有 error + `state === 'empty'`。）
 - `state`（`empty` / `ok` / `stale` / `error`）与 `severity`
   （`ok` / `warn` / `critical` / `unavailable` / `unknown`）仍是闭集，但**降级为兼容字段** ——
   新界面不据它们拼形态，只有旧宿主路径用它现推处境。
-- **「没数字」与「有数字」决定来源标签**：`situation` 为 `gauge` 族（有数字）才标 `source`；
-  其余处境一律不标 —— 没有数字时说「这份数字从哪来」没有意义。
+- **「没数字」与「有数字」决定来源标签**，而判据是**那一份数字真的在不在屏幕上** ——
+  组件里判 `shown !== null`（`shown` 由 `selectionOf` 从 `selected` + `balances` 读出），
+  **不是**判处境、也不是判族。同一个处境下「有没有数字」还会变：
+  `account-unavailable`（账户停用）上游可能给空的余额列表，那时并没有数字，标了就是在一份空浮层里
+  写「（API Key）」。所以这一列在 §四 的表里写作「有数字才标」。
 
 ---
 
@@ -114,9 +122,9 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 
 ## 六、配置契约（后端要服务的命名空间）
 
-- 命名空间：`dsh-ds-balance`（宿主 schema 与浏览器半边用同一字符串配对；0.1.7 起它 = Loader 条目 id = `cordis.patch.yml` 的 insert 行 id）。
+- 命名空间：`dsh-ds-balance`（宿主 schema 与浏览器半边用同一字符串配对；自设置接缝那次迁移起，它 = Loader 条目 id = `cordis.patch.yml` 的 insert 行 id）。**迁移发生在哪一版不写在这里** —— 会漂，要现查就 `node scripts/compat-swap.mjs check`。
 - **它与包名今天同串，但不是宿主要求的同一个概念**：槽 key（`plugins.bundle.config`）取包名，`configForms.get()` / `settings.mutate` 取这个命名空间 —— 漂开的表现是「卡片在、表单永远只读」，不报错。由 `test/redlines.test.ts` 与 `test/artifacts.test.ts` 对账。
-- 落点：`$DSH_HOME/settings.yaml` 的顶层键 `dsh-ds-balance`（历史：0.1.7 迁移前是 `ds-balance`，旧值不自动迁移）。
+- 落点：`$DSH_HOME/settings.yaml` 的顶层键 `dsh-ds-balance`（历史：迁移前是 `ds-balance`，**旧值不自动迁移**）。
 - 设置界面挂在 Plugins 页里该 bundle 的详情页：宿主按包名 `dsh-ds-balance` 取 `plugins.bundle.config` 这一格（原「设置 → 插件」入口已不存在）。
 
 | 字段 | 类型 | 默认 | 范围 |
@@ -158,18 +166,26 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 
 场景键即 URL 参数 `?dsb=<键>`，权威清单在代码里（`src/client/mock/scenarios.ts`）。
 
-覆盖的处境组合（每条 `?dsb=<键>` 对应一个处境）：
+**11 个处境全部造得出来**（17 个场景键），含两个客户端本地的：
 
-- `checking` / `offline` —— **这两条造不出来**：它们由客户端本地产生（首帧、端点不可达），
-  不经 mock 场景。验收方式是真机首帧、以及让插件端点不可达。
-- `no-credential`（无 Key）/ `fetch-failed`（无值失败）/ `internal-error`（我们自己抛错）
-- `account-unavailable`（读到了但账户停用）
-- `stale`（有旧值、本轮失败）
-- `empty-wallet`（连上了但没有可展示币种）
-- `ok` / `low` / `critical` 三档
-- 来源为账号那条路（看来源括号）
-- 多币种（CNY + USD）、选定币种不存在
-- `todayUsage` 为 `null` 与「需复核」两种（保留作契约回归，界面不展示）
+- `checking` → `?dsb=checking`；`offline` → `?dsb=offline`。
+  **更正**：这两条从前被写成「造不出来、只能真机验」，那是错的 ——
+  mock 表从 `ecb5114` 起就带着这两个键，而文档是**在那之后**写的
+  （`git log -S "造不出来"` → `87220b2`），所以文档写反了整整一轮。
+  它们的 `situation` 字段是显式声明的，`situationOfResponse` 逐字返回，不走现推。
+- `no-credential`（无 Key）→ `?dsb=noKey`；`fetch-failed`（无值失败）→ `?dsb=error`；
+  `internal-error`（我们自己抛错）→ `?dsb=internalError`
+- `account-unavailable`（读到了但账户停用）→ `?dsb=unavailable`
+- `stale`（有旧值、本轮失败）→ `?dsb=stale`
+- `empty-wallet`（连上了但没有可展示币种）→ `?dsb=empty` / `?dsb=noBalanceAtAll`
+- `ok` / `low` / `critical` 三档 → `?dsb=ok` / `?dsb=warn` / `?dsb=critical`
+- 来源为账号那条路 → `?dsb=account`；多币种 → `?dsb=multiCurrency`；
+  选定币种不存在 → `?dsb=currencyMismatch`
+- `todayUsage` 为 `null` → `?dsb=usageMissing`；「需复核」→ `?dsb=usageNeedsReview`
+  （保留作契约回归，界面不展示）
+
+**这条覆盖关系有测试守着**（`test/mock-scenarios.test.ts`）：mock 表声明过的 `situation`
+必须**覆盖整个闭集** —— 少一个就红。「文档与代码各说各话」正是它被漏掉一轮的原因。
 
 ---
 

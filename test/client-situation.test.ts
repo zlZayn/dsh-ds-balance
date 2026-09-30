@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SITUATIONS, familyOf, presentationOf } from '../src/client/situation.ts'
 import { ringRatioOf } from '../src/client/model.ts'
-import { SITUATIONS as HOST_SITUATIONS } from '../src/domain/situation.ts'
+import { CLIENT_SITUATIONS, SITUATIONS as HOST_SITUATIONS } from '../src/domain/situation.ts'
 import { zh } from '../src/client/locales.ts'
 
 /**
@@ -191,7 +191,7 @@ describe('处境形态表', () => {
       expect(zh[key], `词典里缺 ${key}`).toBeTruthy()
     }
     // 「读不到 / 用不了」是同一族（视觉一样），但文案**三分**：
-    // 端点不通与上游读不到共用「暂时读不到」——对用户是同一件事（等）；
+    // 端点不通与上游读不到共用「读不到余额」——对用户是同一件事（去查）；
     // 我们自己抛错时说「服务异常」——那是「我们坏了」，不该让上游背；
     // 账户停用说「账户不可用」——那是「你的账户有问题」，该去查账户。
     // 这正是「枚举细、视觉粗」的落点：区别只在文案与日志，不在形状。
@@ -226,5 +226,42 @@ describe('处境形态表', () => {
       'situation.stale': ['stale'],
       'situation.emptyWallet': ['empty-wallet'],
     })
+  })
+
+  it('**整张分层表逐行对账**（处境 → 族 / 悬停 / 来源标签 / 生产者）', () => {
+    // 这张表同时写在 docs/ui-handoff.md 的 §四 里。把它钉成断言，是为了让**文档与代码
+    // 对不上时机器会红** —— 从前 `account-unavailable` 的叉就是这么丢的：
+    // 代码改了、跟着改的测试也改了（改成 null），而文档没改，两边就长期矛盾。
+    //
+    // 「来源标签」那一列的口径：闸门是组件里的 `shown !== null`（真有数字才标），
+    // 所以这里记的是**这个处境有没有可能带着数字**：
+    // gauge 族一定有（不变量保证）；`account-unavailable` 上游可能给也可能不给；
+    // 其余族按定义没有。`ok/low/critical` 的悬停列写「显示金额」——它们的 textKey 是 null。
+    const TABLE: Readonly<Record<string, readonly [string, string, string, string]>> = {
+      checking: ['pending', '正在获取', '不标', '客户端'],
+      offline: ['unreadable', '读不到余额', '不标', '客户端'],
+      'internal-error': ['unreadable', '服务异常', '不标', '宿主'],
+      'no-credential': ['needs-credential', '尚未配置凭据', '不标', '宿主'],
+      'fetch-failed': ['unreadable', '读不到余额', '不标', '宿主'],
+      'account-unavailable': ['unreadable', '账户不可用', '有数字才标', '宿主'],
+      stale: ['gauge', '数据已过期', '标', '宿主'],
+      'empty-wallet': ['empty', '暂无余额', '不标', '宿主'],
+      ok: ['gauge', '显示金额', '标', '宿主'],
+      low: ['gauge', '显示金额', '标', '宿主'],
+      critical: ['gauge', '显示金额', '标', '宿主'],
+    }
+    // 表与闭集必须一样大：新增处境时这里会红，提醒同步文档。
+    expect(Object.keys(TABLE).sort()).toEqual([...SITUATIONS].sort())
+    for (const situation of SITUATIONS) {
+      const presentation = presentationOf(situation, 'ok')
+      const family = familyOf(situation)
+      const hover = presentation.textKey === null ? '显示金额' : zh[presentation.textKey]
+      const source =
+        family === 'gauge' ? '标' : situation === 'account-unavailable' ? '有数字才标' : '不标'
+      const producer = (CLIENT_SITUATIONS as readonly string[]).includes(situation)
+        ? '客户端'
+        : '宿主'
+      expect([family, hover, source, producer], situation).toEqual([...TABLE[situation]])
+    }
   })
 })

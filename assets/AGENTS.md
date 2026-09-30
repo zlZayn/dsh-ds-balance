@@ -162,4 +162,4 @@
 - 左边栏那两张：**正常态（币种匹配）下拍** —— 浮层里没有币种不匹配段、条目上没有感叹号标记（若确在不匹配态补拍，那一段必须只有一个「改用 X」按钮）、悬浮气泡不与该浮层同框、浮层标题行右端有 Plugins 图标（**宿主缺 `layout` 服务时它本就不渲染**，缺席是正常的）
 - 说明文案与当前 [locales.ts](../src/client/locales.ts) **逐字一致**
 - 图里没有真实凭据、真实 Base URL；**余额除外** —— 左边栏那张必然带真实余额，它是真实值、会随时间变，见 [README.md](README.md) 的「其余」
-- 文件确实被 [README.md](../README.md) 与 [README_en.md](../README_en.md) 引用（覆盖后跑一次链接校验）
+- 文件确实被 [README.md](../README.md) 与 [README_en.md](../README_en.md) 引用（覆盖后 `npm test` 会校验链接）

@@ -25,7 +25,8 @@
   - **它不判断「该用哪条」**：选源规则在宿主侧（`services/source-selector.ts`）—— 客户端知道得越少越好。
 - `api-types.ts`：后端契约类型。既约束 mock，也约束 `data.ts` 拿回来的响应；宿主半边的序列化由 `test/http-wire.test.ts` 做编译期对齐断言。
 - `css-modules.d.ts`：CSS Modules 的环境声明。
-- `mock/`：开发场景数据，见 [mock/README.md](mock/README.md)。**默认走真实端点**：只有 URL 参数 `?dsb=<场景键>` 或 localStorage 明确选过场景才用 mock；`?dsb=live` 会清掉已存的选择并回到真实数据。`?dsb-dev` 会让 `isDevMode()` 返回真（当前仓库内没有消费方，切换器尚未接线）。
+- `mock/`：开发场景数据，见 [mock/README.md](mock/README.md)。**默认走真实端点**：只有 URL 参数 `?dsb=<场景键>` 或 localStorage 明确选过场景才用 mock；`?dsb=live` 会清掉已存的选择并回到真实数据。**11 个处境全都造得出来**（含 `checking` / `offline`），覆盖关系由 `test/mock-scenarios.test.ts` 守着。
+  场景切换器**没有接线**：`?dsb-dev` / `isDevMode()` / `setScenario()` / `notifyScenario()` 已于本轮删除（全仓零引用，且配套两条词典键是孤儿键）；要加回来见 [mock/index.ts](mock/index.ts) 的 `subscribeScenario` 注释。
 - `sidebar/`：左下角条目（状态圆环 + 名称）、点击展开的浮层、宿主容器补丁 → [sidebar/README.md](sidebar/README.md)。首拉一次后按 `clientPollSeconds` 轮询缓存；手动刷新先打 `POST /api/v1/balance/refresh` 再读回；**浮层标题右边跟一个来源标签**（`（API Key）` / `（账号登录）`，在链接外、不参与下划线，没有数字时不标）。浮层的刷新按钮带 `data-refreshing` / `data-cooling` 两个状态钩子，供 e2e 断言。
 - `settings/`：四组可折叠的配置卡片、字段控件、暂存与保存状态机、凭据状态读取 → [settings/README.md](settings/README.md)。
 

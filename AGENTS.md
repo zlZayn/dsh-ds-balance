@@ -109,9 +109,13 @@
 - [ ] **浮层图标行为变了 → 涉及它的门面截图需重拍**（`sidebar-popover*.png`）：判据见 [assets/AGENTS.md](assets/AGENTS.md)
 - [ ] 本机 profile 升到 `2.1.3` 后实机验收本轮计时修复：浮层冷却从冷却值本身开始倒数（不再从 N+1）、按钮在截止时刻就能按、点刷新一定真的打一次上游
 - [ ] `node scripts/acceptance.mjs` 的**上游那一段**（要真实 `DEEPSEEK_API_KEY`）：本轮发布前只跑了离线四项，退出码 2
-- [ ] **这一轮（处境重构 + 记号几何 + 标题行对齐 + token 回落）的实机验收**：待维护者刷新界面确认 ——
-  左下角条目在、括号紧贴标题右侧、叉变小了、没接入时是 ＋ 而不是叉、切会话/切模型跟着换。
-  mock 逐形态一眼过用 `?dsb=<处境键>`（9 个造得出来；`checking` / `offline` 只能真机验，见 [docs/ui-handoff.md](docs/ui-handoff.md) §八）
+- [ ] **实机验收（两轮合并，都还没刷新看过）**：待维护者刷新界面确认 ——
+  ① 处境重构那轮：左下角条目在、括号紧贴标题右侧、叉变小了、没接入时是 ＋ 而不是叉、切会话/切模型跟着换；
+  ② **消歧义这轮**：`checking`（首帧）是**一段缺口在转**、不再与「账户没钱」的灰空环同形；
+  **账户停用**的红环**带叉**、与「余额恰好为 0」的无叉红环分得开；悬停文案是
+  「读不到余额 / 服务异常 / 尚未配置凭据 / 账户不可用 / 数据已过期 / 暂无余额」。
+  mock 逐形态一眼过用 `?dsb=<处境键>`（**11 个处境全造得出来**，含 `checking` / `offline`；
+  见 [docs/ui-handoff.md](docs/ui-handoff.md) §八）
 - [ ] **这一轮还没发版**（维护者要求先停）：档位按判定链是 **minor**（新增对外可见能力 + 行为变化），`npm version minor` + `src/version.ts` + push + release.yml 待办
 - [ ] 采纳宿主下一条线时：把 `engines.dsh` 与全部 peer 区间提到那条线的起点、删掉那批 token 回落值、
   同步 README 的安装指引（它指的那条线）与 `scripts/check-declaration.mjs` 的 `TRACKED_LINE`

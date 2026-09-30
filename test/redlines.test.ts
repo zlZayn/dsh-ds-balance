@@ -338,7 +338,11 @@ describe('文档不抄实测值', () => {
     /^\.agents\/notes\//,
     /^docs\/postmortem\//,
     /^docs\/recon-/,
-    /^docs\/(ui-handoff|model-integration-assessment|backend-architecture-review)\.md$/,
+    // `ui-handoff.md` 曾在这张表里（当「依据」冻结），本轮改归**活文档** ——
+    // 它写的是当前界面契约（处境表 / 通道映射 / 来源标签规则 / mock 覆盖），
+    // 必须与代码一致。层的登记表也同步改了，见 docs/README.md。
+    // 于是「不写会漂的值」这条红线现在**也管它**。
+    /^docs\/(model-integration-assessment|backend-architecture-review)\.md$/,
   ]
 
   /** 门面双件：装之前必须看得见兼容范围，所以允许留值 —— 但必须与真源同行。 */
@@ -1061,5 +1065,74 @@ describe('菜单材质成对', () => {
     expect(
       translucentMenusWithoutBackdrop('.a::before { background: var(--dsw-specific-menu); }'),
     ).toEqual(['.a::before'])
+  })
+})
+
+/**
+ * 文档内的相对链接必须指向真实存在的文件。
+ *
+ * 这条把 [docs/AGENTS.md](../docs/AGENTS.md) 那句「改完跑一次链接校验」变成**机器执行**的 ——
+ * 从前它在根 AGENTS.md 的「常用命令」里找不到对应命令，是一句没有落点的要求，
+ * 于是重命名文件、搬目录、删章节时链接会静默烂掉（本轮对账就修了几处）。
+ *
+ * **决策记录（`.agents/notes/`）与复盘不查**：它们写死当时的事实、按规则不追改，
+ * 里面的链接指向当年的路径是正常的 —— 让红线去逼改冻结记录，是拿规矩打规矩。
+ */
+describe('文档链接', () => {
+  /** 仓库里会被当文档读的 markdown；跳过依赖与产物。 */
+  function docs(dir = '.'): string[] {
+    const found: string[] = []
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = dir === '.' ? entry.name : `${dir}/${entry.name}`
+      if (entry.isDirectory()) {
+        if (['node_modules', 'lib', '.git', '.pre-commit'].includes(entry.name)) continue
+        found.push(...docs(path))
+        continue
+      }
+      if (!entry.name.endsWith('.md')) continue
+      if (path.startsWith('.agents/') || path.startsWith('docs/postmortem/')) continue
+      found.push(path)
+    }
+    return found
+  }
+
+  /**
+   * 取一条相对链接的目标（相对本文件所在目录解析）。
+   *
+   * 跳过：外链（scheme）、纯锚点、以及 `<...>` 包起来的占位写法（那种本来就指不到文件）。
+   */
+  function offlineTargets(source: string): string[] {
+    const targets: string[] = []
+    for (const match of source.matchAll(/\]\(([^)\s]+)\)/g)) {
+      const raw = match[1]
+      if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) continue // http: / mailto: / …
+      if (raw.startsWith('#')) continue
+      if (raw.startsWith('<')) continue
+      targets.push(raw.split('#')[0])
+    }
+    return targets.filter((target) => target !== '')
+  }
+
+  it('每一条相对链接都指得到文件', () => {
+    const broken: string[] = []
+    const files = docs()
+    // 反向控制：这条守卫必须真的扫到了东西，否则「没坏链」是空转的假绿。
+    expect(files.length, '被扫描的 markdown 数量').toBeGreaterThan(30)
+    for (const file of files) {
+      const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '.'
+      for (const target of offlineTargets(readFileSync(file, 'utf8'))) {
+        const resolved = target.startsWith('/') ? `.${target}` : `${dir}/${target}`
+        if (!existsSync(resolved)) broken.push(`${file} → ${target}`)
+      }
+    }
+    expect(broken, `这些相对链接指不到文件：\n${broken.join('\n')}`).toEqual([])
+  })
+
+  it('判据本身有牙齿（假链接必须被抓出来）', () => {
+    expect(offlineTargets('[x](./no-such-file-xyz.md)')).toEqual(['./no-such-file-xyz.md'])
+    // 外链、纯锚点、中文全角括号里的锚点都不该被当成待解析路径。
+    expect(offlineTargets('[a](https://example.com/x.md)')).toEqual([])
+    expect(offlineTargets('[b](#某节)')).toEqual([])
+    expect(offlineTargets('[c](docs/ARCHITECTURE.md#关键决策)')).toEqual(['docs/ARCHITECTURE.md'])
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { scenarios } from '../src/client/mock/scenarios.ts'
 import { selectionOf } from '../src/client/model.ts'
+import { situationOfResponse, SITUATIONS } from '../src/client/situation.ts'
 
 describe('mock 场景不变量', () => {
   it('selected 要么是 null，要么能在 balances 里找到同币种同金额的一条', () => {
@@ -36,5 +37,16 @@ describe('mock 场景不变量', () => {
     for (const severity of ['ok', 'warn', 'critical', 'unavailable', 'unknown']) {
       expect([...severities]).toContain(severity)
     }
+  })
+
+  it('**11 个处境全都能用 mock 演出来**（少一个就要红）', () => {
+    // 这条是补的：从前文档（docs/ui-handoff.md §八 与 mock/README.md）写着
+    // 「`checking` / `offline` 造不出来，只能真机验」—— 而 mock 表里**一直**有这两个键。
+    // 两边各说各话且没有测试守着，于是那句错话活了一轮多。
+    // 判据取**真跑一遍 `situationOfResponse`**，不是读声明字段：
+    // 声明归声明，界面拿到什么才算数。
+    const reachable = new Set(Object.values(scenarios).map((value) => situationOfResponse(value)))
+    const missing = SITUATIONS.filter((situation) => !reachable.has(situation))
+    expect(missing, `mock 演不出来的处境：${missing.join(' / ')}`).toEqual([])
   })
 })

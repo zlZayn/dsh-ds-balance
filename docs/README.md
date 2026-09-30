@@ -19,11 +19,17 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 活 | 不变的设计与防错清单：插件形态、slot、颜色口径、跨字段校验。 |
 | [PUBLISHING.md](PUBLISHING.md) | 活 | 发布手册：流程、版本号判定链、判例库。 |
 | [backend-architecture.md](backend-architecture.md) | 活 | 后端契约（端点 / 配置 / 存储 / 错误码）的 home。 |
-| [ui-handoff.md](ui-handoff.md) | 依据 | 移交给后端的那份 UI 契约：消费哪些字段、不消费哪些。 |
+| [ui-handoff.md](ui-handoff.md) | 活 | 界面的 home：处境 → 形态表、通道映射、来源标签规则、mock 覆盖。 |
 | [model-integration-assessment.md](model-integration-assessment.md) | 依据 | 与官方模型机制（凭据继承）的融合判定。 |
 | [backend-architecture-review.md](backend-architecture-review.md) | 依据 | 后端架构文档的逐条对照审查。 |
 | [recon-native-integration.md](recon-native-integration.md) | 记录 | 阶段 0 勘察：原生 slot / 组件 / token / 数据获取的实测结论。 |
 | [postmortem/](postmortem/README.md) | 记录 | 按日期归档的事故复盘：现象、根因、防错。 |
+
+**`ui-handoff.md` 由「依据」改归「活」**（本轮）：它写的是**当前**界面契约（处境表、通道映射、
+来源标签规则、mock 覆盖），而这些必须与代码一致。归「依据」＝不追改，那它就会在下一次改形态时
+静默变成假话 —— `account-unavailable` 的叉正是这么丢的：代码改了、跟着改的测试也改了，
+而这份文档没改，双方长期矛盾。它承担的正是「界面的 home」，所以按活文档维护：改界面就同批改它，
+并且 `test/client-situation.test.ts` 的分层表断言与它的 §四 表逐行对账（文档与代码对不上时机器会红）。
 
 ## 变更影响路由
 

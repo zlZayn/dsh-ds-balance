@@ -246,7 +246,7 @@ describe('GET /api/v1/balance', () => {
     expect(response.status).toBe(200)
     const json = await readJson(response)
     expect(json.state).toBe('error')
-    // 接进了官方却没抓到 → unavailable（叉），前端文案是「服务暂不可用」。
+    // 接进了官方却没抓到 → unavailable（叉），前端文案是「读不到余额」。
     expect(json.severity).toBe('unavailable')
     expect(json.error.retryable).toBe(true)
   })

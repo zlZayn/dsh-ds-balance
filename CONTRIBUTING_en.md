@@ -36,8 +36,9 @@ Open an issue describing the problem first; do not send a PR straight away.
 ## Before sending a PR
 
 - Run `npm run typecheck` and `npm test`; both must be green.
-- If you touched documentation, run the link check — the command is in the "常用命令"
-  section of [AGENTS.md](AGENTS.md).
+- You do not need a separate link check after touching documentation: **`npm test` fails when a
+  relative link points at a file that does not exist** (the "文档链接" redline in
+  `test/redlines.test.ts`).
 - Write the commit message as "what / why / how it was verified / how to roll back";
   one logical change per commit.
 - If you changed what the settings card renders, re-shoot the screenshots in the same batch,

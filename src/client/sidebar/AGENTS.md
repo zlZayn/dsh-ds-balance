@@ -26,13 +26,16 @@ sidebar/ 特有约束：
   - 注意：它的 `side` 只有 `'top'` 与 `'bottom'`，水平方向没有分支。
 - 金额一律按字符串处理，只用 `../model.ts` 的 `formatMoney` / `formatAmount`。
   - 禁止 `parseFloat` 后比较或累加；相等与累加都在后端。
-- **形态从处境派生，本目录不做形态判断**：环 / 中心符号 / 弧长 / 文案 / 要不要标来源，
-  一次 `presentationOf(situation, severity)` 全拿到（[../situation.ts](../situation.ts)）。
+- **形态从处境派生，本目录不做形态判断**：环 / 中心记号 / 文案一次
+  `presentationOf(situation, severity)` 全拿到（[../situation.ts](../situation.ts)）。
   组件里不得再出现 `state` / `severity` / `error.code` 的分支。
   - 唯一由 `severity` 决定的是**颜色**（`severity → dotStateOf → RingState → data-state → token`），
     且只对 `gauge` 族（有数字）有意义。
   - 弧长由 `../model.ts` 的 `ringRatioOf` 用 `total` 与 `warn` 阈值算，它是几何不是配色；
-    `presentation.arc === 'none'` 的处境不画弧。
+    `presentation.arc === 'none'` 的处境不画弧（`checking` 的转弧由 `PercentRing` 内部给，不走它）。
+  - **要不要标来源不在这张表里**：判据是「这一份数字真的在屏幕上吗」（组件里判 `shown !== null`）。
+    表按**处境**给值，而同一处境下「有没有数字」还会变（`account-unavailable` 上游可能给空列表），
+    所以它曾经的那个 `showSource` 开关被删掉了。
 - **中心记号两个取值几何同源**：`cross` 与 `plus` 共用 `PercentRing.tsx` 的 `MARK_ARM` 与
   同一条 `.marker` CSS 规则（外接框逐值相等、只差 45° 朝向）。
   - 别给记号分叉出第二个类或第二份半臂 —— 红线「叉与＋取自同一个常量」会红。
