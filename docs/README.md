@@ -25,7 +25,7 @@
 | [recon-native-integration.md](recon-native-integration.md) | 记录 | 阶段 0 勘察：原生 slot / 组件 / token / 数据获取的实测结论。 |
 | [postmortem/](postmortem/README.md) | 记录 | 按日期归档的事故复盘：现象、根因、防错。 |
 
-**`ui-handoff.md` 由「依据」改归「活」**（本轮）：它写的是**当前**界面契约（处境表、通道映射、
+**[ui-handoff.md](ui-handoff.md) 由「依据」改归「活」**（本轮）：它写的是**当前**界面契约（处境表、通道映射、
 来源标签规则、mock 覆盖），而这些必须与代码一致。归「依据」＝不追改，那它就会在下一次改形态时
 静默变成假话 —— `account-unavailable` 的叉正是这么丢的：代码改了、跟着改的测试也改了，
 而这份文档没改，双方长期矛盾。它承担的正是「界面的 home」，所以按活文档维护：改界面就同批改它，

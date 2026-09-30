@@ -229,14 +229,23 @@ describe('处境形态表', () => {
   })
 
   it('**整张分层表逐行对账**（处境 → 族 / 悬停 / 来源标签 / 生产者）', () => {
-    // 这张表同时写在 docs/ui-handoff.md 的 §四 里。把它钉成断言，是为了让**文档与代码
-    // 对不上时机器会红** —— 从前 `account-unavailable` 的叉就是这么丢的：
-    // 代码改了、跟着改的测试也改了（改成 null），而文档没改，两边就长期矛盾。
+    // 这张表是**处境层的口径总表**：族、悬停文案、来源标签、生产者四列。
+    // 各列的展开写在别处，这里只把它们对在一起：
+    // - 族 / 形态 → docs/ui-handoff.md §四（并由 test/render-matrix.test.ts 渲真组件守）；
+    // - **悬停文案** → 规则与"两态一致"由 test/hover-parity.test.ts 渲真组件守，
+    //   文案本体在 locales.ts 的 situation.*；
+    // - 来源标签 → docs/ui-handoff.md §二（闸门是 `shown !== null`）。
+    //
+    // 把它钉成断言，是为了让**文档与代码对不上时机器会红** —— 从前 `account-unavailable`
+    // 的叉就是这么丢的：代码改了、跟着改的测试也改了（改成 null），而文档没改，长期矛盾。
     //
     // 「来源标签」那一列的口径：闸门是组件里的 `shown !== null`（真有数字才标），
     // 所以这里记的是**这个处境有没有可能带着数字**：
     // gauge 族一定有（不变量保证）；`account-unavailable` 上游可能给也可能不给；
-    // 其余族按定义没有。`ok/low/critical` 的悬停列写「显示金额」——它们的 textKey 是 null。
+    // 其余族按定义没有。
+    // 「悬停」那一列：`ok/low/critical` 写「显示金额」——它们的 textKey 是 null，
+    // 正是**数字可信**的那三个；其余处境（含**有数字的** `stale` 与
+    // `account-unavailable`）都显文案。
     const TABLE: Readonly<Record<string, readonly [string, string, string, string]>> = {
       checking: ['pending', '正在获取', '不标', '客户端'],
       offline: ['unreadable', '读不到余额', '不标', '客户端'],

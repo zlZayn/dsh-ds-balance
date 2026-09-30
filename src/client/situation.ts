@@ -18,9 +18,9 @@
  * @module dsh-ds-balance/client/situation
  */
 
-import type { BalanceResponse, Severity } from './api-types.ts'
+import type { BalanceInfo, BalanceResponse, Severity } from './api-types.ts'
 import type { LocaleKey } from './locales.ts'
-import { dotStateOf, type DotState, type RingMarker } from './model.ts'
+import { dotStateOf, formatMoney, type DotState, type RingMarker } from './model.ts'
 
 /**
  * 处境闭集 —— 与宿主 `domain/situation.ts` **逐字同形**。
@@ -263,6 +263,42 @@ export function presentationOf(situation: Situation, severity: Severity): Presen
  */
 export function familyOf(situation: Situation): SituationFamily {
   return SHAPES[situation].family
+}
+
+/**
+ * 悬停文案 —— **收起态与展开态共用这一条**。
+ *
+ * 规则：**数字可信才显数字；这个处境有话说时，先说话**。
+ *
+ * 判据写成 `stateText ?? 金额`，而不是「有 `shown` 就显金额」，因为这两件事
+ * **不是一回事**：
+ * - `account-unavailable`（账户停用）上游**可能给余额行**（mock 的 `unavailable`
+ *   场景就带着一条 ¥0），`stale` 更是必然带着一份旧数字。它们都有 `shown`，
+ *   但那份数字**不可信或不可用** —— 显它反而误导（「我有 ¥0」/「我有 ¥110」）。
+ * - 环已经把问题画出来了（红叉 / 旧色），悬停该做的是**解释问题**，不是再报一个数字。
+ *
+ * 而「有没有文案」正好就是「数字可不可信」：`textKey` 只在 `ok` / `low` / `critical`
+ * 三个处境上是 `null` —— 那三个才是「没什么要说的，看数字就行」。
+ * 这不是巧合：文案表与形态表是同一份声明（见 `SHAPES`）。
+ *
+ * **为什么必须是同一个函数**：两态此前各算各的 —— 收起态用 `ringTitle`
+ * （只在有状态文案时才设），展开态用 `hoverLabel`（有数字就给数字）。于是有三种不一致：
+ * 1. 收起态**有数字时什么都不显示**：`ok` / `low` / `critical` 的 `stateText` 是 `null`，
+ *    于是 `ringTitle` 是 `undefined`，那个 `<svg>` 里连 `<title>` 都没有；
+ * 2. 收起态遇到 `stale`（有数字也有文案）显的是「数据已过期」，展开态却显旧金额 ——
+ *    两态**各说各的**；
+ * 3. 收起态还多一个「DeepSeek 余额状态 」前缀，同一个处境两态文字不同。
+ *
+ * 收敛到一个返回值之后，两态**不可能**再分叉 —— 这是结构保证，不是靠两处对齐。
+ * 交付通道仍分两条（收起态走 SVG 原生 `<title>`、展开态走官方 `Tooltip` 原语），
+ * 但那是「怎么显示」的差别，与「说什么」无关。
+ * @param shown - 实际展示的那条余额；`null` 表示没有数字。
+ * @param stateText - 处境的文案；`null` 表示这个处境没什么要说的（数字可信）。
+ * @returns 悬停要显示的那一句；`null` 表示两态都不挂悬停。
+ */
+export function hoverTextOf(shown: BalanceInfo | null, stateText: string | null): string | null {
+  if (stateText !== null) return stateText
+  return shown === null ? null : formatMoney(shown.total, shown.currency)
 }
 
 /** 是不是处境闭集里的取值。 */

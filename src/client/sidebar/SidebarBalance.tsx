@@ -40,7 +40,12 @@ import {
   sourceLabelKeyOf,
   type RingMarker,
 } from '../model.ts'
-import { presentationOf, situationOfResponse, type Presentation } from '../situation.ts'
+import {
+  hoverTextOf,
+  presentationOf,
+  situationOfResponse,
+  type Presentation,
+} from '../situation.ts'
 import { currentBalance, resolveScenario, subscribeScenario } from '../mock/index.ts'
 import { pendingView, requestBalance, requestRefresh, unreachableView } from '../data.ts'
 import { CONFIG_SLOT_WARNING, type ConfigSlotProbe, type ConfigSlotState } from '../config-slot.ts'
@@ -580,24 +585,25 @@ export function SidebarBalance({
   // 所以自动轮询带回来的新快照同样会把「多久之前」拨回「刚刚」。
   const ageMs = currentAgeMs(view.seenAt, view.seenAgeMs, now)
 
-  // 折叠态只有环、没有任何可见文字，用原生 title 补一条悬停提示。
+  // 悬停文案：**两态共用 `hoverTextOf` 算出来的这一份**。
+  // 规则：**数字可信才显数字；这个处境有话说时，先说话** ——
+  // 所以「收起态与展开态显示同样的东西」是**结构保证**：下面两个分支只是把它
+  // 交给不同的渲染通道，不再各算各的。
   //
-  // **原生 title 与展开态那条 Tooltip 的分工**（这条分工是本轮定下来的）：
-  // - **有没有数字**决定气泡说什么：有数字就显示那个数字，没有数字才显示状态文案。
-  //   数字比状态更具体，有数字时再叠一句状态是废话。
-  // - **来源（API Key / 账号登录）不进悬停**：它属于浮层标题那一行。
-  //   原生 title 的长度与换行都不受控，两句拼一起会长得离谱。
-  // - **rail 用原生 title、展开态用官方 Tooltip 原语**：rail 没有文字可看，
-  //   必须自带一条提示；展开态已经有可见标签，提示是锦上添花，交给原语是为了
-  //   底色跟着主题走（自绘黑底会跟主题脱节）。
-  const ringTitle =
-    !wide && stateText !== null ? `${t('sidebar.aria.ring')} ${stateText}` : undefined
-
-  // 悬浮气泡的内容：只放「Balance 那一条」的金额（浮层第一行同一份数据，同一个 formatMoney）。
-  // 没有金额时回落到状态文案 —— 不留一个空气泡；两者都没有就不挂 Tooltip。
-  // 状态文案是**唯一**解释「为什么是 --」的地方：浮层自己没有 error / situation 入参，
-  // 它只会把那三行金额画成 `--`，从不说明原因。
-  const hoverLabel = shown === null ? stateText : formatMoney(shown.total, shown.currency)
+  // 从前这里是两条路：`ringTitle`（只在有状态文案时才设）与 `hoverLabel`
+  // （有数字就给数字）。后果有两个：收起态在 `ok` / `low` / `critical` 上
+  // **什么都不显示**（`stateText` 是 `null` → `undefined` → 那个 `<svg>` 里连
+  // `<title>` 都没有），而 `stale` 上两态**各说各的**（收起态说「数据已过期」、
+  // 展开态报旧金额）。
+  //
+  // **交付通道仍是两条，这是有意的**：
+  // - rail（56px 轨道）**没有可见文字**，只能靠 SVG 原生 `<title>` 自带一条提示；
+  // - 展开态已经有可见标签，提示是锦上添花，交给官方 `Tooltip` 原语，
+  //   底色才能跟着主题走（自绘黑底会跟主题脱节）。
+  // 也就是说：**「说什么」只有一处，「怎么显示」才分两条。**
+  // 另外**来源（API Key / 账号登录）不进悬停**：它属于浮层标题那一行 ——
+  // 原生 title 的长度与换行都不受控，两句拼一起会长得离谱。
+  const hoverText = hoverTextOf(shown, stateText)
 
   // 刻意不写 aria-haspopup="dialog"：
   // 已装的 dsh-usage-statistics-panel 用 button[aria-haspopup="dialog"] 从它自己的
@@ -638,7 +644,9 @@ export function SidebarBalance({
           marker={ring.marker}
           ratio={ringRatio}
           size={18}
-          title={ringTitle}
+          // 收起态的交付通道：SVG 原生 `<title>`。内容与展开态那条 Tooltip **同源**
+          // （都来自上面的 `hoverText`），`null` 时连 `<title>` 都不渲染。
+          title={hoverText ?? undefined}
         />
       )}
     </button>
@@ -652,9 +660,10 @@ export function SidebarBalance({
           内层可见时会通知祖先把自己压掉，所以指针停在感叹号上只有一个气泡。
           浮层已经打开时整条压掉：面板里就有这份数据，再飘一个气泡是重复，
           而且点开浮层后指针通常还停在条目上，两个面会同时挂在视口里。
-          rail 不挂：那里已经有原生 title，再叠一层就成了两层提示。 */}
-      {wide && hoverLabel !== null ? (
-        <Tooltip label={hoverLabel} side="right" delayMs={500} disabled={open}>
+          **文案与收起态那条原生 title 同源**（`hoverText`），这里只换交付通道；
+          rail 不挂这层：那里已经有原生 title，再叠一层就成了两层提示。 */}
+      {wide && hoverText !== null ? (
+        <Tooltip label={hoverText} side="right" delayMs={500} disabled={open}>
           {trigger}
         </Tooltip>
       ) : (

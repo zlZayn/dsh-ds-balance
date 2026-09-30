@@ -51,7 +51,17 @@ That ring is "what is going on right now" — five shapes, each with a different
 | Grey, empty ring | Connected, the account simply has no balance | **Nothing** |
 | Red ring + a **×** in the middle | This number cannot be obtained | **Wait, investigate, or check the account** |
 
-**When there is no number, hovering is the only place that says why** — the ring alone cannot.
+**Hover it and it tells you what this spot means right now** (the same sentence whether you hover the
+56px rail ring or the expanded entry with its label):
+
+- **When the number is trustworthy** (normal / low / critical) — it shows the **amount**;
+- **otherwise** — it shows that situation's own line: "Loading", "Balance unavailable",
+  "Service error", "No credential configured", "Account unavailable", "Data is stale", "No balance".
+
+**A suspended account and stale data hold a number too, and still do not show it**:
+a suspended account or an expired snapshot reporting a figure only misleads ("I have ¥0" /
+"I have ¥110"). The ring already draws the problem (red cross / old colour); hovering explains it.
+
 The two kinds of "nothing to show" are told apart as well: **not connected** asks you to configure
 a credential; **connected but unreadable** says "Balance unavailable".
 It deliberately does **not** say "temporarily" — some causes clear up on their own, others need you
@@ -63,7 +73,7 @@ both mean "no usable number here", and both send you to investigate.
 
 | Surface | One line | Use it for |
 |---|---|---|
-| Sidebar ring | A status ring plus label at the bottom of the sidebar; **in the expanded state, hovering the entry reports the balance amount**, and **how full it is = how far the balance is from that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
+| Sidebar ring | A status ring plus label at the bottom of the sidebar; **hovering it (in either state) says what this spot means** — the amount when the number is trustworthy, otherwise the situation's own line; and **how full it is = how far the balance is from that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
 | Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown); **an icon at its top right opens this plugin's configuration page** (on a host that does not support it, it falls back to the Plugins list and its tooltip says so) | Checking the exact figures, and how many minutes old they are |
 | Settings card | Connection / Display / Thresholds / Refresh, **all collapsed by default**, expand a group from its header | Changing the endpoint, the currency, the warning lines, the cadence |
 
