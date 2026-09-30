@@ -28,38 +28,6 @@ export function dotStateOf(severity: Severity): DotState {
 /** 圆环中心可以画的符号。两者几何同源（同一个 `MARK_ARM`），只差朝向。 */
 export type RingMarker = 'cross' | 'plus'
 
-/** 一个 severity 对应的环形态。 */
-export interface RingSpec {
-  /** 弧的状态；决定弧色。 */
-  state: DotState
-  /** 中心符号；`null` 表示不画。 */
-  marker: RingMarker | null
-}
-
-/**
- * severity → 环形态。
- *
- * **颜色只有四个色相可用**：官方 token 里 `error-primary` 与 `error-secondary`
- * 在深色主题下同值，没有第五种颜色。所以两档「红」靠**形状**区分：
- *
- * - 颜色编码「数值严重度」：绿 → 琥珀 → 红。
- * - 形状编码「账户可用性」：`unavailable` 是账户维度的事实，与余额高低无关，
- *   它拿红弧再加一个中心叉号。色盲与低分辨率下依然能分开。
- *
- * `critical` 与 `unavailable` 都是红弧，这是有意的：**别再往回改成从红系里挑两个**。
- *
- * `plus`（没有接入凭据）**不由 severity 产生** —— 它不是「严重度」，而是「需要用户动手配置」，
- * 判据在处境层（`situation.ts`）。这里保留 `RingMarker` 的完整取值域，映射本体只出 `cross`。
- * @param severity - 后端给的严重度。
- * @returns 弧状态与中心符号。
- */
-export function ringSpecOf(severity: Severity): RingSpec {
-  return {
-    state: dotStateOf(severity),
-    marker: severity === 'unavailable' ? 'cross' : null,
-  }
-}
-
 /** 金额定点小数的小数位数，与宿主领域层同源（1e8）。 */
 const DECIMAL_SCALE = 100_000_000n
 

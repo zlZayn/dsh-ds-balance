@@ -10,9 +10,9 @@ import {
   formatAmount,
   formatMoney,
   ringRatioOf,
-  ringSpecOf,
   selectionOf,
 } from '../src/client/model.ts'
+import { presentationOf } from '../src/client/situation.ts'
 
 /** 造一个响应；只覆写关心的字段。 */
 function response(patch: Partial<BalanceResponse> = {}): BalanceResponse {
@@ -158,29 +158,32 @@ describe('currentAgeMs', () => {
   })
 })
 
-describe('ringSpecOf', () => {
-  it('颜色编码数值严重度：绿 → 琥珀 → 红', () => {
-    expect(ringSpecOf('ok').state).toBe('done')
-    expect(ringSpecOf('warn').state).toBe('warning')
-    expect(ringSpecOf('critical').state).toBe('error')
-  })
-
-  it('critical 与 unavailable 都是红弧，靠中心叉号区分', () => {
-    // 官方 token 里 error-primary 与 error-secondary 在深色主题下同值，
-    // 没有第五种色相可用，所以「账户不可用」用形状编码。
-    expect(ringSpecOf('critical').marker).toBeNull()
-    expect(ringSpecOf('unavailable').marker).toBe('cross')
-  })
-
-  it('只有 unavailable 画中心符号，其余四档都不画', () => {
-    for (const severity of ['ok', 'warn', 'critical', 'unknown'] as const) {
-      expect(ringSpecOf(severity).marker, severity).toBeNull()
+/**
+ * `ringSpecOf` 已随处境重构退役（形态改由 `client/situation.ts` 的形态表给，那里是全仓唯一的
+ * 「处境 → 环/记号/弧」入口）。它保留过一次死代码的教训：**重构后没有任何生产调用方，
+ * 却还有一整组测试在守着它** —— 那些断言全绿，守的是一个再也画不到屏幕上的映射。
+ * 所以现在守的是**不变量**（下面这组），不是某个中间函数。
+ */
+describe('形态不变量（跨处境，钉的是「屏幕上不可能出现的组合」）', () => {
+  it('**有数字那一族的颜色永远不是 idle**：色与弧都来自真实阈值', () => {
+    // 这条是「stopped + 空余额列表」那次缺陷的结构性防线：
+    // 只要处境说「有数字」，颜色就必须是绿/琥珀/红之一，绝不能是灰（灰 = 没信息）。
+    for (const situation of ['ok', 'low', 'critical', 'stale'] as const) {
+      for (const severity of ['ok', 'warn', 'critical'] as const) {
+        const p = presentationOf(situation, severity)
+        expect(p.ring, `${situation}/${severity}`).not.toBe('idle')
+      }
     }
-    expect(ringSpecOf('unavailable').marker).toBe('cross')
   })
 
-  it('unknown 保持灰弧且不画符号', () => {
-    expect(ringSpecOf('unknown')).toEqual({ state: 'idle', marker: null })
+  it('**`account-unavailable` 恒为红环**：它由 isAvailable=false 判定，与币种无关', () => {
+    // 上游对欠费账户可能给空的 balance_infos，那时 severity 曾经是 unknown → 灰环，
+    // 与「账户本来就没余额」同形。现在 severityOf 先判 isAvailable，颜色恒红。
+    for (const severity of ['ok', 'warn', 'critical', 'unavailable', 'unknown'] as const) {
+      const p = presentationOf('account-unavailable', severity)
+      expect(p.ring, severity).toBe('error')
+      expect(p.marker, severity).toBeNull()
+    }
   })
 })
 
@@ -228,8 +231,9 @@ describe('ringRatioOf', () => {
   it('余额为零时环为空，但颜色照样跟着 severity 走', () => {
     // 弧长与配色是两条独立的链：这一条只保证前者不干扰后者。
     expect(ringRatioOf('0.00000000', 5, 'critical')).toBe(0)
-    expect(ringSpecOf('critical').state).toBe('error')
-    expect(ringSpecOf('unknown').state).toBe('idle')
+    // 颜色链的入口现在是 dotStateOf（形态表内部用它）—— ringSpecOf 已退役。
+    expect(dotStateOf('critical')).toBe('error')
+    expect(dotStateOf('unknown')).toBe('idle')
   })
 
   it('金额比较走整数：恰好等于阈值的边界不会因浮点误差漏判', () => {

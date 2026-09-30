@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SITUATIONS, familyOf, presentationOf } from '../src/client/situation.ts'
+import { ringRatioOf } from '../src/client/model.ts'
 import { SITUATIONS as HOST_SITUATIONS } from '../src/domain/situation.ts'
 import { zh } from '../src/client/locales.ts'
 
@@ -27,19 +28,34 @@ describe('处境形态表', () => {
     }
   })
 
-  it('gauge 族：只有它按 severity 上色；**弧是另一件事，可以不给**', () => {
-    for (const situation of SITUATIONS) {
-      const presentation = presentationOf(situation, 'warn')
-      if (presentation.family === 'gauge') {
-        expect(presentation.ring, `${situation} 是 gauge 族，颜色应来自 severity`).toBe('warning')
-      } else {
-        // 非 gauge 族：颜色与弧都由处境定死。
-        expect(presentation.arc, `${situation} 不是 gauge 族，不该画弧`).toBe('none')
-      }
+  it('按 severity 上色的只有四个「看数字」的处境；**`account-unavailable` 不吃 severity**', () => {
+    // 颜色来自 severity 的处境的**白名单**：这几个才是「余额高低」的编码。
+    const severityColoured = SITUATIONS.filter((s) => {
+      const asWarn = presentationOf(s, 'warn').ring
+      const asOk = presentationOf(s, 'ok').ring
+      return asWarn !== asOk
+    })
+    expect(severityColoured.sort()).toEqual(['critical', 'low', 'ok', 'stale'])
+
+    // `account-unavailable` 定死红环：停用这个事实本身就决定红，与余额多少无关；
+    // 而上游对欠费账户可能给空的余额列表（severity 会是 unknown → 灰环），
+    // 那会把「停用」画成「没信息」—— 所以它是结构保证，不依赖另一处的判定顺序。
+    for (const severity of ['ok', 'warn', 'critical', 'unavailable', 'unknown'] as const) {
+      expect(presentationOf('account-unavailable', severity).ring, severity).toBe('error')
     }
-    // **有意不给弧的那一个**：账户被停用时余额不是「多少」而是「没有」，
-    // 按比例画会画出一条很长的红弧，读起来像「红=很多」，方向正好反了。
-    // 它的形状是「红环 + 无叉」，与「红环 + 叉」（读不到）仍分得开。
+
+    // 非 gauge 族：颜色与弧都由处境定死。
+    for (const situation of SITUATIONS) {
+      if (presentationOf(situation, 'ok').family === 'gauge') continue
+      expect(presentationOf(situation, 'warn').arc, `${situation} 不是 gauge 族，不该画弧`).toBe(
+        'none',
+      )
+    }
+  })
+
+  it('**两个 gauge 成员有意不画弧**：`account-unavailable` 与「余额恰好为 0」', () => {
+    // `account-unavailable`：余额不是「多少」而是「没有」，按比例画会出一条长红弧，
+    // 读起来像「红=很多」，方向正好反了。形状是「红环 + 无叉」，与「红环 + 叉」仍分得开。
     const gaugeWithoutArc = SITUATIONS.filter(
       (s) => familyOf(s) === 'gauge' && presentationOf(s, 'ok').arc === 'none',
     )
@@ -49,6 +65,9 @@ describe('处境形态表', () => {
       (s) => familyOf(s) === 'gauge' && presentationOf(s, 'ok').arc === 'gauge',
     )
     expect(gaugeWithArc.sort()).toEqual(['critical', 'low', 'ok', 'stale'])
+    // 而「余额刚好为 0」是**同形**的：`ringRatioOf` 对它也返回 0（不画弧）。
+    // 这两条不是 bug，是刻意的 —— 静止态都是「红环无叉」，靠浮层文案区分。
+    expect(ringRatioOf('0.00000000', 5, 'critical')).toBe(0)
   })
 
   it('**只有 no-credential 用 ＋**、**只有两种「读不到」用叉**（形状通道不许乱用）', () => {
@@ -59,19 +78,28 @@ describe('处境形态表', () => {
     expect(withCross.sort()).toEqual(['fetch-failed', 'internal-error', 'offline'])
   })
 
-  it('没数字就不标来源（括号只说「这份数字从哪来」）', () => {
+  it('**只有「有数字」那一族可能标来源**（判据是 `shown !== null`，不是表里的开关）', () => {
+    // 来源标签的闸门在组件里：`shown === null ? null : sourceLabelKeyOf(...)`。
+    // 所以这里钉的是它的**前置条件** —— 哪些处境**可能**有数字。
+    // 曾经表里有一个 `showSource` 开关，但它按**处境**给，
+    // 而 `account-unavailable`（账户停用）上游可能给空的余额列表，那时并没有数字，
+    // 按表标就会在一份空浮层里写「（API Key）」。改成由 `shown` 判之后，
+    // 这个开关就成了纯粹的错误来源 —— 已删除，闸门只有一个。
     for (const situation of SITUATIONS) {
-      const presentation = presentationOf(situation, 'ok')
-      if (!presentation.showSource) continue
-      // 标来源的处境必须都是「真的有数字」的那些。
-      expect(presentation.family, `${situation} 标了来源却不是 gauge 族`).toBe('gauge')
+      const possible = familyOf(situation) === 'gauge'
+      // 可能标来源 ⟺ 这一族可能有数字。其余三族按定义没有数字（宿主不会给 selected）。
+      expect(possible, `${situation} 的来源标签可能性`).toBe(
+        ['ok', 'low', 'critical', 'stale', 'account-unavailable'].includes(situation),
+      )
     }
-    // 反向：所有 gauge 族都该标（有数字就有来路）。
-    for (const situation of SITUATIONS) {
-      if (familyOf(situation) === 'gauge') {
-        expect(presentationOf(situation, 'ok').showSource, situation).toBe(true)
-      }
-    }
+  })
+
+  it('`account-unavailable` 与「有数字」解耦：有数字时标来源、没数字时不标', () => {
+    // 同一处境下两种形状都存在，所以它**不能**用一个静态开关表达 —— 这正是删掉 showSource 的理由。
+    const p = presentationOf('account-unavailable', 'unavailable')
+    expect(p.family).toBe('gauge')
+    // 它不吃 severity（颜色定死红），所以「有没有数字」只体现在组件那侧的 shown 上。
+    expect(p.ring).toBe('error')
   })
 
   it('**合并意图写死在这里**：同族关系是有意的，改了要红', () => {

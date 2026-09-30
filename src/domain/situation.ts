@@ -105,12 +105,20 @@ export interface SituationFacts {
 /**
  * 判定处境。**顺序即优先级**，第一个命中即返回。
  *
- * 两条刻意的优先级（都对旧写法做过修正）：
+ * 三条刻意的优先级（都对旧写法做过修正）：
  * 1. **没接入压过一切**：一条凭据都没有时，说「服务暂不可用」是误导 —— 用户没配过任何东西，
  *    该说的是「尚未配置凭据」。判据是 `NO_KEY` **且没有快照**（有快照说明曾经读到过，
  *    那就不是「没接入」，而是「这轮没读到」）。
  * 2. **账户停用压过「数据过期」**：`isAvailable: false` 是上游明确给的事实，比「数字旧了」
  *    更强的信号，且那种快照的余额通常是 0 —— 说「数据已过期」会把真问题藏起来。
+ * 3. **`stale` 的前提是「真的有一份旧数字」**（`hasSelected`）。快照在、但里面一个可展示的
+ *    币种都没有、这轮又没读到 —— 用户手里没有任何数字，说「数据已过期」是假话
+ *    （听着像「有旧数据可看」）。归 `fetch-failed`：读不到才是实话。
+ *
+ * **不变量（界面按它设计，测试钉着）**：
+ * - 返回 `stale` / `ok` / `low` / `critical` ⇒ **一定有可展示的币种**
+ *   （所以「有数字那一族」的颜色永远由真实阈值算出来，不会是 `unknown`）；
+ * - 返回 `account-unavailable` ⇒ `isAvailable` 一定是 `false`，颜色恒红。
  *
  * @param facts - 判定所需的六个事实。
  * @returns 闭集内的处境。
@@ -122,10 +130,12 @@ export function situationOf(facts: SituationFacts): Situation {
   }
   // ③ 账户维度的事实压过新鲜度：停用比「数字旧」更该说。
   if (!facts.isAvailable) return 'account-unavailable'
-  // ④ 有旧快照但本轮没读到；数字照常显示，文案说它旧。
+  // ④ 没有可展示的币种：分清「这轮没读到」与「账户本来就没有」。
+  //    前者说「读不到」才是实话 —— 用户手里一个数字都没有，没有「旧数据」可谈；
+  //    这也是「有数字那一族」颜色不会是 unknown 的结构保证（见上面不变量）。
+  if (!facts.hasSelected) return facts.stale ? 'fetch-failed' : 'empty-wallet'
+  // ⑤ 有旧快照、也有数字，但本轮没读到：数字照常显示，文案说它旧。
   if (facts.stale) return 'stale'
-  // ⑤ 连上了、账户可用，但没有可展示的币种。
-  if (!facts.hasSelected) return 'empty-wallet'
   // ⑥ 有数字，按阈值分档。`unavailable` / `unknown` 在上面已经被接走，
   //    真漏到这里说明判定链有洞 —— 归到最保守的「读不到」，不假装正常。
   if (facts.severity === 'unavailable' || facts.severity === 'unknown') return 'fetch-failed'

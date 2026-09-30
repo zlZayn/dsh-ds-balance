@@ -40,8 +40,14 @@ export function thresholdsFor(
 /**
  * 判定严重度。
  *
- * 顺序即优先级：**不可用压过阈值**；没有任何选定币种时为 `unknown`。
- * @param selected - 选定的币种余额；为 `null` 时返回 `unknown`。
+ * **顺序即优先级，且顺序本身是有意的**：
+ * 1. **账户停用压过一切**（`!isAvailable`）—— 它是账户维度的事实，与有没有选中币种无关。
+ *    欠费/停用的账户上游可能给**空的** `balance_infos`，那也会有 `selected === null`；
+ *    若先判 `selected === null` 就会返回 `unknown`，界面把「账户停用」画成灰环，
+ *    与「账户本来就没有余额」同形 —— 这条顺序就是为它定的。
+ * 2. 没有任何选定币种（且账户可用）→ `unknown`：真的一无所有，没有信息可表。
+ * 3. 其余按阈值分档，边界取等号。
+ * @param selected - 选定的币种余额；为 `null` 时若账户不可用仍返回 `unavailable`。
  * @param isAvailable - 上游 `is_available`。
  * @param thresholds - 该币种的阈值。
  * @returns 闭集内的严重度。
@@ -51,8 +57,9 @@ export function severityOf(
   isAvailable: boolean,
   thresholds: ThresholdPair,
 ): Severity {
-  if (selected === null) return 'unknown'
+  // 顺序不能换：见上面第 1 条（停用 + 空余额列表是一条真实路径）。
   if (!isAvailable) return 'unavailable'
+  if (selected === null) return 'unknown'
   if (cmpMoney(selected.total, thresholds.critical) <= 0) return 'critical'
   if (cmpMoney(selected.total, thresholds.warn) <= 0) return 'warn'
   return 'ok'

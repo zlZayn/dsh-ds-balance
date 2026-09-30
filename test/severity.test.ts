@@ -30,7 +30,13 @@ describe('severityOf', () => {
 
   it('没有选定币种时是 unknown', () => {
     expect(severityOf(null, true, thresholds)).toBe('unknown')
-    expect(severityOf(null, false, thresholds)).toBe('unknown')
+  })
+
+  it('**账户不可用压过「没有币种」**：停用 + 空余额列表是一条真实路径', () => {
+    // 欠费/停用的账户上游可能给空的 balance_infos —— 那时 selected 也是 null。
+    // 若先判 selected === null 就会返回 unknown，界面把「账户停用」画成灰环，
+    // 与「账户本来就没有余额」同形（真机上就是这么漏的）。
+    expect(severityOf(null, false, thresholds)).toBe('unavailable')
   })
 
   it('账户不可用压过阈值', () => {
@@ -57,5 +63,12 @@ describe('severityOf', () => {
       severityOf(null, true, thresholds),
     ])
     expect([...seen].sort()).toEqual(['critical', 'ok', 'unavailable', 'unknown', 'warn'])
+  })
+
+  it('`unavailable` 只由 isAvailable=false 产生，不会与「没有币种」互相顶替', () => {
+    // 两条判据各自独立：账户可用 + 没币种 = unknown；账户不可用 = unavailable（无论有没有币种）。
+    expect(severityOf(null, true, thresholds)).toBe('unknown')
+    expect(severityOf(null, false, thresholds)).toBe('unavailable')
+    expect(severityOf(balance('100'), false, thresholds)).toBe('unavailable')
   })
 })

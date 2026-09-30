@@ -83,8 +83,6 @@ export interface Presentation {
   arc: ArcSource
   /** 浮层 / 悬停的状态文案键；`null` 表示「一切正常，不必说」。 */
   textKey: LocaleKey | null
-  /** 浮层标题里要不要标来源。**只在真的有数字时标**。 */
-  showSource: boolean
 }
 
 /**
@@ -118,7 +116,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: null,
     arc: 'none',
     textKey: 'situation.checking',
-    showSource: false,
     severityColoured: false,
   },
   offline: {
@@ -127,8 +124,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: 'cross',
     arc: 'none',
     textKey: 'situation.unavailable',
-    // **不标来源**：这条路上没有任何数字，「哪来的」无从谈起。
-    showSource: false,
     severityColoured: false,
   },
   // —— 宿主判定 ——
@@ -138,7 +133,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: 'cross',
     arc: 'none',
     textKey: 'situation.internalError',
-    showSource: false,
     severityColoured: false,
   },
   'no-credential': {
@@ -147,7 +141,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: 'plus',
     arc: 'none',
     textKey: 'situation.noCredential',
-    showSource: false,
     severityColoured: false,
   },
   'fetch-failed': {
@@ -156,17 +149,19 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: 'cross',
     arc: 'none',
     textKey: 'situation.unavailable',
-    showSource: false,
     severityColoured: false,
   },
   'account-unavailable': {
     family: 'gauge',
+    // **颜色定死为红，不吃 severity。**
+    // 它是「账户停用」—— 这个事实本身就决定了红，与余额多少无关；
+    // 而上游对欠费账户可能给空的余额列表（selected=null → severity=unknown → 灰环），
+    // 那会把「停用」画成「没信息」。定死红环是**结构保证**，不依赖另一处的判定顺序。
     ring: 'error',
     marker: null,
     arc: 'none',
     textKey: 'situation.accountUnavailable',
-    showSource: true,
-    severityColoured: true,
+    severityColoured: false,
   },
   stale: {
     family: 'gauge',
@@ -174,7 +169,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: null,
     arc: 'gauge',
     textKey: 'situation.stale',
-    showSource: true,
     severityColoured: true,
   },
   'empty-wallet': {
@@ -183,7 +177,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: null,
     arc: 'none',
     textKey: 'situation.emptyWallet',
-    showSource: false,
     severityColoured: false,
   },
   ok: {
@@ -192,7 +185,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: null,
     arc: 'gauge',
     textKey: null,
-    showSource: true,
     severityColoured: true,
   },
   low: {
@@ -201,7 +193,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: null,
     arc: 'gauge',
     textKey: null,
-    showSource: true,
     severityColoured: true,
   },
   critical: {
@@ -210,7 +201,6 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     marker: null,
     arc: 'gauge',
     textKey: null,
-    showSource: true,
     severityColoured: true,
   },
 }

@@ -569,10 +569,14 @@ export function SidebarBalance({
   if (markerLabel !== null) ariaParts.push(markerLabel)
   const ariaLabel = ariaParts.join(' ')
   const cooldownSeconds = cooldownSecondsOf(cooldownUntil, now)
-  // 来源标签：**由处境决定，不再由 `state === 'empty'` 决定**。
-  // 它说的是「这份数字从哪来」，所以只在真的有数字时才有意义 ——
-  // 旧写法漏了「端点不可达」那条（没有任何数字却标了「（API Key）」）。
-  const sourceKey = presentation.showSource ? sourceLabelKeyOf(response.source) : null
+  // 来源标签：**判据是「这一份数字真的在屏幕上吗」**，不是一个写死在表里的开关。
+  // 它说的是「这份数字从哪来」，所以没有数字就没有「从哪来」。
+  //
+  // 为什么不用处境表里的 `showSource`：那张表是**按处境**给的，而同一个处境下
+  // 「有没有数字」还会变 —— `account-unavailable`（账户停用）上游可能给空的余额列表，
+  // 那时 `shown === null`，按表标就会在一份没有数字的浮层里写「（API Key）」。
+  // 用 `shown !== null` 判，这条路径自动正确，不需要为每个处境各想一遍。
+  const sourceKey = shown === null ? null : sourceLabelKeyOf(response.source)
   const sourceLabel = sourceKey === null ? null : t(sourceKey)
   // 年龄 = 收到那份响应时后端报的年龄 + 此后流逝的时间。基准随每次响应一起换，
   // 所以自动轮询带回来的新快照同样会把「多久之前」拨回「刚刚」。
