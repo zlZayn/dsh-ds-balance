@@ -9,9 +9,19 @@
     "sourceMap": false,
     "rootDir": ".",
     "allowImportingTsExtensions": true,
+    // 测试会**渲染真组件**（render-matrix.test.ts 直接 import PercentRing.tsx），
+    // 所以这个 project 必须能编译 JSX 并认得 DOM 类型。
+    // `exclude` 里的 `src/client` 只是不把它当根文件扫，测试 import 到它时照样进程序 ——
+    // 那样一来缺 jsx 就会报 TS6142，「渲染真组件」这类断言根本进不了类型检查。
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
   "include": ["*.config.ts", "src/**/*", "test/**/*"],
+  // `src/client/**` 只被排除在**根文件**之外（它的编译入口是 tsconfig.client.json）——
+  // 测试 import 到它时它照样进程序，所以 `css-modules.d.ts` 那份声明必须显式带上，
+  // 否则 `.module.css` 的 import 报 TS2307。
+  "files": ["src/client/css-modules.d.ts"],
   // artifacts.test.ts 走产物级断言：它 import 的 ../lib/index.js 由 `npm run build` 生成。
   // 类型检查不构建，所以它不属于本项目 —— 留在里面会让「干净检出上跑 typecheck」必失败。
   // 它仍由 `npm test`（自带 build）的 vitest 执行；产物缺失时是失败而不是跳过。

@@ -176,13 +176,14 @@ describe('形态不变量（跨处境，钉的是「屏幕上不可能出现的�
     }
   })
 
-  it('**`account-unavailable` 恒为红环**：它由 isAvailable=false 判定，与币种无关', () => {
+  it('**`account-unavailable` 恒为「红环 + 叉」**：它由 isAvailable=false 判定，与币种无关', () => {
     // 上游对欠费账户可能给空的 balance_infos，那时 severity 曾经是 unknown → 灰环，
     // 与「账户本来就没余额」同形。现在 severityOf 先判 isAvailable，颜色恒红。
+    // 叉则是它与「余额恰好为 0」分开的唯一通道（两者其余通道逐值相同）。
     for (const severity of ['ok', 'warn', 'critical', 'unavailable', 'unknown'] as const) {
       const p = presentationOf('account-unavailable', severity)
       expect(p.ring, severity).toBe('error')
-      expect(p.marker, severity).toBeNull()
+      expect(p.marker, severity).toBe('cross')
     }
   })
 })

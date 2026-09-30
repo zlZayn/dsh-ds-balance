@@ -12,7 +12,8 @@
 }
 
 /* state → 颜色，逐条对齐原生 StateDot 的 data-state 映射。
-   本插件用不到 ongoing，因此不提供；四档覆盖 RingState 的全部取值。 */
+   五档覆盖 RingState 的全部取值（ongoing 是「进行中」，颜色照官方取 label-tertiary，
+   与 .ring 的基色同源 —— 所以它不需要单独一条规则，见下）。 */
 .ring[data-state='done'] {
   color: var(--dsw-alias-state-success-primary);
 }
@@ -55,4 +56,32 @@
   stroke: currentColor;
   stroke-width: 1;
   stroke-linecap: round;
+}
+
+/* 进行中：那条不完整的弧绕圆心转。
+   照官方 StateDot 的 `ongoing`（`.spinnerMotion` 的 `dsh-state-dot-spin`）：
+   1.5s linear infinite、`transform-origin: center`。官方那条还叠了一个 1.5s 的
+   呼吸（dasharray 在 12↔24 之间变），本插件只取旋转 —— 呼吸会让弧长跳动，
+   而这一格已经在用弧长表达「余额占阈值的几分之几」，两者混在一起会读错。
+
+   `transform-origin: center` 用的是 SVG 的**用户单位**（不是 `transform-box` 那套），
+   圆心即 8 8 —— 与组件里 CENTER 同值。 */
+.spin {
+  transform-origin: center;
+  animation: dsb-ring-spin 1.5s linear infinite;
+}
+
+@keyframes dsb-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 减动效：**停掉旋转，但保留那条静态弧**（官方同款处理 —— 它的 reduce 分支也是
+   `animation: none` 再把 dasharray 挪到一个固定位置）。绝不能连弧一起隐藏：
+   那样「加载中」就退回成灰空圈，与「账户没钱」重新撞在一起 —— 折了无障碍反而丢了信息。 */
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
 }

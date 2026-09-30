@@ -13,5 +13,13 @@ export default defineConfig({
     // 其余排除项取官方默认值 —— 手抄一份清单，官方加一项我们就漏一项。
     exclude: [...configDefaults.exclude, 'test/contract-live-*.test.ts'],
     environment: 'node',
+    // **不要**为了渲染 ui-primitives 的组件（Tooltip / StateDot）而加
+    // `server.deps.inline`：那会把它的整棵依赖树拖进 vite 处理，
+    // 它自己的传递依赖（`@deepseek-ai/dsh-util-workspace-path` 等）并没有随包发全，
+    // 于是报「Failed to load url ... Does the file exist?」—— 从「渲不出来」
+    // 变成「测试根本起不来」，更糟。
+    // 现在能渲的只有不引 ui-primitives 的组件（如 PercentRing）；这已经够用来
+    // 钉「处境 → 环」的形态不变量（render-matrix.test.ts）。要渲浮层得等
+    // 测试环境具备解决上游 CSS/依赖的能力，不该在本轮顺手塞一个半成品。
   },
 })

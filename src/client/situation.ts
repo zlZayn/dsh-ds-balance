@@ -8,10 +8,13 @@
  *
  * **分层是刻意的**（细节见 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)）：
  * - **处境**（内部，11 个取值）：诊断要细，日志与指标都用它；
- * - **视觉族**（收起态，4 个）：视觉要粗 —— 收起态只有一个圆环，塞不下 11 种区别；
+ * - **视觉族**（收起态，5 个）：视觉要粗 —— 收起态只有一个圆环，塞不下 11 种区别；
  * - **通道值**（色 / 弧 / 符号）：组件只认这一层。
  *
- * **每一处合并都是有意的**（见 `FAMILY` 的注释），不是默认掉进去的。
+ * **每一处合并都是有意的**（见 `SHAPES` 的注释），不是默认掉进去的。
+ * 反向也成立：**每一处拆分都是为了消掉一次同形** —— 同形的两组在屏幕上没法区分，
+ * 而它们要用户做的事往往不同。这条不变量由 `test/render-matrix.test.ts` 按
+ * **真组件的渲染结果**钉住（不是读这张表）。
  * @module dsh-ds-balance/client/situation
  */
 
@@ -53,20 +56,33 @@ export const SITUATIONS = [
 ] as const satisfies readonly Situation[]
 
 /**
- * 收起态的视觉族。
+ * 收起态的视觉族 = **圆环能表达的几种形态**。
  *
- * **收起态真正动态的只有圆环本身**（括号在浮层里，不在那一格），
- * 所以族的粒度就是「那一个圆环能表达几种用户处境」：
- * - `gauge`：有数字 —— 看数字（ok / low / critical / stale / 账户停用）；
- * - `unreadable`：我们试过了、没读到 —— 等（端点不通 / 抓取失败 / 内部错误）；
- * - `needs-credential`：没接入，需要**用户去配置**（唯一需要动手的一族）；
- * - `no-reading`：还没有数字，也没什么可做 —— 等（首帧 / 账户没有任何余额）。
+ * 五族与「屏幕上看得见的东西」一一对应，**没有两族同形**（`test/render-matrix.test.ts`
+ * 按真组件的渲染结果钉住这条）：
+ * - `gauge`：有数字，颜色是余额高低的编码 —— 看数字（ok / low / critical / stale）；
+ * - `unreadable`：读不到，或读到了但用不了 —— 红环 + 叉。等 / 检查 / 去查账户
+ *   （端点不通 / 抓取失败 / 我们坏了 / 账户停用）；
+ * - `needs-credential`：没接入，需要**用户去配置** —— 灰环 + ＋（唯一需要动手的一族）；
+ * - `pending`：正在取，还没有答案 —— 灰环 + 一条不完整的转弧（首帧）；
+ * - `empty`：连上了、账户可用，就是没有余额 —— 灰空环，无需动作。
  *
- * **`unreadable` 与 `no-reading` 不合并**：合并只能二选一 ——
+ * **为什么 `checking` 与 `empty-wallet` 拆成两族**：两者都是灰环，曾经同族 ——
+ * 于是「加载中」与「账户没钱」在屏幕上**逐像素相同**，而用户要做的事完全不同
+ * （等 vs 什么都不用做）。转弧把「还在动」画出来，两者才分得开。
+ *
+ * **为什么 `account-unavailable` 归 `unreadable`**：它和另外三个一样，都是
+ * 「这个数字现在拿不到 / 不可信」，用户要做的也是去查（账户 / 网络 / 我们）。
+ * 它曾经挂在 `gauge` 的红端，靠「红环无叉」与「余额告急」区分 —— 但那区分**不成立**：
+ * 余额恰好为 0 的 `critical` 同样是红环、无叉、无弧，两者逐像素相同。
+ * 加叉之后与 `critical` 分开了；叉的语义扩成「读不到**或用不了**」，同属
+ * 「否定：这里没有可用的数字」。
+ *
+ * **`unreadable` 与 `pending` 不合并**：合并只能二选一 ——
  * 全红会让每次加载都闪一下叉（冤枉），全灰会让真失败看起来像「没事」。
  * 两者的颜色差就是「试过且失败」与「还没有答案」的分界，值得留。
  */
-export type SituationFamily = 'gauge' | 'unreadable' | 'needs-credential' | 'no-reading'
+export type SituationFamily = 'gauge' | 'unreadable' | 'needs-credential' | 'pending' | 'empty'
 
 /** 弧长来源：按余额比例画，还是不画。 */
 export type ArcSource = 'gauge' | 'none'
@@ -100,19 +116,19 @@ interface SituationShape extends Presentation {
  * 形态表。**漏一个处境编译不过** —— `Record<Situation, …>` 就是完备性检查。
  *
  * 合并意图逐条写在这里（改之前先读）：
- * - `checking` 与 `empty-wallet` 同族：用户动作相同（都无需动手），且 `checking` 只有一个往返；
- *   代价是端点挂住的那一小段看起来像「账户空」，靠悬停与浮层分辨。
- * - `offline` / `fetch-failed` / `internal-error` 同族：动作相同（等）；
- *   三者的差别是诊断面（谁坏了），不是用户面。`internal-error` 在**枚举里保持独立**
+ * - `offline` / `fetch-failed` / `internal-error` / `account-unavailable` 同族：动作相同（等 / 检查）；
+ *   四者的差别是诊断面（谁坏了），不是用户面。`internal-error` 在**枚举里保持独立**
  *   （日志、指标、文案要区分「我们坏了」与「上游坏了」），只是视觉上并入。
+ *   `account-unavailable` 并入的是**形状**（叉 = 这里没有可用的数字），颜色也同为红。
  * - `stale` 归 `gauge`：数字是真的，只是旧；新鲜度不改变用户动作，年龄在浮层里说。
- * - `account-unavailable` 归 `gauge` 的红端：与「余额告急」同指向（查看 / 充值）。
+ * - `checking` 自成一族：它是唯一「正在动」的形态（转弧），用户动作是等。
+ * - `empty-wallet` 自成一族：灰空环 —— 唯一一个「什么都不用做」的形态。
  */
 const SHAPES: Readonly<Record<Situation, SituationShape>> = {
   // —— 客户端本地事实（宿主不可能知道这两件事）——
   checking: {
-    family: 'no-reading',
-    ring: 'idle',
+    family: 'pending',
+    ring: 'ongoing',
     marker: null,
     arc: 'none',
     textKey: 'situation.checking',
@@ -152,13 +168,17 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     severityColoured: false,
   },
   'account-unavailable': {
-    family: 'gauge',
+    family: 'unreadable',
     // **颜色定死为红，不吃 severity。**
     // 它是「账户停用」—— 这个事实本身就决定了红，与余额多少无关；
     // 而上游对欠费账户可能给空的余额列表（selected=null → severity=unknown → 灰环），
     // 那会把「停用」画成「没信息」。定死红环是**结构保证**，不依赖另一处的判定顺序。
     ring: 'error',
-    marker: null,
+    // **叉：与「余额告急」分开的唯一办法。**
+    // 从前它靠「红环无叉」与 critical 区分，但余额恰好为 0 的 critical 也是红环无叉无弧 ——
+    // 两者在屏幕上逐像素相同（见 test/render-matrix.test.ts 的「两枚红环」一组）。
+    // 叉的语义从「读不到」扩到「读不到**或用不了**」：两者同属「这里没有可用的数字」。
+    marker: 'cross',
     arc: 'none',
     textKey: 'situation.accountUnavailable',
     severityColoured: false,
@@ -172,7 +192,7 @@ const SHAPES: Readonly<Record<Situation, SituationShape>> = {
     severityColoured: true,
   },
   'empty-wallet': {
-    family: 'no-reading',
+    family: 'empty',
     ring: 'idle',
     marker: null,
     arc: 'none',
@@ -220,7 +240,27 @@ export function presentationOf(situation: Situation, severity: Severity): Presen
   return { ...shape, ring: dotStateOf(severity) }
 }
 
-/** 一个处境的视觉族。 */
+/**
+ * 一个处境的视觉族。
+ *
+ * **它没有生产消费方**（`grep family src/` 只剩声明与这里）—— 这是有意的，不是遗漏：
+ * 组件只需要 `ring` / `marker` / `arc` 那三个通道值，多知道一层「族」就是多耦合一层。
+ *
+ * **但它不是死代码**，和退役的 `ringSpecOf` 有本质区别（那条教训见
+ * [test/model.test.ts](../../../test/model.test.ts) 的「形态不变量」）：
+ * - `ringSpecOf` 是个**映射函数**，输出没有任何消费方，测试断言的又是它自己的映射 ——
+ *   那些断言**自我满足**，守着一个再也画不到屏幕上的东西；
+ * - `family` 是一条**独立的声明**：「我宣称这些处境在屏幕上应当同形」。它被
+ *   [test/render-matrix.test.ts](../../../test/render-matrix.test.ts) 当作**假设**，
+ *   拿去和**真组件的渲染结果**（另一份独立观测）对账 —— 假设与证据来自两处，
+ *   对不上才红。删掉它，那条不变量就失去「应该」这一侧，只剩「实际」。
+ *
+ * 数学上也确实推不出来：`(ring, marker, arc)` 这组通道值**定不了族** ——
+ * `error|cross|none` 收了 unreadable 四个，而 gauge 四个处境分散在三种通道值上
+ * （颜色与弧长本身就是它们的读数）。所以族是一层额外的、必须显式声明的信息。
+ * @param situation - 处境。
+ * @returns 视觉族。
+ */
 export function familyOf(situation: Situation): SituationFamily {
   return SHAPES[situation].family
 }
@@ -238,8 +278,13 @@ export function isSituation(value: unknown): value is Situation {
  * 所以「新客户端 + 旧宿主」是**合法的中间态**，那时响应里没有 `situation`，
  * 只能照旧字段推。这条路径是**兼容层**，新宿主上了就走不到。
  *
- * 判据尽量对齐宿主 `situationOf` 的优先级；推不出来的边角（例如 `internal-error`
- * 与 `account-unavailable` 在旧契约里没有各自的信号）退到最接近的那个处境。
+ * **优先级必须与宿主 `situationOf` 逐条对齐**，包括那三条修正。这里曾经漏搬了第三条：
+ * `state === 'stale'` 判在 `selected === null` **之前**，于是「快照在、里面没有可展示币种、
+ * 这轮又没读到」会被推成 `stale` —— 用户手里一个数字都没有，界面上却说「数据已过期」。
+ * 兼容层走的是同一条渲染路径，所以那边的缺陷在这边同样成立，修一条不算修完。
+ *
+ * 推不出来的边角（`internal-error` 与 `account-unavailable` 在旧契约里没有各自的信号）
+ * 退到最接近的那个处境。
  * @param response - 后端响应。
  * @returns 处境。
  */
@@ -253,8 +298,11 @@ export function legacySituationOf(response: BalanceResponse): Situation {
     return response.state === 'empty' && code === undefined ? 'checking' : 'fetch-failed'
   }
   if (!response.isAvailable) return 'account-unavailable'
+  // **`stale` 的前提是「真的有一份旧数字」**，与宿主那条同理：
+  // 没有可展示的币种时，说「数据已过期」是假话（听着像「有旧数据可看」），归 `fetch-failed`。
+  if (response.selected === null)
+    return response.state === 'stale' ? 'fetch-failed' : 'empty-wallet'
   if (response.state === 'stale') return 'stale'
-  if (response.selected === null) return 'empty-wallet'
   if (response.severity === 'critical') return 'critical'
   if (response.severity === 'warn') return 'low'
   if (response.severity === 'unavailable' || response.severity === 'unknown') return 'fetch-failed'

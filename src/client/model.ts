@@ -6,7 +6,12 @@
 
 import type { BalanceInfo, BalanceResponse, Severity } from './api-types.ts'
 
-/** StateDot 的五个状态（原生原语取值）。 */
+/**
+ * StateDot 的五个状态（原生原语取值）。
+ *
+ * **这是圆环状态的真源**：`PercentRing` 的 `RingState` 就是它（类型别名，不是另抄一份）——
+ * 抄一份的代价是两处各自增删取值都能编译通过，而 CSS 的 `data-state` 规则只认其中一个。
+ */
 export type DotState = 'done' | 'warning' | 'ongoing' | 'error' | 'idle'
 
 /** severity → StateDot 状态。见 .agents/notes 的映射决策。 */

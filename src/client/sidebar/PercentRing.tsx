@@ -20,7 +20,7 @@
  * @module dsh-ds-balance/client/sidebar/PercentRing
  */
 
-import type { RingMarker } from '../model.ts'
+import type { DotState, RingMarker } from '../model.ts'
 import css from './PercentRing.module.css'
 
 /** viewBox 边长，与官方 `Icon*Artwork` 的网格一致。 */
@@ -88,8 +88,29 @@ function round3(value: number): number {
   return Math.round(value * 1000) / 1000
 }
 
-/** 圆环能表达的状态；取值域与原生 StateDot 对齐，本插件用不到 ongoing。 */
-export type RingState = 'done' | 'warning' | 'error' | 'idle'
+/**
+ * 转弧的长度（占圆周的比例）：**照官方 StateDot 的 `ongoing`**。
+ *
+ * 官方那条弧的 `stroke-dasharray: 12 150`，配 `r = 9.5`（周长 2π×9.5 ≈ 59.69）——
+ * 弧长占圆周 12 / 59.69 ≈ 0.2010。本组件半径不同（6.5，周长 40.84），
+ * 但**取同一个比例**，这样两者在各自网格里看起来一样长。
+ *
+ * 比例写在这里而不是写一个「我们自己算出来的弧长」：官方改刻度时这里能跟着对齐，
+ * 红线会去核官方那份 CSS 的实际数值。
+ */
+const SPIN_ARC_RATIO = 12 / (2 * Math.PI * 9.5)
+
+/** 转弧的 dasharray：弧长 + 整周长（gap 取周长 ⇒ 只画一条弧）。 */
+const SPIN_ARC = round3(CIRCUMFERENCE * SPIN_ARC_RATIO)
+
+/**
+ * 圆环能表达的状态。
+ *
+ * **是 `DotState` 的别名，不是另抄一份**：抄一份的代价是两处各自增删取值都能编译通过，
+ * 而 CSS 的 `data-state` 规则只认其中一个 —— 那时会出现「组件传了一个没有对应规则的值」，
+ * 颜色静默回落到基色。取值域与原生 StateDot 的 `data-state` 逐值对齐（含 `ongoing`）。
+ */
+export type RingState = DotState
 
 /** 圆环属性。 */
 export interface PercentRingProps {
@@ -130,11 +151,29 @@ export function PercentRing({
     >
       {/* <title> 是 SVG 的原生悬停提示；aria-hidden 只影响无障碍树，不影响它。 */}
       {title === undefined ? null : <title>{title}</title>}
+      {/* 轨道永远画、且**永不参与动画**：它是「这一格有个环」的底，
+          转起来的是上面那条弧（见下）。 */}
       <circle className={css.track} cx={CENTER} cy={CENTER} r={RADIUS} />
-      {/* dash 取弧长、gap 取整周长，于是只画出一条弧；rotate 让接缝落在 12 点而不是 3 点
-          （中心跟着 VIEW 走，16 格时是 rotate(-90 8 8)）。
-          比例为 0 时整条弧不画：dash 长度为 0 配上圆头线帽会在 12 点留下一个点。 */}
-      {clamped === 0 ? null : (
+      {/* 进行中：一条**不完整**的弧绕圆心转。
+          为什么必须不完整：圆是对称的，整圈转等于没转 —— 只有缺口在动才看得出来。
+          rotate(-90) 只定相位（接缝落在 12 点，与其余弧同源），转的是外层 <g>；
+          两者分属不同元素，所以减动效停掉 <g> 的动画时，这条弧仍停在 12 点。
+          弧共用 `css.fill`（同色、同宽、同圆头），只多一层旋转 —— 不新增 stroke-width。 */}
+      {state === 'ongoing' ? (
+        <g className={css.spin}>
+          <circle
+            className={css.fill}
+            cx={CENTER}
+            cy={CENTER}
+            r={RADIUS}
+            strokeDasharray={`${SPIN_ARC} ${round3(CIRCUMFERENCE)}`}
+            transform={`rotate(-90 ${CENTER} ${CENTER})`}
+          />
+        </g>
+      ) : /* dash 取弧长、gap 取整周长，于是只画出一条弧；rotate 让接缝落在 12 点而不是 3 点
+             （中心跟着 VIEW 走，16 格时是 rotate(-90 8 8)）。
+             比例为 0 时整条弧不画：dash 长度为 0 配上圆头线帽会在 12 点留下一个点。 */
+      clamped === 0 ? null : (
         <circle
           className={css.fill}
           cx={CENTER}
