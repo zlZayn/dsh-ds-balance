@@ -29,7 +29,7 @@
 ---
 
 > [!NOTE]
-> **The balance is read from the official `GET /user/balance`** — not estimated. The credential is resolved only through DSH's credential channel: the API key never lands in a settings file and is never returned to the UI.
+> **The balance is read from the official DeepSeek API** — not estimated. The credential is resolved only through DSH's credential channel: the API key never lands in a settings file and is never returned to the UI.
 
 The balance needs somewhere to live that does not take up room. A permanent status ring at the bottom of the sidebar; click it for the three amounts and the freshness of the data. Anything you want to configure lives on the plugin's details page under **Plugins → Installed**.
 
@@ -39,12 +39,32 @@ The balance needs somewhere to live that does not take up room. A permanent stat
   <em>A permanent fixture at the <strong>bottom of the sidebar</strong>, alongside Usage statistics and Settings; click it for the balance, the granted / topped-up split, and how fresh the data is.</em>
 </p>
 
+## The ring at a glance
+
+That ring is "what is going on right now" — five shapes, each with a different thing for you to do:
+
+| What you see | Meaning | What you do |
+|---|---|---|
+| Coloured ring + an arc | There is a balance; the colour is how much | **Read the number** |
+| Grey ring + a gap rotating | Fetching; no answer yet | **Wait** |
+| Grey ring + a **+** in the middle | Nothing connected | **Configure** (an API key, or sign in) |
+| Grey, empty ring | Connected, the account simply has no balance | **Nothing** |
+| Red ring + a **×** in the middle | This number cannot be obtained | **Wait, investigate, or check the account** |
+
+**When there is no number, hovering is the only place that says why** — the ring alone cannot.
+The two kinds of "nothing to show" are told apart as well: **not connected** asks you to configure
+a credential; **connected but unreadable** says "Balance unavailable".
+It deliberately does **not** say "temporarily" — some causes clear up on their own, others need you
+to fix a credential, and "temporarily" would send the second group away to wait for nothing.
+The **×** covers both "could not read it" and "read it, but this account cannot be used" —
+both mean "no usable number here", and both send you to investigate.
+
 ## Surface at a glance
 
 | Surface | One line | Use it for |
 |---|---|---|
 | Sidebar ring | A status ring plus label at the bottom of the sidebar; **in the expanded state, hovering the entry reports the balance amount**, and **how full it is = how far the balance is from that currency's warning line** | Seeing at a glance how much is left and how close it is to the warning line |
-| Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown); **an icon at its top right opens this plugin's configuration page** (on a host without that cross-plugin deep link it falls back to the Plugins list, and its tooltip says so) | Checking the exact figures, and how many minutes old they are |
+| Balance popover | Click the entry: total, granted / topped-up split, data freshness, manual refresh (with cooldown); **an icon at its top right opens this plugin's configuration page** (on a host that does not support it, it falls back to the Plugins list and its tooltip says so) | Checking the exact figures, and how many minutes old they are |
 | Settings card | Connection / Display / Thresholds / Refresh, **all collapsed by default**, expand a group from its header | Changing the endpoint, the currency, the warning lines, the cadence |
 
 The division of labour is fixed: **the ring answers "roughly how much is left", the popover answers "exactly how much", and the card answers "how is that computed".**
@@ -73,8 +93,8 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
 
 ### Requirements
 
-- **DSH**: the range is whatever [package.json](package.json) declares under `engines.dsh` and `peerDependencies`; this plugin follows the alpha line the host is on.
-- Node `>= 20` (same source of truth: `engines.node`).
+- **DSH**: the range is whatever [package.json](package.json) declares; this plugin follows the alpha line the host is on.
+- **Node**: `>= 20` (declared in the same place).
 
 Install the host by **naming the version line explicitly**: the `latest` tag of `@deepseek-ai/dsh` is older than the line this plugin requires — a default install lands outside the declared range.
 
@@ -113,10 +133,19 @@ The repository carries the GitHub topic [`dsh-plugin`](https://github.com/topics
 
 ## Version compatibility
 
-- The configuration UI registers into the Host's `plugins.bundle.config` slot, **keyed literally by the package name**: one bundle, one configuration, rendered on that bundle's own details page. **That landing spot travelled once** (bundle slot → row slot → bundle slot) and neither move was about Host versions — it is a UX choice: the row slot costs one extra Configure click, while the bundle slot's owner props **never carry a `form`** — the card fetches it itself through `ctx.configForms.get(<the Loader entry id of this plugin's row>)`. The floor's single source is `engines.dsh` in [package.json](package.json); check the current lines with `node scripts/compat-swap.mjs check`.
-- The floor moved **because the settings seam changed, not because of the slot**: the client-side scope service was removed, the Host-side `settings.register` was removed, and both halves moved to the new `configForms` service and volatile config references — **without those two the whole client half never renders** (the ring and the popover go with it). The plugin never reads a Host version: it watches whether `ctx.inject(['configForms'])` calls back within its window (**never the slot name** — both candidate slots are present on earlier Hosts too, and a slot being there says nothing about getting a form). When it never does, **the popover carries one extra English `[WARN]` line** saying why the configuration page is unavailable and where to upgrade.
-- To get the configuration page, upgrade the Host to the version `engines.dsh` declares or higher: `npm install -g @deepseek-ai/dsh@alpha`.
-- The declaration is **narrow**: the floor is the version we actually tested, written as `>=` with **no ceiling** — it claims neither "everything in the future counts" nor anything earlier. Why it is written that way is in [Compatibility](docs/PUBLISHING.md#兼容性).
+- **Which Host version is required**: whatever [package.json](package.json) declares; this plugin follows the alpha line the host is on.
+  To get the configuration page, upgrade the Host to that version or higher: `npm install -g @deepseek-ai/dsh@alpha`.
+- **The declaration is narrow**: the floor is the version we actually tested, written as `>=` with **no ceiling** —
+  it claims neither "everything in the future counts" nor anything earlier. Why it is written that way is in [Compatibility](docs/PUBLISHING.md#兼容性).
+- **Why the floor moved**: not a change of where the UI lives, but a change of the **settings seam**
+  (without the two things this plugin relies on, the whole client half never renders — the ring and the popover go with it).
+  The plugin never reads a Host version; it **probes that capability live**, and when it is absent the popover carries
+  one extra English line saying why the configuration page is unavailable and where to upgrade.
+  Technical detail: see [Architecture](docs/ARCHITECTURE.md).
+- **Compatibility is not inferred**: a weekly [compat.yml](.github/workflows/compat.yml) run swaps packages on both the
+  `alpha` and `next` lines and re-runs the existing tests, plus a separate check that the declared range still covers the
+  tracked line; a failure opens or updates a tracking issue with a fixed title. Current conclusions and what to do when
+  it goes red: see [Compatibility](docs/PUBLISHING.md#兼容性).
 
 ## Configuration
 
@@ -131,9 +160,8 @@ Open **Plugins → Installed** and step into the **DeepSeek Balance** (shown as 
 - **Connection**: the API base URL and the credential, both blank by default — a blank URL means the official DeepSeek endpoint, and the credential is inherited from the official model page and is read-only.
   The nested "Customised settings" holds only the credential reference name.
 - **Display**: which currency to use for amounts, or let it follow the account.
-- **Thresholds**: two alert lines per currency (warning / critical). **Within one currency the critical line must be strictly lower than the warning line** — equality is rejected too.
-  `POST /api/v1/config` enforces the same rule and answers `422` otherwise;
-  but a hand-edited config file with an illegal pair **no longer errors** — the Host side stopped enforcing it, so the plugin **falls that pair back to its defaults** the moment it reads it, and logs one line.
+- **Thresholds**: two alert lines per currency (warning / critical). **Within one currency the critical line must be strictly lower than the warning line** — equality is rejected too, and saving is blocked while it is.
+  But a hand-edited config file with an illegal pair **no longer errors** — the plugin **falls that pair back to its defaults** the moment it reads it, and logs one line.
 
 > **Upgrade note**: the settings live in this plugin's own entry config and the key it is filed under changed once; **old values are not migrated** — please fill the table above in once after upgrading.
 - **Refresh**: the server refresh interval, the UI poll interval and the manual refresh cooldown. The cooldown counts from **the moment the refresh finishes**, so the seconds shown in the popover are the real ones left; if the backend says the refresh did not fire, the UI takes its remaining time instead of pretending otherwise.
@@ -162,26 +190,7 @@ When it comes from the launch environment (an environment variable) the field is
 The parenthesised label to the right of the popover title is where that number came from: `(API key)` / `(account sign-in)`.
 **Whichever is shown is also the one that gets refreshed and named** — display, refresh and label never disagree.
 
-**This plugin only tracks the official number**, so if the preferred route has nothing to show it falls back to the other official one: as long as either the account or an API key works, you still see a balance (even a slightly older snapshot). **You are only told about it when neither route can produce a number** — that is what "not connected to official" means.
-
-The ring in the bottom-left corner is "what is going on right now" — five shapes, each with a different thing for you to do:
-
-| Ring | Meaning | What you do |
-| --- | --- | --- |
-| Green / amber / red, with an arc | There is a balance; the colour is how much | Just read it |
-| Grey, with a gap rotating | Fetching; no answer yet | Wait |
-| Grey, with a **+** in the middle | Nothing connected | Configure an API key or sign in |
-| Grey, empty | Connected, the account simply has no balance | Nothing |
-| Red, with a **×** in the middle | This number cannot be obtained | Investigate (network / credential / account) |
-
-**When there is no number, hovering is the only place that says why** — the ring alone cannot.
-
-The two kinds of "nothing to show" are told apart as well: **not connected** asks you to configure
-a credential; **connected but unreadable** says "Balance unavailable".
-It deliberately does **not** say "temporarily" — some causes clear up on their own, others need you
-to fix a credential, and "temporarily" would send the second group away to wait for nothing.
-Note that the **×** covers both "could not read it" and "read it, but this account cannot be used" —
-both mean "no usable number here", and both send you to investigate.
+**This plugin only tracks the official number**, so if the preferred route has nothing to show it falls back to the other official one: as long as either the account or an API key works, you still see a balance (even a slightly older snapshot). **You are only told about it when neither route can produce a number** — that is what "not connected to official" means. What the ring looks like at that moment: see [the ring at a glance](#the-ring-at-a-glance).
 
 **How long a key change takes to land follows DSH's own layers — this plugin deliberately adds nothing on top:**
 
@@ -195,8 +204,8 @@ Why it is this way → [Key decisions](docs/ARCHITECTURE.md#关键决策).
 
 - **The API key is never returned to the UI**: the config endpoint returns only a fixed-length mask, not even the last few characters.
 - The key is never logged and never written to a file owned by this plugin; the settings file holds only a reference name, so the card is safe to screenshot or share.
-- Balance snapshots live in DSH's own data directory, grouped by a ledger identifier derived from the credential — changing the key opens a new ledger and old snapshots are never mixed in.
-- That identifier also involves a `.salt` file in DSH's home directory; **lose it and old snapshots become unreadable**.
+- Balance snapshots live in DSH's own data directory, grouped by an identifier derived from the credential — **changing the key opens a new ledger** and old snapshots are never mixed in.
+- That identifier also involves a random salt file in DSH's home directory; **lose it and old snapshots become unreadable** (they can never resolve to someone else's).
 - Only `api.deepseek.com` is contacted; nothing is proxied or forwarded.
 
 ## License
