@@ -164,7 +164,24 @@ The parenthesised label to the right of the popover title is where that number c
 
 **This plugin only tracks the official number**, so if the preferred route has nothing to show it falls back to the other official one: as long as either the account or an API key works, you still see a balance (even a slightly older snapshot). **You are only told about it when neither route can produce a number** — that is what "not connected to official" means.
 
-The two kinds of "nothing to show" are told apart as well: **not connected** asks you to configure a credential, **connected but unreachable** says the service is temporarily unavailable.
+The ring in the bottom-left corner is "what is going on right now" — five shapes, each with a different thing for you to do:
+
+| Ring | Meaning | What you do |
+| --- | --- | --- |
+| Green / amber / red, with an arc | There is a balance; the colour is how much | Just read it |
+| Grey, with a gap rotating | Fetching; no answer yet | Wait |
+| Grey, with a **+** in the middle | Nothing connected | Configure an API key or sign in |
+| Grey, empty | Connected, the account simply has no balance | Nothing |
+| Red, with a **×** in the middle | This number cannot be obtained | Investigate (network / credential / account) |
+
+**When there is no number, hovering is the only place that says why** — the ring alone cannot.
+
+The two kinds of "nothing to show" are told apart as well: **not connected** asks you to configure
+a credential; **connected but unreadable** says "Balance unavailable".
+It deliberately does **not** say "temporarily" — some causes clear up on their own, others need you
+to fix a credential, and "temporarily" would send the second group away to wait for nothing.
+Note that the **×** covers both "could not read it" and "read it, but this account cannot be used" —
+both mean "no usable number here", and both send you to investigate.
 
 **How long a key change takes to land follows DSH's own layers — this plugin deliberately adds nothing on top:**
 
