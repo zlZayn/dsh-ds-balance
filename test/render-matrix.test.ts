@@ -253,10 +253,10 @@ const SCENARIOS: readonly Scenario[] = [
 ]
 
 describe('端到端形态矩阵', () => {
-  it('覆盖处境闭集里**宿主可判的**全部 9 个（客户端那两个另验）', () => {
+  it('覆盖处境闭集里**由事实判出来的**全部 8 个（另三个各有归属）', () => {
     const covered = new Set(SCENARIOS.map((s) => render(s).situation))
-    const hostJudgeable = [
-      'internal-error',
+    // `situationOf` 判得出的处境（= 宿主 `SITUATIONS_FROM_FACTS`）。逐个场景跑真函数，不照抄常量。
+    const fromFacts = [
       'no-credential',
       'fetch-failed',
       'account-unavailable',
@@ -265,9 +265,31 @@ describe('端到端形态矩阵', () => {
       'ok',
       'low',
       'critical',
-    ].filter((s) => s !== 'internal-error') // internal-error 由 HTTP 兜底视图给，不走 situationOf
-    for (const situation of hostJudgeable) {
+    ]
+    for (const situation of fromFacts) {
       expect(covered, `处境 ${situation} 没有场景覆盖`).toContain(situation)
+    }
+    // 剩下三个不该由事实判定产生，各有各的生产方：
+    // - `internal-error`：HTTP 兜底视图直接给（handler 自己抛错时走不到 situationOf）；
+    // - `checking` / `offline`：客户端本地事实（宿主不可能知道），由 data.ts 的占位视图给。
+    for (const situation of ['internal-error', 'checking', 'offline']) {
+      expect(covered, `${situation} 不该由事实判定产生`).not.toContain(situation)
+    }
+  })
+
+  it('**客户端那两个本地处境**也在这张矩阵里（它们不经宿主判定）', () => {
+    // `checking`（首帧还没问到）与 `offline`（插件自己的端点不通）——
+    // 宿主不可能知道这两件事，由 `data.ts` 的占位视图直接给。
+    for (const [situation, expected] of [
+      ['checking', { ring: 'idle', marker: null, arc: 'none' }],
+      ['offline', { ring: 'error', marker: 'cross', arc: 'none' }],
+    ] as const) {
+      const p = presentationOf(situation, 'unknown')
+      expect({ ring: p.ring, marker: p.marker, arc: p.arc }, situation).toEqual(expected)
+      // 两者都没有数字，所以都不标来源（闸门在组件里判 `shown`）。
+      expect(p.textKey, situation).toBe(
+        situation === 'checking' ? 'situation.checking' : 'situation.unavailable',
+      )
     }
   })
 
