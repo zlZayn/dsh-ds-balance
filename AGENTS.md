@@ -143,6 +143,7 @@
 
 ## 活跃坑
 
+- **宿主版本可能与 devDeps 错位**：本仓 devDeps 锁在某个宿主编译，实际运行的宿主可能更新。改代码前先跑 `dsh --version` 对比 `package.json` 的 devDeps；错位可能导致编译通过但运行时崩。升级 devDeps 要同步决定 `engines.dsh` 的兼容范围。连带一条：宿主线升级时**宿主包的传递依赖也可能被抬** —— 本仓若把它写死在旧版，包管理器会装出**两份同名包**，类型互不兼容 → 编译报「A 不能赋给 B」而两个路径都是 `node_modules`。判据：报错里出现两个不同层级的 `node_modules`；处置：把本仓那份升到与宿主同源的范围。核验兼容性用**仓库外**的临时目录装目标线宿主包（装在本仓内会被当作 workspace 成员，顺带重排本仓 `node_modules`）。
 - **`sidebar.footer.action` 的宿主容器是 row flex（宿主遗漏）**：官方 cordis 面板（`packages/extensions/ui-cordis/src/client/`）把根节点写成满宽且不收缩，横排下条目会被挤到 0 宽。我们已用 `:has()` 反选父元素把它改回纵向堆叠 → [决策](.agents/notes/2026-09-17-footer-stack-override.md)。依赖 `:has()` 与该锚点属性稳定。
 - **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包写进 profile 的 `dsh.profile.bundles`**，而 bundle 层与 patch 层的 insert 行**只在启动时读** —— 两条同时存在就是**双挂载**。开发期靠「不声明 `dsh.bundle`」躲开它，发布态不能这么干（包里必须有 bundle 层）。所以装法只能选一种：**`dsh plugin add` 或手写 patch 行，不要都做**。改本机 profile 前先看 `dsh.profile.bundles`。
 - **本地起验证实例前先确认端口空闲**：端口被占时 `dsh` 会以 `EADDRINUSE` 启动失败（webserver 是必需插件，`exit code 1`），**但本插件仍然装载、照常抓数** —— 日志里看着像跑起来了，其实没有可访问的 URL。重启前先查 `Get-NetTCPConnection -State Listen -LocalPort <port>`，或直接换端口。
