@@ -134,6 +134,10 @@ dsh plugin --profile web add "$PWD"
 
 Same as the npm route: it takes effect after a restart.
 
+⚠️ The `npm install` above is not optional: under the `link:` form the repository supplies its
+own dependencies (see [AGENTS.md](AGENTS.md)) — skip it and the plugin shows as "not running"
+(`ERR_MODULE_NOT_FOUND`).
+
 ### Discovery
 
 - **npm**: [`dsh-ds-balance`](https://www.npmjs.com/package/dsh-ds-balance)

@@ -146,6 +146,9 @@
 - **宿主版本可能与 devDeps 错位**：本仓 devDeps 锁在某个宿主编译，实际运行的宿主可能更新。改代码前先跑 `dsh --version` 对比 `package.json` 的 devDeps；错位可能导致编译通过但运行时崩。升级 devDeps 要同步决定 `engines.dsh` 的兼容范围。连带一条：宿主线升级时**宿主包的传递依赖也可能被抬** —— 本仓若把它写死在旧版，包管理器会装出**两份同名包**，类型互不兼容 → 编译报「A 不能赋给 B」而两个路径都是 `node_modules`。判据：报错里出现两个不同层级的 `node_modules`；处置：把本仓那份升到与宿主同源的范围。核验兼容性用**仓库外**的临时目录装目标线宿主包。在仓内建目录的代价是双份的：包管理器把它当 workspace 成员，`add` 会顺带重排本仓 `node_modules`，并往锁文件写一条 **importer** 记录 —— 目录删了记录还在，而**本机安装不带 frozen 校验会静默自愈**，只有 CI 的 frozen 模式才判红（姊妹仓 2026-10-02 三平台齐红，失败在第一步 install）。判据：在锁文件里搜那个目录名；处置：重新解析，别手工编辑锁文件。
 - **`sidebar.footer.action` 的宿主容器是 row flex（宿主遗漏）**：官方 cordis 面板（`packages/extensions/ui-cordis/src/client/`）把根节点写成满宽且不收缩，横排下条目会被挤到 0 宽。我们已用 `:has()` 反选父元素把它改回纵向堆叠 → [决策](.agents/notes/2026-09-17-footer-stack-override.md)。依赖 `:has()` 与该锚点属性稳定。
 - **`dsh plugin` 会把声明了 `dsh.bundle` 的已装包写进 profile 的 `dsh.profile.bundles`**，而 bundle 层与 patch 层的 insert 行**只在启动时读** —— 两条同时存在就是**双挂载**。开发期靠「不声明 `dsh.bundle`」躲开它，发布态不能这么干（包里必须有 bundle 层）。所以装法只能选一种：**`dsh plugin add` 或手写 patch 行，不要都做**。改本机 profile 前先看 `dsh.profile.bundles`。
+- **`link:` 到 profile 外的插件，仓库必须自己装好 peer deps**（`npm install` 会做到）——
+  它按**仓库路径**解析 `@deepseek-ai/*`，走不到 profile 的兜底目录；
+  少了报 `ERR_MODULE_NOT_FOUND`、插件显示「未运行」。
 - **本地起验证实例前先确认端口空闲**：端口被占时 `dsh` 会以 `EADDRINUSE` 启动失败（webserver 是必需插件，`exit code 1`），**但本插件仍然装载、照常抓数** —— 日志里看着像跑起来了，其实没有可访问的 URL。重启前先查 `Get-NetTCPConnection -State Listen -LocalPort <port>`，或直接换端口。
 - **兜底会多打一次上游，别写成循环**：取不到数字时按 `FALLBACK_ORDER` 退到另一条官方路，一轮最多「首选一次 + 兜底一次」。以后往里加来源时如果把兜底写成「再试一遍」，两条路会互相触发、上游请求量翻倍（有单测守着：两条都失败时各只打一次）。
 - **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。  **同理别整读 `~/.npmrc`**：它通常带着一枚 `//registry.npmjs.org/:_authToken=`（本轮踩过 —— token 就这么进了对话记录，只能靠轮换补救）。

@@ -132,6 +132,9 @@ dsh plugin --profile web add "$PWD"
 
 与 npm 那条路一样，重启后生效。
 
+⚠️ 上面那步 `npm install` 不能省：`link:` 装法下依赖由仓库自己提供（见 [AGENTS.md](AGENTS.md)），
+漏装则插件显示「未运行」（`ERR_MODULE_NOT_FOUND`）。
+
 ### 发现与安装
 
 - **npm**：[`dsh-ds-balance`](https://www.npmjs.com/package/dsh-ds-balance)
