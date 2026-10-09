@@ -31,6 +31,10 @@
 | Q1.16 | 声明 `engines.dsh` |
 | Q1.17 | 勘察报告文件名保持 `docs/recon-native-integration.md` |
 
+> **Q1.17 已被后续取代（2026-10-09）**：那份勘察已按「依据类」移入本目录，
+> 现名 [recon-native-integration.md](recon-native-integration.md) —— `docs/` 只留活文档。
+> 本表保留当时的决定原文，不追改（见 [AGENTS.md](AGENTS.md) 的归档规则）。
+
 ## 替代方案
 
 - **设置页走 `settings.section`（任务书原稿）**：曝光度更高，但要自绘整个分区页与保存链路；维护者选择复用 `settings.plugin.item` 的现成卡片机制，故不采用。

@@ -1,11 +1,15 @@
 # 原生 UI 与插件机制勘察（阶段 0）
 
+状态：已归档（2026-10-09）—— 阶段 0 的快照，文末清单已全部拍板；结论以决策记录与活文档为准。
+
+**类型**：依据（勘察）。记的是「当时查到了什么」，是后续决策的输入，不追改。
+
 勘察对象：宿主源码检出（`deepseek-harness` 单体仓库）+ 本机运行实例 + 已装第三方插件。
 证据口径：所有结论附 `路径:行号`；未找到项已列关键词。像素值多来自源码常量，非屏幕实测。
 
 本文件是**阶段 0 的快照**，反映勘察当时的代码与判断，不回填后续变更。
-文末「阶段 1 待拍板清单」的**结论**见 [决策记录](../.agents/notes/2026-09-17-integration-decisions.md)；两者不一致时以决策记录为准。
-对外契约的最新版本见 [UI 侧契约与移交](ui-handoff.md)。
+文末「阶段 1 待拍板清单」的**结论**见 [决策记录](2026-09-17-integration-decisions.md)；两者不一致时以决策记录为准。
+对外契约的最新版本见 [UI 侧契约与移交](../../docs/ui-handoff.md)。
 
 ## 结论摘要
 
@@ -267,7 +271,7 @@
 - 活动 profile 的 bundles 含 dsh-base / dsh-web-app 与四个仓外插件；**本插件不在 bundles 里**，
   它由该 profile 的 `cordis.patch.yml` 单独插入一行。
 - `$DSH_HOME/cordis.patch.yml` 不存在；patch 写在 profile 自己的那份里。
-- 工具链版本见 [.node-version](../.node-version) 与 `package.json` 的 `engines`。
+- 工具链版本见 [.node-version](../../.node-version) 与 `package.json` 的 `engines`。
 - 本仓库当时还不是 git 仓库；此后已建仓。
 
 现查命令（输出里可能出现本机路径，别抄进文档）：
@@ -302,7 +306,7 @@ Get-ChildItem "$env:DSH_HOME\profiles" -Directory | Select-Object -ExpandPropert
 
 ## 阶段 1 待拍板清单（已全部拍板 · 本节为阶段 0 快照）
 
-本节是阶段 0 列出的待拍板清单。**17 行已全部拍板**，右列是结论；完整理由与被否决的替代方案见 [决策记录](../.agents/notes/2026-09-17-integration-decisions.md)。
+本节是阶段 0 列出的待拍板清单。**17 行已全部拍板**，右列是结论；完整理由与被否决的替代方案见 [决策记录](2026-09-17-integration-decisions.md)。
 
 | 编号 | 决策 | 选项 | 结论（已拍板） |
 |---|---|---|---|

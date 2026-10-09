@@ -14,7 +14,7 @@
 - **插件侧的触发面只有一条**：`apply` 里 `ctx.on('loader/volatile-update')`，且只有路径命中 `SCHEDULE_FIELDS`（`serverRefreshSeconds` / `baseUrl` / `apiKey` / `apiKeyRef`）才 `scheduler.reset()`。**没有订阅 `credentials/reference-updated`** —— `src/` 全域只有对凭据服务的调用，没有任何 `credentials/` 事件监听。
 - **DSH 的启动环境是冻结快照**：启动时读「继承环境 + 项目 `.env` + home `.env`」之后 `provide('launchEnvironment', …)`，该快照的注释明写 nothing mutates it afterwards。凭据服务解析时**先读这份快照的 process 层**，再读 `.credentials.yaml` 的文件层，最后才是 `.env` 回落；官方凭据事件的文档也写着：环境变量的变化**不可观测、永不 emit**。
 - **凭据库那一路是可观测的**：`.credentials.yaml` 有监听，外部编辑比对出差异后 emit `credentials/reference-updated`，值当场换新 —— 但本插件没听，所以只能等下一次定时抓取。
-- **本机这把 key 只可能来自启动环境**：desktop profile 的 patch 层没有本插件的配置覆盖（`apiKey` 空串、`apiKeyRef` 是默认引用名）、`$DSH_HOME/.credentials.yaml` 的 `refs` 里没有 `DEEPSEEK_API_KEY`、候选 `.env`（仓库目录 / 项目目录 / `$DSH_HOME`）都不存在。结论与 [model-integration-assessment](../../docs/model-integration-assessment.md) §七.3 相同 —— 那一条当时挂的是「待验证」，本轮验证完毕。
+- **本机这把 key 只可能来自启动环境**：desktop profile 的 patch 层没有本插件的配置覆盖（`apiKey` 空串、`apiKeyRef` 是默认引用名）、`$DSH_HOME/.credentials.yaml` 的 `refs` 里没有 `DEEPSEEK_API_KEY`、候选 `.env`（仓库目录 / 项目目录 / `$DSH_HOME`）都不存在。结论与 [model-integration-assessment](model-integration-assessment.md) §七.3 相同 —— 那一条当时挂的是「待验证」，本轮验证完毕。
 - **一次真实换账本的实测**：`storages/ds_balance.json` 里两个账本 —— 旧的 `dedb3793…` 共 3618 条（最后一条 2026-09-30 01:47:06），新的 `2d36c58b…` 从 **01:47:58** 起；同日宿主进程的启动时间是 **01:47:54** ⇒ 新账本的第一条快照出现在**重启后 4 秒**。换 key 生效靠的是重启，不是运行期刷新。
 
 ## 决策
