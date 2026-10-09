@@ -37,4 +37,22 @@
 - 契约变更（对外可见行为、接口签名、配置项、输出格式）必须在同一次改动里
   同步 [README.md](README.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
+## PR 标签
+
+草稿 Release 按标签分类，所以合并前给 PR 打个标签：
+
+- `enhancement` / `bug` / `compat` / `refactor` / `documentation` —— 各进一个分类。
+- 不打、或打了上表之外的标签 —— 落 `Other Changes` 兜底。
+- `skip-changelog` —— 依赖更新这类「合了但用户看不到」的改动，从**所有**分类里排除。
+
+**注意**：草稿汇总的是 **PR**，不是 commit。直提 `main` 的提交对草稿不可见
+（最近几笔小改动就是这么合的）。这不影响发版 —— 发版正文另有来源。
+机制与本仓适配情况见 [docs/RELEASE-DRAFTER.md](docs/RELEASE-DRAFTER.md)。
+
+## issue 标题
+
+- **英文祈使句，动词开头**：`Fix …` / `Add …` / `Track …` / `Chore …`。
+- **不加 `[Bug]` / `[Feature]` 之类前缀** —— 类型由 label 表达，标题里再说一遍是重复。
+- 建议 50–72 字符，能在列表里一眼看完。
+
 设计约束的完整清单在 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)；上手步骤在 [README.md](README.md)。
