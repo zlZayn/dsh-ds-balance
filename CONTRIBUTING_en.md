@@ -48,5 +48,27 @@ Open an issue describing the problem first; do not send a PR straight away.
   output format) must update [README.md](README.md) and
   [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) in the same change.
 
+## PR labels
+
+The draft Release groups changes by label, so label your PR before merging:
+
+- `enhancement` / `bug` / `compat` / `refactor` / `documentation` — each maps to one category.
+- No label, or a label outside that list — falls into the `Other Changes` catch-all.
+- `skip-changelog` — for dependency bumps and the like: merged but invisible to users.
+  Excluded from **every** category.
+
+**Note**: the draft summarises **PRs**, not commits. Commits pushed straight to `main`
+are invisible to it (several small changes were merged that way lately). That does not
+affect releases — the release body comes from a different source.
+How the mechanism works and how it fits this repo is in
+[docs/RELEASE-DRAFTER.md](docs/RELEASE-DRAFTER.md).
+
+## Issue titles
+
+- **English imperative, verb first**: `Fix …` / `Add …` / `Track …` / `Chore …`.
+- **No `[Bug]` / `[Feature]` prefixes** — the label already says the type; repeating it
+  in the title is noise.
+- Aim for 50–72 characters so it reads at a glance in a list.
+
 The full list of design constraints is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md);
 getting started is in [README.md](README.md).

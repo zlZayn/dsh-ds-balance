@@ -18,6 +18,7 @@
 |---|---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 活 | 不变的设计与防错清单：插件形态、slot、颜色口径、跨字段校验。 |
 | [PUBLISHING.md](PUBLISHING.md) | 活 | 发布手册：流程、版本号判定链、判例库。 |
+| [RELEASE-DRAFTER.md](RELEASE-DRAFTER.md) | 活 | 草稿 Release 的维护：标签映射、本仓适配情况、草稿 tag 为什么用滚动名。 |
 | [backend-architecture.md](backend-architecture.md) | 活 | 后端契约（端点 / 配置 / 存储 / 错误码）的 home。 |
 | [ui-handoff.md](ui-handoff.md) | 活 | 界面的 home：处境 → 形态表、通道映射、来源标签规则、mock 覆盖。 |
 | [model-integration-assessment.md](model-integration-assessment.md) | 依据 | 与官方模型机制（凭据继承）的融合判定。 |
@@ -37,4 +38,5 @@
 - 改界面结构、颜色口径或阈值口径 → [ARCHITECTURE.md](ARCHITECTURE.md)。
 - 改端点、配置字段或错误码 → [backend-architecture.md](backend-architecture.md) + [src/http/README.md](../src/http/README.md)。
 - 改发布流程或版本号判定 → [PUBLISHING.md](PUBLISHING.md)。
+- 改草稿 Release 的分类、触发条件或 tag → [RELEASE-DRAFTER.md](RELEASE-DRAFTER.md)。
 - 新增、改名或删除本目录的文件 → 回填本文件与根 [AGENTS.md](../AGENTS.md) 的文档地图。
