@@ -92,9 +92,12 @@ describe('accountReader', () => {
     expect(await accountSide().reader.tag()).not.toBe(computeAccountTag(SALT, 'user-1'))
   })
 
-  it('账号 id 读不到时退回 unknown（换账号不换账本的那种退化）', async () => {
+  it('账号 id 读不到时抛错，不退化成占位账本键', async () => {
+    // 退成 `account:unknown` 会写进一个再也读不回来的账本：`restore()` 严按当前键过滤，
+    // 那一刻写下的快照与正常账本互不可见。抛错则由 restore() 静默跳过，下一轮自愈。
+    // 空串不是这一层的口径：`accountId()` 约定拿不到就回 null（host-account 已把 '' 归成 null）。
     const { reader } = accountSide({ accountId: async () => null })
-    expect(await reader.tag()).toBe(computeAccountTag(SALT, 'account:unknown'))
+    await expect(reader.tag()).rejects.toBeInstanceOf(NoKeyError)
   })
 
   it('读一次把钱包投影成线上形状', async () => {

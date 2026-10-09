@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url'
 import { TRACKED_LINE } from './check-declaration.mjs'
 
 /** 跟踪 issue 的固定标题：判重就靠它逐字相等。 */
-const ISSUE_TITLE = '[compat] the weekly compatibility patrol is red'
+const ISSUE_TITLE = 'Fix weekly compatibility patrol failure'
 
 /**
  * 固定标签。仓库里没有就现建（--force 是幂等的）。

@@ -11,6 +11,7 @@ import { projectAccountBalance } from '../domain/account.js'
 import { NoKeyError } from '../domain/errors.js'
 import type { AccountSource } from '../ports/account.js'
 import type { DeepSeekClient } from '../ports/deepseek-client.js'
+import type { Logger } from '../ports/logger.js'
 import { computeAccountTag } from './account-tag.js'
 import type { SourceReader } from './balance-source.js'
 import type { ConfigService } from './config-service.js'
@@ -55,8 +56,9 @@ export function accountReader(options: {
   /** 取当前端口实现；服务可能晚到，所以这里必须是函数而不是实例。 */
   account: () => AccountSource | undefined
   salt: string
+  logger?: Logger
 }): SourceReader {
-  const { account, salt } = options
+  const { account, salt, logger } = options
   const require = (): AccountSource => {
     const current = account()
     if (current === undefined) throw new NoKeyError('no credential: account service is unavailable')
@@ -66,11 +68,20 @@ export function accountReader(options: {
    * 账号账本的派生输入。
    *
    * 用 `account:` 前缀把两个键空间分开：账号 id 与明文密钥因此不可能撞到同一个账本。
-   * 宿主本进程还没读过 profile 时 id 拿不到，退回 `unknown` —— 代价是那种情况下换账号不换账本，
-   * 由下一轮抓取修正（见决策记录的「已知代价」）。
+   *
+   * **拿不到账号 id 就抛错，不落盘**（兑现 `SourceReader.tag` 的契约）：
+   * 宿主本进程还没读过 profile 时 id 会给不出值，而账本键一旦落成别的值，
+   * 那条快照就再也读不回来 —— 「重启后按同一个键读回自己那份快照」这条承诺会在那一刻落空。
+   * 抛错比换一个占位键诚实：`restore()` 会静默跳过，下一轮拿到真 id 后自然自愈。
    */
-  const tagOf = async (): Promise<string> =>
-    computeAccountTag(salt, `account:${(await require().accountId()) ?? 'unknown'}`)
+  const tagOf = async (): Promise<string> => {
+    const id = await require().accountId()
+    if (id === null) {
+      logger?.debug('ds-balance: account identity unavailable, skipping this snapshot')
+      throw new NoKeyError('no credential: account identity is unavailable')
+    }
+    return computeAccountTag(salt, `account:${id}`)
+  }
 
   return {
     async available() {

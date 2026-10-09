@@ -16,7 +16,9 @@
 - `domain-core-store.ts`：`DomainCoreStore` 实现 `CoreStore`，走 dsh 官方存储接缝。
   - `DS_BALANCE_DOMAIN` 用 `defineDomain` + `domainTable`；**不写 `backend`**（路由归部署方）。
   - **构造期永不抛错，打开是懒的且失败可重试**：`storageDomain` 可能晚到，构造期就打开会把一次过早的失败永久钉死。打开失败只记一次 error，之后每次操作重试一次；失败时按调用抛 `StorageError`、`health` 报 `ok: false`。未观察的 rejection 曾把宿主整个拖下水。
-  - `loadLatestSnapshot` 按 `accountTag` 过滤，用 `snapshotId` 判新旧。
+  - `loadLatestSnapshot` 按 `accountTag` 过滤，用 `snapshotId` 判新旧；**走 `entries()` 而不是 `keys()` + 逐键 `get()`**（后者每条记录两次查找）。
+  - `pruneByTag(tag, keepN)`：只留该桶最新 `keepN` 条，**别的桶一条都不动**；没超期时**零写入**返回 0。
+    内部**分批删 + 每批之后让出一次事件循环** —— 理由是**摊平写放大，不是防限流**：`single` 布局下每次 `delete` 都要原子重写整份单元文件，几十条挤在一个 tick 上会连带拖住同进程的取数与轮询。批次大小是实现细节，不上端口。
   - `close()` 幂等，**必须挂在 `ctx.effect` 的 disposer 上**。
 - `memory-metrics.ts`：`MemoryMetrics` 实现 `ReadableMetrics`；键的构造规则是 `名字{标签=值,...}`（标签按名排序）。默认组合没有指标 sink，所以聚合值由 `GET /api/v1/healthz` 的 `metrics` 段暴露。
 - `console-logger.ts`：`createConsoleLogger` 实现 `Logger`，落 `console`。宿主半边没有统一的 logger 服务；**字段对象原样序列化，调用方不许把凭据传进来**。

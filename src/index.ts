@@ -354,7 +354,7 @@ export async function apply(ctx: Context, refs: ConfigRefs): Promise<void> {
       'deepseek-account',
       new SourceLedger({
         source: 'deepseek-account',
-        reader: accountReader({ account: () => account.current(), salt }),
+        reader: accountReader({ account: () => account.current(), salt, logger }),
         store,
         config: configService,
         clock: systemClock,

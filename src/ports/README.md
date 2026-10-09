@@ -12,6 +12,7 @@
 - `metrics.ts`：`Metrics`、`noopMetrics`，以及 `MetricsSnapshot` / `ReadableMetrics`（能读出聚合值的实现，供没有外部 sink 的装配把数字暴露出去）。
 - `deepseek-client.ts`：`DeepSeekClient`、`DeepSeekCallOptions`、`TestConnectionResult`、`DEFAULT_BASE_URL`。
 - `core-store.ts`：`CoreStore`。**`loadLatestSnapshot` 必须按 `accountTag` 过滤** —— 凭据轮换后 tag 会变，旧快照不得混用。
+  - `pruneByTag(tag, keepN)` 与它**同构**：同样是 tag 作用域，只动被点名那个桶。`keepN` 由调用方（领域层）传入，端口只执行不决定，也不暴露实现步骤（分几批删、批间隔多久）。
 - `credentials.ts`：`Credentials` / `ResolvedCredential` / `CredentialDescription`。**`describe` 的类型里根本没有装值的槽**；装配里可能**没有**这个 seam，消费方必须自己兜。
 
 ## 被谁依赖

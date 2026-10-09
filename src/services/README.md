@@ -18,6 +18,9 @@
   - **两个新鲜度谓词不能混**：`withinWindow()` 只看时间（`restore` 用）；`canServeCache()` 额外要求 `state === 'ok'`（`getView` 用）—— 混用会让一次失败之后永远不再重试。
   - `restore()` 按 `accountTag` 过滤恢复快照；凭据轮换后旧快照视为不存在。
   - 手动刷新的冷却**锚在上一次手动刷新**（`lastManualRefreshAt`），不是上一次抓取：锚在 `fetchedAt` 上时，一次自动刷新会把用户刚按下的一下吞掉 —— 界面转了圈、上游一次没打。
+  - `persist()` 落盘后**按账本修剪**（`pruneByTag(tag, SNAPSHOT_KEEP_N)`），只留最近 20 条 ——
+    落盘失败与修剪失败**分开记账**：写成功时把它报成「没落盘」会让日志说谎。
+    `SNAPSHOT_KEEP_N` 是**历史保留深度、故障回退用，不是功能开关**，刻意不进配置面（仓内无第二个读历史的消费方）。
   - 只在**首次失败**打 warn，避免日志刷屏；指标键带 `source` 标签，两条路各自可看。
   - **没接入 ≠ 接入了但出错**：判定不在本文件，而在 [../domain/situation.ts](../domain/situation.ts)
     的 `situationOf` —— 账本只负责把六个事实（有无快照 / stale / isAvailable / hasSelected /
@@ -26,7 +29,7 @@
     那是给 `/healthz` 判处境用的，口径与 `toView` 完全同源，不开浏览器也能知道界面会画成什么。
   - `SourceReader` 是**换来源要换的那一件**：`available()` / `tag()` / `read()`，前两个是本地读、只有 `read()` 打上游。
 - `source-readers.ts`：两条路的读取策略 —— `keyReader`（解析链 → 官方余额端点）与 `accountReader`（账号登录态 → 钱包查询 → 投影）。
-  - 账号账本的 `tag` 用 `account:<userId>` 前缀，与密钥那条**永不共账本**；id 拿不到时退 `account:unknown`（那种情况下换账号不换账本，下一轮自愈）。
+  - 账号账本的 `tag` 用 `account:<userId>` 前缀，与密钥那条**永不共账本**；**id 拿不到时抛 `NoKeyError` 而不是退 `account:unknown`** —— 退化成占位键会把那条快照写进一个再也读不回来的账本（`loadLatestSnapshot` 严按当前键过滤）。`restore()` 静默吸收，下一轮拿到真 id 自愈。
 - `source-selector.ts`：**选源判据的唯一一处**。`routeOf(provider)` 把宿主路由翻成来源；`pickSource` 走四层回落（会话 → 全局默认 → `FALLBACK_ORDER` → 默认来源）。新增一个来源只动这里 + 装配处。
 - `balance-service.ts`：`BalanceService`（门面）、`RefreshResult`、`BalanceStatus`、`GetViewOptions`。
   - 门面**不持状态、不抓数据**：解析这一轮谁活跃，然后把活交给那条路的账本。
