@@ -19,6 +19,15 @@ import type { Logger } from '../ports/logger.js'
 /** 域里的表名。 */
 export const SNAPSHOT_TABLE = 'snapshots'
 
+/**
+ * 修剪时每批删多少条，之后让出一次事件循环。
+ *
+ * **实现细节，不上端口**：领域层只调一次 `pruneByTag`，不需要知道分了几批。
+ * 取值只是「别让一批太大」的粗界，真实瓶颈是单布局下的整份重写次数，
+ * 所以调大调小不影响正确性，只影响同进程别的活被挤住多久。
+ */
+const PRUNE_BATCH_SIZE = 40
+
 /** 域记录：JSON 安全形状，金额存字符串最小单位。 */
 export interface StoredSnapshot {
   snapshotId: string
@@ -65,8 +74,11 @@ export const DS_BALANCE_DOMAIN = defineDomain({
 /** 表句柄的最小结构化面；测试用替身实现它。 */
 export interface KvTableLike {
   get(key: string): StoredSnapshot | undefined
+  /** 一次迭代同时拿到 `[key, record]`；比 `keys()` +逐键 `get()` 少一轮查找。 */
+  entries(): IterableIterator<[string, StoredSnapshot]>
   keys(): IterableIterator<string>
   put(key: string, value: StoredSnapshot): Promise<void>
+  delete(key: string): Promise<boolean>
 }
 
 /** 域句柄的最小结构化面。 */
@@ -198,16 +210,49 @@ export class DomainCoreStore implements CoreStore {
    *
    * **按 `accountTag` 过滤**：凭据轮换后 tag 会变，旧快照不得混用。
    * 用 `snapshotId`（单调可排序）决定新旧，不依赖 `fetchedAt`。
+   *
+   * **走 `entries()` 而不是 `keys()` + 逐键 `get()`**：后者是每条记录两次查找，
+   * 记录数涨上去（保留策略落地前实测过千条）时白费一大半；`entries()` 一次迭代给全。
    */
   async loadLatestSnapshot(accountTag: string): Promise<BalanceSnapshot | null> {
     const table = await this.requireTable()
     let newest: StoredSnapshot | null = null
-    for (const key of table.keys()) {
-      const record = table.get(key)
-      if (record === undefined || record.accountTag !== accountTag) continue
+    for (const [, record] of table.entries()) {
+      if (record.accountTag !== accountTag) continue
       if (newest === null || record.snapshotId > newest.snapshotId) newest = record
     }
     return newest === null ? null : fromStored(newest)
+  }
+
+  /**
+   * 只保留该账本最近 `keepN` 条，删掉更旧的（跨账本不动）。
+   *
+   * **批间让出事件循环的理由是摊平写放大，不是防限流**：宿主 json 后端默认 `single`
+   * 布局，每次 `delete` 都要原子重写整份单元文件。删几十条若挤在同一个 tick 上，
+   * 会连带把同一进程里的取数与轮询一起拖住。所以内部**分批 + 每批之后让出一次** ——
+   * 批次大小与间隔属于实现细节，不上端口（领域层只调一次，不需要知道分了几批）。
+   *
+   * **零写入的幂等**：没超期时一条都不删、返回 0（超期判定先做完再动手）。
+   */
+  async pruneByTag(accountTag: string, keepN: number): Promise<number> {
+    const table = await this.requireTable()
+    if (keepN < 0) return 0
+    // 先按 snapshotId 排好序再决定删哪些：留下的必然是「最新的 keepN 条」，
+    // 而刚写入的那条 id 单调最大，所以永远在保留集里。
+    const owned: StoredSnapshot[] = []
+    for (const [, record] of table.entries()) {
+      if (record.accountTag === accountTag) owned.push(record)
+    }
+    if (owned.length <= keepN) return 0
+    owned.sort((a, b) => (a.snapshotId < b.snapshotId ? -1 : a.snapshotId > b.snapshotId ? 1 : 0))
+    const doomed = owned.slice(0, owned.length - keepN)
+    for (let offset = 0; offset < doomed.length; offset += PRUNE_BATCH_SIZE) {
+      const batch = doomed.slice(offset, offset + PRUNE_BATCH_SIZE)
+      for (const record of batch) await table.delete(record.snapshotId)
+      // 让出一次事件循环：把同 tick 的连续原子重写摊开，别挤住同进程的别的活。
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+    return doomed.length
   }
 
   async health(): Promise<StoreHealth> {

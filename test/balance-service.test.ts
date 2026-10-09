@@ -10,6 +10,7 @@ import type { Clock } from '../src/ports/clock.ts'
 import type { AccountSource } from '../src/ports/account.ts'
 import type { CoreStore } from '../src/ports/core-store.ts'
 import type { DeepSeekClient } from '../src/ports/deepseek-client.ts'
+import type { Logger } from '../src/ports/logger.ts'
 import { NetworkError, UpstreamError } from '../src/domain/errors.ts'
 import { formatMoney } from '../src/domain/money.ts'
 import { ACCOUNT_PROVIDER, DEFAULT_SOURCE, KEY_PROVIDER } from '../src/services/source-selector.ts'
@@ -50,6 +51,12 @@ function harness(
 ) {
   let now = 1_000_000
   const clock: Clock = { now: () => now, timezone: () => 'Asia/Shanghai' }
+  const logger: Logger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }
   const config = new ConfigService({
     source: { get: () => ({ ...defaults, ...configPatch }), watch: () => () => {} },
     env: {},
@@ -65,6 +72,7 @@ function harness(
   const store: CoreStore = {
     saveSnapshot: vi.fn().mockResolvedValue(undefined),
     loadLatestSnapshot: vi.fn().mockResolvedValue(null),
+    pruneByTag: vi.fn().mockResolvedValue(0),
     health: vi.fn().mockResolvedValue({ ok: true }),
     close: vi.fn().mockResolvedValue(undefined),
   }
@@ -83,16 +91,18 @@ function harness(
         store,
         config,
         clock,
+        logger,
       }),
     ],
     [
       'deepseek-account',
       new SourceLedger({
         source: 'deepseek-account',
-        reader: accountReader({ account: () => account, salt: SALT }),
+        reader: accountReader({ account: () => account, salt: SALT, logger }),
         store,
         config,
         clock,
+        logger,
       }),
     ],
   ])
@@ -104,6 +114,7 @@ function harness(
     ledgers,
     routeProvider: () => options.route ?? null,
     metrics,
+    logger,
   })
   return {
     service,
@@ -113,6 +124,7 @@ function harness(
     account,
     metrics,
     ledgers,
+    logger,
     /** 翻账号那条路的替身：多数用例不关心它，选源用例自己设。 */
     setAccount: (patch: Partial<AccountSource>) => {
       Object.assign(account, patch)
@@ -565,5 +577,58 @@ describe('存储降级', () => {
     await h.service.getView()
     await h.service.getView()
     expect(h.client.fetchBalance).toHaveBeenCalledTimes(1)
+  })
+
+  it('写成功后按账本修剪一次', async () => {
+    const h = harness()
+    await h.service.getView()
+    expect(h.store.pruneByTag).toHaveBeenCalledWith(expect.any(String), 20)
+  })
+
+  it('修剪失败不影响界面，且不会被报成「没落盘」', async () => {
+    // 日志在说谎是最坏的一种降级：排查存储问题的人正是按「写成功没有」这条日志判断的。
+    const h = harness()
+    vi.mocked(h.store.pruneByTag).mockRejectedValue(new Error('prune down'))
+    const view = await h.service.getView()
+    expect(view.state).toBe('ok')
+    expect(h.logger?.warn).toHaveBeenCalledTimes(1)
+    const message = vi.mocked(h.logger?.warn ?? (() => {})).mock.calls[0]?.[0] ?? ''
+    expect(message).toContain('retention failed')
+    // 关键断言：不能说成落盘失败 —— 写其实成功了。
+    expect(message).not.toContain('not persisted')
+  })
+
+  it('落盘失败时这一轮不修剪（没有新记录可留）', async () => {
+    const h = harness()
+    vi.mocked(h.store.saveSnapshot).mockRejectedValue(new Error('storage down'))
+    await h.service.getView()
+    expect(h.store.pruneByTag).not.toHaveBeenCalled()
+  })
+})
+
+describe('快照保留深度是不变量', () => {
+  // 常量 SNAPSHOT_KEEP_N 是私有的（刻意不导出：它没有用户可感知的语义，不该被别处引用）。
+  // 它的取值通过「写完后传给 pruneByTag 的第二个参数」观察 —— 那就是它唯一的出口。
+  it('按固定条数修剪，不随配置变化', async () => {
+    // 守的是决策：领域层常量，不是用户可调的旋钮。
+    // 用户看不到这个数的作用，给一个看不出区别的开关比不给更糟 ——
+    // 改小它只在某天丢快照时才后悔。
+    const h = harness()
+    await h.service.getView()
+    const keepN = vi.mocked(h.store.pruneByTag).mock.calls[0]?.[1]
+    expect(keepN).toBe(20)
+  })
+
+  it('给足覆盖连续两次写入失败的余量（>= 3）', async () => {
+    const h = harness()
+    await h.service.getView()
+    const keepN = vi.mocked(h.store.pruneByTag).mock.calls[0]?.[1] ?? 0
+    expect(keepN).toBeGreaterThanOrEqual(3)
+  })
+
+  it('改配置也不改变保留深度', async () => {
+    const h = harness({ serverRefreshSeconds: 10 })
+    await h.service.getView()
+    expect(vi.mocked(h.store.pruneByTag).mock.calls[0]?.[1]).toBe(20)
   })
 })

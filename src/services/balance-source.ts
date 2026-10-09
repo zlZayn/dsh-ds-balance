@@ -63,6 +63,26 @@ export interface RefreshResult {
   state: CacheState
 }
 
+/**
+ * 每个账本保留多少条快照。**历史保留深度，不是功能开关。**
+ *
+ * - 当前**没有任何功能读第二条以后的记录**：唯一读点是 {@link SourceLedger.restore} 调
+ *   `loadLatestSnapshot` 取最新一条，仓内没有 `listSnapshots`，也没有历史端点
+ *   （`docs/ARCHITECTURE.md` 的阶段边界明写「不做图表」）。所以这个数**不是**为功能服务的，
+ *   不要因为「用不到」就调到 1。
+ * - 它真正的作用是**故障回退余量**：最新那条写失败、写坏、或落盘途中崩了时还能退到上一条，
+ *   覆盖连续两次失败就要 ≥ 3。
+ * - **刻意不进配置面**：配置字段用户看得见、改得动，而这个数没有任何用户可感知的语义 ——
+ *   改小它用户看不出界面变化，只会在某天丢快照时才后悔。给一个看不出区别的旋钮比不给更糟。
+ *   真出现第二个消费方（走势图一类）时，它再升级成配置项也不迟。
+ *
+ * 量级：一条快照约 0.9 KB，20 条约 18 KB —— 余量与存储成本之间没有取舍压力。
+ *
+ * **常量住在离唯一调用点（{@link SourceLedger.persist}）最近的地方**：曾为它单开一个
+ * `snapshot-retention` 模块，评估后撤掉 —— 那层只是转发，没有抽象价值。
+ */
+const SNAPSHOT_KEEP_N = 20
+
 /** 调度器需要的状态切片。 */
 export interface BalanceStatus {
   state: CacheState
@@ -121,6 +141,8 @@ export class SourceLedger {
   private inflight: Promise<BalanceView> | null = null
   /** 落盘失败只报一次，避免每轮刷新都刷屏。 */
   private persistWarned = false
+  /** 修剪失败只报一次：与落盘分开记，两者是不同的降级事实。 */
+  private retentionWarned = false
 
   constructor(options: SourceLedgerOptions) {
     this.options = options
@@ -283,18 +305,36 @@ export class SourceLedger {
   }
 
   /**
-   * 把快照落盘。
+   * 把快照落盘，并按账本执行保留策略。
    *
-   * **失败只记一次 warn，不往上抛**：存储层降级不该让整个余额功能不可用。
+   * **两件事分别记账**：落盘失败与修剪失败**不能并进同一个 catch** ——
+   * 写已经成功时若把它报成「snapshot not persisted」，日志就在说谎，
+   * 而排查存储问题的人正是按这条日志判断写没写成功的。
+   *
+   * 落盘失败只记一次 warn（每轮刷新都会重来，不限流就刷屏）；
+   * 修剪失败同样只记一次 —— 它让文件继续变大，是需要被看见的降级，但不该淹没主流程。
    * @param snapshot - 刚归一化出来的快照。
    */
   private async persist(snapshot: BalanceSnapshot): Promise<void> {
     try {
       await this.options.store.saveSnapshot(snapshot)
     } catch (error) {
-      if (this.persistWarned) return
-      this.persistWarned = true
-      this.options.logger?.warn('ds-balance: snapshot not persisted, continuing in memory', {
+      if (!this.persistWarned) {
+        this.persistWarned = true
+        this.options.logger?.warn('ds-balance: snapshot not persisted, continuing in memory', {
+          source: this.options.source,
+          error: describeError(error),
+        })
+      }
+      // 落盘都没成功，谈不上修剪：这一轮不删任何东西。
+      return
+    }
+    try {
+      await this.options.store.pruneByTag(snapshot.accountTag, SNAPSHOT_KEEP_N)
+    } catch (error) {
+      if (this.retentionWarned) return
+      this.retentionWarned = true
+      this.options.logger?.warn('ds-balance: snapshot retention failed, ledger will keep growing', {
         source: this.options.source,
         error: describeError(error),
       })

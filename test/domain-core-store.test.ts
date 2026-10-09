@@ -12,17 +12,27 @@ import { StorageError } from '../src/domain/errors.ts'
 import { parseMoney } from '../src/domain/money.ts'
 import type { BalanceSnapshot } from '../src/domain/balance.ts'
 
-/** 内存表替身。 */
-function fakeTable(): KvTableLike & { rows: Map<string, StoredSnapshot> } {
+/** 内存表替身。`deleteCount` 用来断言「零写入的幂等」——没超期时一条都不该动。 */
+function fakeTable(): KvTableLike & {
+  rows: Map<string, StoredSnapshot>
+  deleteCount: number
+} {
   const rows = new Map<string, StoredSnapshot>()
-  return {
+  const table = {
     rows,
-    get: (key) => rows.get(key),
+    deleteCount: 0,
+    get: (key: string) => rows.get(key),
+    entries: () => rows.entries(),
     keys: () => rows.keys(),
-    put: async (key, value) => {
+    put: async (key: string, value: StoredSnapshot) => {
       rows.set(key, value)
     },
+    delete: async (key: string) => {
+      table.deleteCount += 1
+      return rows.delete(key)
+    },
   }
+  return table
 }
 
 function fakeDomain(table: KvTableLike): DomainLike & { closed: boolean } {
@@ -130,6 +140,65 @@ describe('DomainCoreStore', () => {
     await store.close()
     expect(closeSpy).toHaveBeenCalledTimes(1)
     expect(domain.closed).toBe(true)
+  })
+})
+
+describe('DomainCoreStore.pruneByTag', () => {
+  it('只留最新的 keepN 条，删掉更旧的', async () => {
+    const store = new DomainCoreStore({ open: async () => fakeDomain(fakeTable()) })
+    for (const id of ['a-1', 'a-2', 'a-3', 'a-4', 'a-5']) {
+      await store.saveSnapshot(snapshot({ snapshotId: id }))
+    }
+    await expect(store.pruneByTag('tag-a', 2)).resolves.toBe(3)
+    // 留下的必然是最新两条 —— 刚写入的那条 id 单调最大，永远在保留集里。
+    expect((await store.loadLatestSnapshot('tag-a'))?.snapshotId).toBe('a-5')
+  })
+
+  it('跨账本语义：修剪一个桶，另一个桶一条都不许动', async () => {
+    // 这是分桶语义的核心断言：两个 SourceLedger 共享同一个 store 实例，
+    // 一条路的保留策略绝不能删掉另一条路的快照。
+    const table = fakeTable()
+    const store = new DomainCoreStore({ open: async () => fakeDomain(table) })
+    for (const id of ['a-1', 'a-2', 'a-3']) {
+      await store.saveSnapshot(snapshot({ snapshotId: id, accountTag: 'tag-a' }))
+    }
+    for (const id of ['b-1', 'b-2']) {
+      await store.saveSnapshot(snapshot({ snapshotId: id, accountTag: 'tag-b' }))
+    }
+    await expect(store.pruneByTag('tag-a', 1)).resolves.toBe(2)
+    // tag-a 只剩最新那条；tag-b 原封不动。
+    expect((await store.loadLatestSnapshot('tag-a'))?.snapshotId).toBe('a-3')
+    expect((await store.loadLatestSnapshot('tag-b'))?.snapshotId).toBe('b-2')
+    expect([...table.rows.values()].filter((r) => r.accountTag === 'tag-b')).toHaveLength(2)
+  })
+
+  it('没超期时零写入（幂等边界）', async () => {
+    const table = fakeTable()
+    const store = new DomainCoreStore({ open: async () => fakeDomain(table) })
+    for (const id of ['a-1', 'a-2']) {
+      await store.saveSnapshot(snapshot({ snapshotId: id }))
+    }
+    await expect(store.pruneByTag('tag-a', 5)).resolves.toBe(0)
+    await expect(store.pruneByTag('tag-a', 2)).resolves.toBe(0)
+    // 断言的是「一条都没删」：single 布局下每次 delete 都会重写整份文件。
+    expect(table.deleteCount).toBe(0)
+  })
+
+  it('空账本与不存在的桶都是零删除', async () => {
+    const table = fakeTable()
+    const store = new DomainCoreStore({ open: async () => fakeDomain(table) })
+    await store.saveSnapshot(snapshot({ snapshotId: 'a-1', accountTag: 'tag-a' }))
+    await expect(store.pruneByTag('tag-z', 1)).resolves.toBe(0)
+    expect(table.deleteCount).toBe(0)
+  })
+
+  it('排序不依赖写入顺序', async () => {
+    const store = new DomainCoreStore({ open: async () => fakeDomain(fakeTable()) })
+    for (const id of ['a-3', 'a-1', 'a-4', 'a-2']) {
+      await store.saveSnapshot(snapshot({ snapshotId: id }))
+    }
+    await store.pruneByTag('tag-a', 2)
+    expect((await store.loadLatestSnapshot('tag-a'))?.snapshotId).toBe('a-4')
   })
 })
 

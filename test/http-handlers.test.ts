@@ -145,6 +145,9 @@ function harness(options: HarnessOptions = {}): Harness {
     async loadLatestSnapshot() {
       return null
     },
+    async pruneByTag() {
+      return 0
+    },
     async health() {
       return { ok: true }
     },

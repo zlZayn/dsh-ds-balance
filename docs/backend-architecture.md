@@ -293,9 +293,14 @@ interface DeepSeekClient {
 interface CoreStore {
   saveSnapshot(s: BalanceSnapshot): Promise<void>
   loadLatestSnapshot(accountTag: string): Promise<BalanceSnapshot | null>
+  pruneByTag(accountTag: string, keepN: number): Promise<number>
   health(): Promise<{ ok: boolean; detail?: string }>
 }
 ```
+
+`loadLatestSnapshot` 与 `pruneByTag` 都是 **tag 作用域**：按账本分桶、只动自己那个桶。
+`keepN` 由领域层传入 —— 端口只执行「留几条」，不决定该留几条。
+保留策略见 §10.4。
 
 **实现走官方存储接缝**，见 §10。配置不在这里 —— 配置归 `ctx.settings`。
 
@@ -751,9 +756,17 @@ const domain = await ctx.open(dsBalanceDomain)
 
 ### 10.4 保留策略
 
-- 快照：90 天。
-- 配置：**不在这里** —— 归 `ctx.settings`，永久。
-- 超期由实现方在写入路径上清理。
+- 快照：**按条数保留，每个账本最近 20 条**（`SNAPSHOT_KEEP_N`，领域层常量，不进配置面）。
+- 超期由实现方**在写入路径上清理** —— 与本节原有设计一致；改的只是维度：
+  原设计写的是「按时间保留 90 天」，实测该维度不可行（见下）。
+- **为什么不是时间维度**：默认抓取节奏 60 秒一条，90 天即**至少 12.96 万条/账本**
+  （客户端轮询在缓存不可服务时还会穿透，峰值更高）。宿主 json 后端默认 `single` 布局，
+  每次写入都要原子重写整份单元文件 —— 于是文件只增不减，体积与启动读取成本随天数线性涨。
+- **这 20 条不是功能需求，是故障回退余量**：仓内唯一读点是 `loadLatestSnapshot` 取最新一条，
+  不存在 `listSnapshots`、没有历史端点，阶段边界也明写不做图表（见 [ARCHITECTURE.md](ARCHITECTURE.md)）。
+  留 20 条是为了「最新那条写失败或损坏时还能退到上一条」，覆盖连续两次失败。
+- 取值与「为什么不是配置项」的判据见 [快照保留策略](../.agents/notes/2026-10-09-snapshot-retention.md)。
+  常量定义在 [../src/services/balance-source.ts](../src/services/balance-source.ts)（`SNAPSHOT_KEEP_N`，紧挨唯一调用点 `persist()`）。
 
 ### 10.5 路径
 
