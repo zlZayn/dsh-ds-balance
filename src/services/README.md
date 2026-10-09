@@ -20,7 +20,9 @@
   - 手动刷新的冷却**锚在上一次手动刷新**（`lastManualRefreshAt`），不是上一次抓取：锚在 `fetchedAt` 上时，一次自动刷新会把用户刚按下的一下吞掉 —— 界面转了圈、上游一次没打。
   - `persist()` 落盘后**按账本修剪**（`pruneByTag(tag, SNAPSHOT_KEEP_N)`），只留最近 20 条 ——
     落盘失败与修剪失败**分开记账**：写成功时把它报成「没落盘」会让日志说谎。
-    `SNAPSHOT_KEEP_N` 是**历史保留深度、故障回退用，不是功能开关**，刻意不进配置面（仓内无第二个读历史的消费方）。
+    `SNAPSHOT_KEEP_N` 取自 [../domain/balance.ts](../domain/balance.ts)；
+    **为什么是 20 条、为什么不是配置项**见[决策记录](../../.agents/notes/2026-10-09-snapshot-retention.md)，
+    契约见 [backend-architecture.md](../../docs/backend-architecture.md) §10.4 —— 本文件不重抄理由。
   - 只在**首次失败**打 warn，避免日志刷屏；指标键带 `source` 标签，两条路各自可看。
   - **没接入 ≠ 接入了但出错**：判定不在本文件，而在 [../domain/situation.ts](../domain/situation.ts)
     的 `situationOf` —— 账本只负责把六个事实（有无快照 / stale / isAvailable / hasSelected /
