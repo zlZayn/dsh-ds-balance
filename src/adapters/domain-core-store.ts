@@ -10,7 +10,12 @@
 
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import { z } from 'zod'
-import type { BalanceInfo, BalanceSnapshot, BalanceSource } from '../domain/balance.js'
+import {
+  SNAPSHOT_KEEP_N,
+  type BalanceInfo,
+  type BalanceSnapshot,
+  type BalanceSource,
+} from '../domain/balance.js'
 import { StorageError, describeError } from '../domain/errors.js'
 import { formatMoney, parseMoney } from '../domain/money.js'
 import type { CoreStore, StoreHealth } from '../ports/core-store.js'
@@ -27,6 +32,23 @@ export const SNAPSHOT_TABLE = 'snapshots'
  * 所以调大调小不影响正确性，只影响同进程别的活被挤住多久。
  */
 const PRUNE_BATCH_SIZE = 40
+
+/**
+ * 单次修剪最多删多少条，**之后剩下的交给后续启动或写入路径**。
+ *
+ * **为什么需要上界**：`single` 布局下每次 `delete` 都要原子重写整份单元文件，
+ * 而「删掉一批」的开销随文件体积线性涨。首次升级时存量可能很大（本机实测 9000 条 /
+ * 3.8 MB），若一次性清空就是数千次整份重写，**会把宿主连同 Agent 一起卡死**
+ * —— 实测现象是侧栏无限转圈、Agent 停止响应，清空数据后立刻恢复。
+ *
+ * 这个数是**实现约束**不是领域策略：领域层只说「留几条」，「一次最多删多少」
+ * 属于「别把自己卡死」的工程判断，所以不上端口（与批次大小同理）。
+ *
+ * 取 500 的依据：配合 {@link PRUNE_BATCH_SIZE} 是 12.5 批，批次边界清晰；
+ * 收敛靠**多次启动叠加**而不是一次删完 —— 清到 20 条这个终态是幂等的，
+ * 每次启动删一批，未删完的下次继续。
+ */
+const PRUNE_MAX_PER_CALL = 500
 
 /** 域记录：JSON 安全形状，金额存字符串最小单位。 */
 export interface StoredSnapshot {
@@ -186,6 +208,10 @@ export class DomainCoreStore implements CoreStore {
     this.handle = handle
     this.table = handle.table(SNAPSHOT_TABLE)
     this.openError = undefined
+    // 首次升级的一次性清理：必须在**任何读取之前**做，否则首次
+    // loadLatestSnapshot 仍要面对存量的大文件。等下一次抓取再清太晚 ——
+    // 那正是「保留策略只在稳态有效、首次升级要等两小时」那个盲区。
+    await this.pruneAllLedgersOnOpen(SNAPSHOT_KEEP_N)
   }
 
   /** 拿到可用表，或在降级状态下抛出可读错误。 */
@@ -232,27 +258,99 @@ export class DomainCoreStore implements CoreStore {
    * 会连带把同一进程里的取数与轮询一起拖住。所以内部**分批 + 每批之后让出一次** ——
    * 批次大小与间隔属于实现细节，不上端口（领域层只调一次，不需要知道分了几批）。
    *
+   * **单次最多删 {@link PRUNE_MAX_PER_CALL} 条**：超出部分留给后续启动或写入路径，
+   * 保证任何一次调用的耗时都有确定上界（理由见那个常量）。
+   *
    * **零写入的幂等**：没超期时一条都不删、返回 0（超期判定先做完再动手）。
+   *
+   * @param accountTag - 要修剪的账本。
+   * @param keepN - 保留条数（新到旧）。
+   * @returns 本次**实际**删掉的条数（可能小于超期总数，因为有单次上限）。
    */
   async pruneByTag(accountTag: string, keepN: number): Promise<number> {
     const table = await this.requireTable()
+    return this.pruneOwned(table, accountTag, keepN)
+  }
+
+  /**
+   * 修剪一个账本的内部实现（不重复 `requireTable` 的开表开销）。
+   */
+  private async pruneOwned(table: KvTableLike, accountTag: string, keepN: number): Promise<number> {
     if (keepN < 0) return 0
+    const owned = this.collectOwned(table, accountTag)
+    if (owned.length <= keepN) return 0
     // 先按 snapshotId 排好序再决定删哪些：留下的必然是「最新的 keepN 条」，
     // 而刚写入的那条 id 单调最大，所以永远在保留集里。
+    const ordered = owned
+      .slice()
+      .sort((a, b) => (a.snapshotId < b.snapshotId ? -1 : a.snapshotId > b.snapshotId ? 1 : 0))
+    const doomed = ordered.slice(0, ordered.length - keepN).slice(0, PRUNE_MAX_PER_CALL)
+    await this.deleteInBatches(table, doomed)
+    return doomed.length
+  }
+
+  /**
+   * 启动时的一次性清理：把**所有**账本桶各修剪一次。
+   *
+   * 为什么扫全表而不是只清「当前那个账本」：启动这一刻还不知道会用哪个 `accountTag`
+   * （要等 reader 给），而首次升级的迁移诉求是「把所有攒下来的桶都收一遍」——
+   * 只清一个桶的话，凭据轮换出来的旧桶永远清不掉，文件就一直大。
+   *
+   * **失败绝不影响 open**：清理抛错只记一条 warn。这里抛出去会让
+   * `ensureOpen` 判成打开失败，整个存储被打成降级 —— 那比慢更糟。
+   * 删到一半也是安全的：清理幂等，下次启动继续。
+   */
+  private async pruneAllLedgersOnOpen(keepN: number): Promise<void> {
+    const table = this.table
+    if (table === null) return
+    try {
+      const buckets = new Map<string, StoredSnapshot[]>()
+      for (const [, record] of table.entries()) {
+        const bucket = buckets.get(record.accountTag)
+        if (bucket === undefined) buckets.set(record.accountTag, [record])
+        else bucket.push(record)
+      }
+      let removed = 0
+      let remaining = 0
+      for (const accountTag of buckets.keys()) {
+        removed += await this.pruneOwned(table, accountTag, keepN)
+      }
+      for (const bucket of buckets.values()) remaining += Math.min(bucket.length, keepN)
+      if (removed > 0) {
+        // 进度日志：删了多少、之后大约还剩多少（每次启动还会再删一批，直到收敛）。
+        // 没有它，使用者只会看到「数据怎么还在变多」，无从判断清理是否在推进。
+        this.options.logger?.debug('ds-balance: pruned stored snapshots on open', {
+          removed,
+          remainingApprox: remaining,
+          buckets: buckets.size,
+          keepN,
+        })
+      }
+    } catch (error) {
+      // 刻意只记一条 warn：清理是尽力而为，不该把存储打成降级。
+      this.options.logger?.warn('ds-balance: startup snapshot prune failed, continuing', {
+        error: describeError(error),
+      })
+    }
+  }
+
+  /** 取出属于该账本的全部记录。 */
+  private collectOwned(table: KvTableLike, accountTag: string): StoredSnapshot[] {
     const owned: StoredSnapshot[] = []
     for (const [, record] of table.entries()) {
       if (record.accountTag === accountTag) owned.push(record)
     }
-    if (owned.length <= keepN) return 0
-    owned.sort((a, b) => (a.snapshotId < b.snapshotId ? -1 : a.snapshotId > b.snapshotId ? 1 : 0))
-    const doomed = owned.slice(0, owned.length - keepN)
+    return owned
+  }
+
+  /** 分批删除，每批之后让出一次事件循环。 */
+  private async deleteInBatches(table: KvTableLike, doomed: StoredSnapshot[]): Promise<void> {
     for (let offset = 0; offset < doomed.length; offset += PRUNE_BATCH_SIZE) {
       const batch = doomed.slice(offset, offset + PRUNE_BATCH_SIZE)
       for (const record of batch) await table.delete(record.snapshotId)
       // 让出一次事件循环：把同 tick 的连续原子重写摊开，别挤住同进程的别的活。
       await new Promise((resolve) => setImmediate(resolve))
     }
-    return doomed.length
   }
 
   async health(): Promise<StoreHealth> {

@@ -54,6 +54,27 @@ export interface BalanceSnapshot {
   raw: unknown
 }
 
+/**
+ * 每个账本保留多少条快照。**历史保留深度，不是功能开关。**
+ *
+ * **为什么住在 domain**：写入路径（`SourceLedger.persist`）与启动清理
+ * （`DomainCoreStore.initialize`）都要读它，而 adapters 与 services 互相不能依赖 ——
+ * `domain/` 是两层共同的下游，是唯一能放这个常量的地方。
+ * （最初它住在 `balance-source.ts` 顶部，理由是「紧挨唯一调用点」；启动清理加入后
+ * 调用点变成两个，那条理由就不再成立。）
+ *
+ * - 当前**没有任何功能读第二条以后的记录**：唯一读点是 `loadLatestSnapshot` 取最新一条，
+ *   仓内没有 `listSnapshots`，也没有历史端点（`docs/ARCHITECTURE.md` 的阶段边界
+ *   明写不做图表）。所以这个数**不是**为功能服务的，不要因为「用不到」就调到 1。
+ * - 它真正的作用是**故障回退余量**：最新那条写失败、写坏、或落盘途中崩了时还能退到上一条，
+ *   覆盖连续两次失败就要 ≥ 3。
+ * - **刻意不进配置面**：配置字段用户看得见、改得动，而这个数没有用户可感知的语义 ——
+ *   改小它用户看不出界面变化，只会在某天丢快照时才后悔。给一个看不出区别的旋钮比不给更糟。
+ *
+ * 量级：一条快照约 0.9 KB，20 条约 18 KB —— 余量与存储成本之间没有取舍压力。
+ */
+export const SNAPSHOT_KEEP_N = 20
+
 /** 一个币种的预警 / 告急阈值。 */
 export interface ThresholdPair {
   warn: Units

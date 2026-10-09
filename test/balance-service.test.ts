@@ -557,6 +557,25 @@ describe('restore', () => {
     const view = await h.service.getView()
     expect(view.state).toBe('ok')
   })
+
+  it('恢复失败记 warn 而不是 debug：降级事实不该藏在 debug 里', async () => {
+    // 使用者只会看到界面空着 —— 没有这条 warn 就无从判断是「本来就没有」
+    // 还是「存储出问题了」。日志级别是这条信息能否被看见的开关。
+    const h = harness()
+    const ledger = h.ledgers.get('deepseek-account')
+    await ledger?.restore()
+    expect(h.logger.warn).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(h.logger.warn).mock.calls[0]?.[0]).toContain('could not restore')
+  })
+
+  it('恢复失败仍不设错误态：让前端自己走正常抓取', async () => {
+    // 在 restore 里塞错误态会让「本来就没有快照」与「存储坏了」混成同一个处境。
+    const h = harness()
+    const ledger = h.ledgers.get('deepseek-account')
+    await ledger?.restore()
+    expect(h.service.status().state).toBe('empty')
+    expect(h.service.status().errorCode).toBeNull()
+  })
 })
 
 describe('存储降级', () => {
