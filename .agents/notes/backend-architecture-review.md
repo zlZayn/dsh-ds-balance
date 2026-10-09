@@ -1,8 +1,11 @@
 # 后端架构文档对照审查（含定案）
 
+状态：已归档（2026-10-09）—— 冲突已全部定案，定案结果已落进活文档 docs/backend-architecture.md；本记录不再指导工作。
+
+**类型**：依据（审查）。记的是「逐条对照后发现了什么」，定案权在维护者，本记录只提供证据。
+
 审查对象：架构师转来的《ds-balance 后端架构》。
 口径：**以实际情况为准** —— 代码与宿主实现是事实，文档写法有出入的地方以事实为准。
-状态：**冲突已全部定案，未写一行实现代码。**
 
 ## 一句话结论
 
@@ -125,7 +128,7 @@ namespace 必须匹配 `/^[a-z][a-z0-9-]*$/` → `ds-balance` 合法。
 1. `src/client/model.ts`：删掉 `selectCurrency` 的挑选逻辑，改为直接读 `response.selected`。
 2. 前端把 `displayCurrency` 作为查询参数传给后端。
 3. 「币种不匹配」的判定改为 **`selected.currency` vs 配置的 `displayCurrency`**（UX 不变：浮层说明 + 两个动作）。
-  （已推翻：「去设置」已删除，只剩「改用 X」一个动作、且它直接写设置作用域的 `displayCurrency`；去插件页的入口改由浮层标题行右端的图标按钮承担 → [币种收敛](../.agents/notes/2026-09-19-currency-single-source.md) · [跳转入口](../.agents/notes/2026-09-19-setstate-function-value-updater.md)）
+  （已推翻：「去设置」已删除，只剩「改用 X」一个动作、且它直接写设置作用域的 `displayCurrency`；去插件页的入口改由浮层标题行右端的图标按钮承担 → [币种收敛](2026-09-19-currency-single-source.md) · [跳转入口](2026-09-19-setstate-function-value-updater.md)）
 4. mock 层要让 `selected` 与 `displayCurrency` 自洽（现有 `currencyMismatch` 场景正好覆盖）。
 5. `api-types.ts` 的 `thresholds` / `isAvailable` **已经是对的**，不用改。
 
@@ -176,6 +179,6 @@ namespace 必须匹配 `/^[a-z][a-z0-9-]*$/` → `ds-balance` 合法。
 
 ## 参考
 
-- UI 侧契约 → [UI 侧契约与移交](ui-handoff.md)
+- UI 侧契约 → [UI 侧契约与移交](../../docs/ui-handoff.md)
 - 模型融合判定 → [连接与官方模型机制的融合判定](model-integration-assessment.md)
-- 架构设计 → [架构说明](ARCHITECTURE.md)
+- 架构设计 → [架构说明](../../docs/ARCHITECTURE.md)

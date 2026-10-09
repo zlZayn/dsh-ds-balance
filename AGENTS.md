@@ -26,8 +26,8 @@
 ## 全局规则
 
 - 设计决策与防错清单 → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- 原生集成勘察结论（阶段 0）→ [docs/recon-native-integration.md](docs/recon-native-integration.md)
-- 决策理由与替代方案 → [.agents/notes/](.agents/notes/)
+- 原生集成勘察结论（阶段 0，依据类）→ [.agents/notes/recon-native-integration.md](.agents/notes/recon-native-integration.md)
+- 决策与依据记录 → [.agents/notes/](.agents/notes/)
 - 对外可见行为变化，同一次改动内同步 [README.md](README.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **插件展示面（插件页上的标题、描述与图标）住在包根的 [locale/](locale/AGENTS.md) 与 [icon.svg](icon.svg)**：
   宿主**直读**它们，我们的代码一个字节都不读 —— 所以坏了**没有信号**，只会静默回落成包名、
@@ -228,8 +228,8 @@
 ## 文档地图
 
 - 本表只列**层**；每层有什么在它自己的 README 里，不在这里重抄一份。
-- 设计、契约、发布手册与事故复盘 → [docs/README.md](docs/README.md)
-- 决策记录与验证配方（当时为什么这么定）→ [.agents/notes/](.agents/notes/)（写法见该目录 `AGENTS.md`，不建索引）
+- 活文档（设计 / 契约 / 发布手册）→ [docs/README.md](docs/README.md)；事故复盘 → [docs/postmortem/](docs/postmortem/README.md)
+- 决策与依据（当时为什么这么定）→ [.agents/notes/](.agents/notes/)（写法见该目录 `AGENTS.md`，不建索引）
 - 源码手册 → [src/README.md](src/README.md)；浏览器半边 → [src/client/README.md](src/client/README.md)；领域模型 → [src/domain/README.md](src/domain/README.md)
 - 测试手册 → [test/README.md](test/README.md)；构建脚本 → [scripts/README.md](scripts/README.md)
 - 门面截图与判据 → [assets/README.md](assets/README.md) · [assets/AGENTS.md](assets/AGENTS.md)

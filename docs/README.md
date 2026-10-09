@@ -1,36 +1,27 @@
-# docs/ — 设计与契约文档
+# docs/ — 活文档
 
-- 职责：放跨阶段的**设计 / 契约 / 流程**；实现细节进 [src/](../src/README.md) 的手册，过程记录进 [.agents/notes/](../.agents/notes/)。
+- 职责：只放**活文档** —— 描述现状、随代码改；改了对外行为要同批改它。
+- 「为什么这么定」→ [.agents/notes/](../.agents/notes/README.md)（决策与依据）；
+  「当时出了什么事」→ [postmortem/](postmortem/README.md)。
 - 怎么在这里写 → [AGENTS.md](AGENTS.md)。
 - 上层 → 根 [AGENTS.md](../AGENTS.md) 的文档地图；门面 → 根 [README.md](../README.md)。
 
-## 三层
-
-- **活文档**：描述现状，随代码改；改了代码要同批改它。
-- **设计依据**：某个阶段定契约的那一份，写完即冻结；后来变了就新写一条决策记录，不回头改它。
-- **记录**：勘察与复盘，只写当时发生了什么。
-
-层的判据决定它能不能被改，所以每份文件先归层再动笔。
-
 ## 文件
 
-| 文件 | 层 | 一句话 |
-|---|---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 活 | 不变的设计与防错清单：插件形态、slot、颜色口径、跨字段校验。 |
-| [PUBLISHING.md](PUBLISHING.md) | 活 | 发布手册：流程、版本号判定链、判例库。 |
-| [RELEASE-DRAFTER.md](RELEASE-DRAFTER.md) | 活 | 草稿 Release 的维护：标签映射、本仓适配情况、草稿 tag 为什么用滚动名。 |
-| [backend-architecture.md](backend-architecture.md) | 活 | 后端契约（端点 / 配置 / 存储 / 错误码）的 home。 |
-| [ui-handoff.md](ui-handoff.md) | 活 | 界面的 home：处境 → 形态表、通道映射、来源标签规则、mock 覆盖。 |
-| [model-integration-assessment.md](model-integration-assessment.md) | 依据 | 与官方模型机制（凭据继承）的融合判定。 |
-| [backend-architecture-review.md](backend-architecture-review.md) | 依据 | 后端架构文档的逐条对照审查。 |
-| [recon-native-integration.md](recon-native-integration.md) | 记录 | 阶段 0 勘察：原生 slot / 组件 / token / 数据获取的实测结论。 |
-| [postmortem/](postmortem/README.md) | 记录 | 按日期归档的事故复盘：现象、根因、防错。 |
+| 文件 | 一句话 |
+|---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 不变的设计与防错清单：插件形态、slot、颜色口径、跨字段校验。 |
+| [backend-architecture.md](backend-architecture.md) | 后端契约（端点 / 配置 / 存储 / 错误码）的 home。 |
+| [ui-handoff.md](ui-handoff.md) | 界面的 home：处境 → 形态表、通道映射、来源标签规则、mock 覆盖。 |
+| [PUBLISHING.md](PUBLISHING.md) | 发布手册：流程、版本号判定链、判例库。 |
+| [RELEASE-DRAFTER.md](RELEASE-DRAFTER.md) | 草稿 Release 的维护：标签映射、本仓适配情况、草稿 tag 为什么用滚动名。 |
+| [postmortem/](postmortem/README.md) | 事故复盘（**独立体裁与双件**，不在上面「活文档」之列）。 |
 
-**[ui-handoff.md](ui-handoff.md) 由「依据」改归「活」**（本轮）：它写的是**当前**界面契约（处境表、通道映射、
+**为什么 `ui-handoff.md` 归活文档**：它写的是**当前**界面契约（处境表、通道映射、
 来源标签规则、mock 覆盖），而这些必须与代码一致。归「依据」＝不追改，那它就会在下一次改形态时
 静默变成假话 —— `account-unavailable` 的叉正是这么丢的：代码改了、跟着改的测试也改了，
-而这份文档没改，双方长期矛盾。它承担的正是「界面的 home」，所以按活文档维护：改界面就同批改它，
-并且 `test/client-situation.test.ts` 的分层表断言与它的 §四 表逐行对账（文档与代码对不上时机器会红）。
+而这份文档没改，双方长期矛盾。`test/client-situation.test.ts` 的分层表断言与它的 §四 表逐行对账
+（文档与代码对不上时机器会红）。
 
 ## 变更影响路由
 

@@ -1,7 +1,7 @@
 # 后端架构（修正版）
 
 > 本文面向实现 Agent，自包含，可直接执行。
-> 来源：架构师原稿 + 本仓[后端架构文档对照审查](backend-architecture-review.md)的九条修正。
+> 来源：架构师原稿 + 本仓[后端架构文档对照审查](../.agents/notes/backend-architecture-review.md)的九条修正。
 > **状态：待架构师复审。**
 
 ## 本版修正（相对原稿）
@@ -884,10 +884,10 @@ import { resolveDshHome, dshHomePath, dshCachePath, dshHomeDisplay } from '@deep
 ## 十八、参考
 
 - UI 契约 → [UI 侧契约与移交](ui-handoff.md)
-- 对照审查与定案 → [后端架构文档对照审查](backend-architecture-review.md)
-- 模型融合判定 → [连接与官方模型机制的融合判定](model-integration-assessment.md)
+- 对照审查与定案 → [后端架构文档对照审查](../.agents/notes/backend-architecture-review.md)
+- 模型融合判定 → [连接与官方模型机制的融合判定](../.agents/notes/model-integration-assessment.md)
 - 架构设计 → [架构说明](ARCHITECTURE.md)
-- 决策记录 → [.agents/notes/](../.agents/notes/)
+- 决策记录与依据 → [.agents/notes/](../.agents/notes/)
 
 ---
 

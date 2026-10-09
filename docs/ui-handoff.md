@@ -245,5 +245,5 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 ## 参考
 
 - 本仓库的架构与不变约束 → [ARCHITECTURE.md](ARCHITECTURE.md)
-- 原生集成勘察（Slot / 设计系统 / 运行时通道）→ [recon-native-integration.md](recon-native-integration.md)
-- 决策记录（含每条被否决的替代方案）→ [../.agents/notes/](../.agents/notes/)
+- 原生集成勘察（Slot / 设计系统 / 运行时通道）→ [recon-native-integration.md](../.agents/notes/recon-native-integration.md)
+- 决策与依据记录（含每条被否决的替代方案）→ [../.agents/notes/](../.agents/notes/)

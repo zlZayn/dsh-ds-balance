@@ -337,12 +337,16 @@ describe('文档不抄实测值', () => {
   const RECORDS = [
     /^\.agents\/notes\//,
     /^docs\/postmortem\//,
-    /^docs\/recon-/,
     // `ui-handoff.md` 曾在这张表里（当「依据」冻结），本轮改归**活文档** ——
     // 它写的是当前界面契约（处境表 / 通道映射 / 来源标签规则 / mock 覆盖），
     // 必须与代码一致。层的登记表也同步改了，见 docs/README.md。
     // 于是「不写会漂的值」这条红线现在**也管它**。
-    /^docs\/(model-integration-assessment|backend-architecture-review)\.md$/,
+    //
+    // 原先这里还有 `/^docs\/recon-/` 与
+    // `/^docs\/(model-integration-assessment|backend-architecture-review)\.md$/` 两条 ——
+    // 那三份（勘察 / 评估 / 审查）已移入 `.agents/notes/` 作**依据类**，
+    // 被上面第一条前缀正则接住，所以删掉这两条。**不是放宽**：豁免面没变，
+    // 只是跟着文件换了路径。
   ]
 
   /** 门面双件：装之前必须看得见兼容范围，所以允许留值 —— 但必须与真源同行。 */
