@@ -1,7 +1,7 @@
 # ports/ — 端口层手册
 
 - 职责：定义上层依赖的**接口**（Layer 1）。只有类型与常量，没有实现。
-- 变更影响路由：改端口签名 → 同步实现（`src/adapters/`）与 [docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) 的 §5。
+- 变更影响路由：改端口签名 → 同步实现（`src/adapters/`）与 [docs/BACKEND-CONTRACTS.md](../../docs/BACKEND-CONTRACTS.md) 的 §5。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 - 回根 → [../../AGENTS.md](../../AGENTS.md)。
 
@@ -22,4 +22,4 @@
 ## 改后必测
 
 - `npm run typecheck`（端口一改，实现立刻要跟上）。
-- 新增端口必须同步 [docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) 的 §5 与 [src/adapters/README.md](../adapters/README.md)。
+- 新增端口必须同步 [docs/BACKEND-CONTRACTS.md](../../docs/BACKEND-CONTRACTS.md) 的 §5 与 [src/adapters/README.md](../adapters/README.md)。

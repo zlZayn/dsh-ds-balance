@@ -57,4 +57,4 @@ dsh --profile <新 profile> --port <空闲端口> --no-open *> server.log  # 后
 
 ## 关联
 
-- [后端架构（修正版）](../../docs/backend-architecture.md) · [架构说明](../../docs/ARCHITECTURE.md) · [实现偏离清单](2026-09-17-implementation-deviations.md)
+- [后端契约](../../docs/BACKEND-CONTRACTS.md) · [架构说明](../../docs/ARCHITECTURE.md) · [实现偏离清单](2026-09-17-implementation-deviations.md)

@@ -1,7 +1,7 @@
 /**
  * 服务端盐的读写。
  *
- * `accountTag` 由它派生，所以**它丢了账本就会孤立**：见 docs/BACKEND-ARCHITECTURE.md §19 第 5 条。
+ * `accountTag` 由它派生，所以**它丢了账本就会孤立**：见 docs/BACKEND-CONTRACTS.md §19 第 5 条。
  * 文件权限 0600；路径由组装点用 `@deepseek-ai/dsh-home-paths` 的 `dshHomePath()` 拼出来。
  * @module dsh-ds-balance/adapters/salt-file
  */

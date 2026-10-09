@@ -215,7 +215,7 @@ UI 已经做完并用 mock 跑通；它只认一组固定字段与一条机械�
 ## 十、待后端确认
 
 1. ~~`GET /api/v1/balance` 走哪条通道？~~ **已定**：`ctx.connection.fetch.register`
-   （物理载体已做完信任与浏览器鉴权，见 [BACKEND-ARCHITECTURE.md](BACKEND-ARCHITECTURE.md) §8）。
+   （物理载体已做完信任与浏览器鉴权，见 [BACKEND-CONTRACTS.md](BACKEND-CONTRACTS.md) §8）。
 2. ~~`POST /refresh` 的实际路径与语义~~ **已定**：`POST /api/v1/balance/refresh`，
    请求体 `{ reason, provider }`，回 `{ triggered, joined, cooldownMs, state }`；
    冷却的权威在后端。

@@ -1,7 +1,7 @@
 /**
  * 用 dsh 官方存储接缝实现 {@link CoreStore}。
  *
- * 关键约束（见 docs/BACKEND-ARCHITECTURE.md §10）：
+ * 关键约束（见 docs/BACKEND-CONTRACTS.md §10）：
  * - `open` 每进程只能一次，重名抛 `already-open`；
  * - **`close()` 必须由调用方在 `ctx.effect` 的 disposer 里调用**，否则热重挂会锁死；
  * - 打开失败要**降级**而不是抛出去 —— 未观察的 rejection 曾把宿主整个拖下水。

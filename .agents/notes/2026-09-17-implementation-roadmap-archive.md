@@ -4,7 +4,7 @@
 
 ## 问题
 
-`docs/backend-architecture.md` 里的 §14「实施路线」与附录「给实现 Agent 的开场白」是**派活时写给实现方的一次性指令**，
+`docs/BACKEND-CONTRACTS.md` 里的 §14「实施路线」与附录「给实现 Agent 的开场白」是**派活时写给实现方的一次性指令**，
 不是后端的设计或契约。第十一步做完全部落地之后，它们留在规格文档里会让「规格」变成「已经做完的工单」：
 
 - 读者分不清哪一节还是有效约束、哪一节只是当时的排期。
@@ -12,7 +12,7 @@
 
 ## 决策
 
-两节从 `docs/backend-architecture.md` 正文移除，全文留存于本记录。
+两节从 `docs/BACKEND-CONTRACTS.md` 正文移除，全文留存于本记录。
 正文的章节编号保持原样（§15~§19 不动），**不重排编号** —— 别处已有「§19 第 5 条」这类引用，重排会让它们指错。
 
 被移除的内容逐字如下。
@@ -59,8 +59,8 @@ UI 侧五条改动（§15）与后端放同一个提交。最后阶段 9 挂载�
 ## 影响
 
 - 代价：要看排期得翻决策记录，不在规格文档里。
-- 收益：`docs/backend-architecture.md` 只剩设计与契约，章节编号不变所以旧引用仍然有效。
+- 收益：`docs/BACKEND-CONTRACTS.md` 只剩设计与契约，章节编号不变所以旧引用仍然有效。
 
 ## 关联
 
-- [后端架构（修正版）](../../docs/backend-architecture.md) · [实现偏离清单](2026-09-17-implementation-deviations.md)
+- [后端契约](../../docs/BACKEND-CONTRACTS.md) · [实现偏离清单](2026-09-17-implementation-deviations.md)

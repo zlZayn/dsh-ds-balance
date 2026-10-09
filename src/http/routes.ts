@@ -4,7 +4,7 @@
  * 三层职责分得很开：本文件只管**注册**，`handlers.ts` 管**怎么做**，
  * `wire.ts` 管**长什么样**。注册需要 `ctx`，所以只有本文件碰宿主。
  *
- * 契约要点（docs/BACKEND-ARCHITECTURE.md §3.3 / §8.2）：
+ * 契约要点（docs/BACKEND-CONTRACTS.md §3.3 / §8.2）：
  * - `path` 写死精确值、不带尾随斜杠（实现是 Map 精确键匹配）；
  * - `requestBody` 必填；
  * - 物理载体**已先做完信任与浏览器鉴权**，handler 不必再判一次。

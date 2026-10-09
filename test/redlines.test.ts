@@ -1220,7 +1220,7 @@ describe('核心活文档的首行标题', () => {
     ['docs/README.md', '# docs/ — 活文档'],
     ['docs/ARCHITECTURE.md', '# ds-balance 架构说明'],
     ['docs/UI-HANDOFF.md', '# UI 侧契约与移交'],
-    ['docs/BACKEND-ARCHITECTURE.md', '# 后端架构（修正版）'],
+    ['docs/BACKEND-CONTRACTS.md', '# 后端契约'],
   ] as const
 
   for (const [file, title] of TITLED) {

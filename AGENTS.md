@@ -165,7 +165,7 @@
 - **写临时探针别用 `os.tmpdir()`**：进程环境为空时它在 Windows 上返回相对路径 `undefined\temp`，会把文件写进工作区，还会让 `robocopy` 自我递归出一棵超 MAX_PATH 的目录树。用 `$env:TEMP` 或显式绝对路径，用完即删。
 - **Agent 的 `write` 工具对「自己刚删掉的文件」会拒绝覆盖**（它缓存里那个文件还在）。换个路径，或用 Node 的 `fs.writeFileSync` 直接写。
 - **整份文件被别的文档覆盖：三条文档红线一条都不会响**（本轮真发生过）。`docs/UI-HANDOFF.md` 被整份换成了另一个文件的内容（193 行 → 734 行），而「文档链接」「不抄实测值」两条仍然全绿 —— 文件还在、格式合法、链接可解析、没有会漂的值，**只有职责内容消失了**。
-  - 判据：**首行标题**。已加红线「核心活文档的首行标题」覆盖 6 份（`AGENTS.md`、`docs/README.md`、`docs/ARCHITECTURE.md`、`docs/UI-HANDOFF.md`、`docs/BACKEND-ARCHITECTURE.md`、根 `README.md` 的居中 h1）。
+  - 判据：**首行标题**。已加红线「核心活文档的首行标题」覆盖 6 份（`AGENTS.md`、`docs/README.md`、`docs/ARCHITECTURE.md`、`docs/UI-HANDOFF.md`、`docs/BACKEND-CONTRACTS.md`、根 `README.md` 的居中 h1）。
   - 手工判据：`git diff --stat` 里**行数剧变**（不是几十行而是几百行）就是可疑信号，别只看测试绿。
   - 成因：把某个 skill / 文档的**整份内容**读进上下文后，写入时误当成目标文件的内容。**改文档时用定点 `edit`，不用整份 `write`** —— 后者会把「当前上下文里那份东西」整体落盘。
 - **提交前先确认自己在哪个分支**：本轮两次把该走 PR 的改动直接提到了 `main`（第二次靠 `--force-with-lease` 回滚重来）。`git branch --show-current` 应当与「这次改动要不要 PR」的判断一致 —— 纯文档措辞可直提，其余走 PR（理由：红线要在 CI 独立环境跑一遍，且 Release Drafter 只读 PR）。
@@ -217,7 +217,7 @@
   | 发布态该有什么 | [scripts/check-release.mjs](scripts/check-release.mjs) 的断言 | 引用断言集合 |
   | dist-tag 三条线的实际版本 | `node scripts/compat-swap.mjs check` 现查 | 只写语义（哪条旧、哪条是我们声明的） |
   | 端点路径与请求形状 | [src/http/routes.ts](src/http/routes.ts) | 引用 |
-  | 配置字段与契约 | [src/config.ts](src/config.ts) · [docs/BACKEND-ARCHITECTURE.md](docs/BACKEND-ARCHITECTURE.md) | 引用 |
+  | 配置字段与契约 | [src/config.ts](src/config.ts) · [docs/BACKEND-CONTRACTS.md](docs/BACKEND-CONTRACTS.md) | 引用 |
   | 颜色 / 阈值口径 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 引用 |
   | dsh 运行时行为 | 宿主源码 `packages/` | 带行号引用，行号以当前检出为准 |
   | 发布状态（版本 / tag） | npm 与 GitHub 现查 | 只留一行指针 |
