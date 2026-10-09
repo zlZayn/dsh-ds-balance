@@ -1,5 +1,5 @@
 /**
- * 快照存储端口。实现走 dsh 官方存储接缝，见 docs/backend-architecture.md §10。
+ * 快照存储端口。实现走 dsh 官方存储接缝，见 docs/BACKEND-ARCHITECTURE.md §10。
  * @module dsh-ds-balance/ports/core-store
  */
 

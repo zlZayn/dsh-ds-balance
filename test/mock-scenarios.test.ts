@@ -40,7 +40,7 @@ describe('mock 场景不变量', () => {
   })
 
   it('**11 个处境全都能用 mock 演出来**（少一个就要红）', () => {
-    // 这条是补的：从前文档（docs/ui-handoff.md §八 与 mock/README.md）写着
+    // 这条是补的：从前文档（docs/UI-HANDOFF.md §八 与 mock/README.md）写着
     // 「`checking` / `offline` 造不出来，只能真机验」—— 而 mock 表里**一直**有这两个键。
     // 两边各说各话且没有测试守着，于是那句错话活了一轮多。
     // 判据取**真跑一遍 `situationOfResponse`**，不是读声明字段：

@@ -1,7 +1,7 @@
 /**
  * 线上形状与序列化。
  *
- * 契约见 docs/backend-architecture.md §8：**金额一律八位小数字符串**，
+ * 契约见 docs/BACKEND-ARCHITECTURE.md §8：**金额一律八位小数字符串**，
  * `bigint` 最小单位只活在进程内。本模块是纯函数，不碰 `ctx`、不发请求。
  * @module dsh-ds-balance/http/wire
  */

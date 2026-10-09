@@ -1,7 +1,7 @@
 # domain/ — 领域模型手册
 
 - 职责：纯逻辑的领域层（Layer 0）。**不依赖任何 dsh 服务、不发网络请求、不碰文件系统。**
-- 变更影响路由：改契约形状 → 同步 [docs/backend-architecture.md](../../docs/backend-architecture.md) 的 §4 与 [docs/ui-handoff.md](../../docs/ui-handoff.md)；改判定规则 → 同步 §7。
+- 变更影响路由：改契约形状 → 同步 [docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) 的 §4 与 [docs/UI-HANDOFF.md](../../docs/UI-HANDOFF.md)；改判定规则 → 同步 §7。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 - 回根 → [../../AGENTS.md](../../AGENTS.md)。
 

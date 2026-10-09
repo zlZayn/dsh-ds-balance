@@ -59,11 +59,19 @@
 现在那条只作为**兜底**（例如手动发布，或某次 Release 建漏了）：
 `gh release create v<version> --title v<version> --prerelease --generate-notes`（正式版去掉 `--prerelease`）。
 
-**第 9 步的正文目前来自 `--generate-notes`（GitHub 自动生成），不读草稿。**
-仓里另有一份 Release Drafter 维护的**草稿** Release（tag 滚动名 `next`，与 `v<版本>` 互不撞），
-它按 PR 标签汇总合并内容 —— 但**尚未接入本流程**：是否让第 9 步优先读草稿，是下一个独立任务
-（会动到 `test/redlines.test.ts` 对 `gh release create` 那行的逐字形状断言）。
-配置、本仓适配情况与那个坑见 [RELEASE-DRAFTER.md](RELEASE-DRAFTER.md)。
+**第 9 步的正文来源是两级：草稿 → `--generate-notes` 回落。**
+仓里有一份 Release Drafter 维护的**草稿** Release（tag 滚动名 `next`，与 `v<版本>` 互不撞，
+所以第 9 步那个「Release 已存在」的判断不会命中它）：它按 PR 标签汇总合并内容。
+流程先读草稿，读到且**有条目**就用它作正文；草稿为空（本版没有带标签的 PR）时回落
+GitHub 自动生成。两条路都在 [release.yml](../.github/workflows/release.yml) 的
+`Pick the release body` 步骤里，日志会打出实际用了哪一路。
+
+**关键：读不到草稿 ≠ 草稿为空。** 前者是**配置坏了**（tag 改名、action 没跑、权限不足），
+后者是**正常情况**（本版只有直提、没有 PR）。两者都会走回落，所以流程在
+「读不到」时**发一条 `::warning::`** —— 否则「发版成功但正文其实走了回落」就是**静默失败**：
+结果看着对，实际少了一层。看到那条 warning 就去查配置，别当成正常。
+
+机制、标签映射与本仓适配情况见 [RELEASE-DRAFTER.md](RELEASE-DRAFTER.md)。
 
 **「发布成功」以 registry 为准，而且它有几分钟延迟。** CLI 打出 `+ <包名>@<号>`、provenance 也进了
 透明度日志之后，registry 那一刻**可能还查不到这个号** —— 日志里会明写

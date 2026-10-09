@@ -1,28 +1,12 @@
 # 后端架构（修正版）
 
-> 本文面向实现 Agent，自包含，可直接执行。
+> 本文是**后端契约的 home**：领域模型、端口、应用服务、HTTP API、配置、存储、安全与可观测。
+> **不变的设计与防错清单不在这里** → [ARCHITECTURE.md](ARCHITECTURE.md)。
 > 来源：架构师原稿 + 本仓[后端架构文档对照审查](../.agents/notes/backend-architecture-review.md)的九条修正。
-> **状态：待架构师复审。**
-
-## 本版修正（相对原稿）
-
-| # | 位置 | 修正 |
-|---|---|---|
-| 1 | §1.1 | `selected` 改为**后端权威**：前端直接读它，`displayCurrency` 由前端作为查询参数传入；`isAvailable` 改为纯 `boolean` |
-| 2 | §1.1 / §8.3 | `thresholds` 改为**按币种分**：`{ CNY: {warn, critical}, USD: {...} }` |
-| 3 | §6.2 / §9.1 | `timeoutMs` **移出设置 schema**：常量 8000，环境变量 `DS_BALANCE_TIMEOUT_MS` 覆盖，UI 不暴露 |
-| 4 | §9.1 | `register(ns, schema, { base: <值> })`，schema 是 **schemastery** |
-| 5 | §9.4 | 配置变更改用 **`scope.watch`** |
-| 6 | §3.3 / §8.1 | `fetch` 注册补 `requestBody`；`fetch` 返回 `Response`；返回值是**异步 disposer**，用 `ctx.effect` 包 |
-| 7 | §10 | 整节重写为 **`ctx.storageDomain`**，删掉 `better-sqlite3` |
-| 8 | §6.1 / §10 | `$DSH_HOME` 改用官方包 **`@deepseek-ai/dsh-home-paths`** |
-| 9 | §9.2 | 补：`connection` 的 HTTP 可达性**依赖组合里有 webServer** |
-
----
 
 ## 〇、一句话任务
 
-在现有 UI 基础上实现后端：读取 DeepSeek 官方余额，通过 `ctx.connection.fetch` 暴露给前端，产出 [UI 侧契约与移交](ui-handoff.md) 定义的契约形状。
+在现有 UI 基础上实现后端：读取 DeepSeek 官方余额，通过 `ctx.connection.fetch` 暴露给前端，产出 [UI 侧契约与移交](UI-HANDOFF.md) 定义的契约形状。
 
 **不做 Estimation**（账本 / 投影 / 估算）—— 那是第二版。
 
@@ -342,7 +326,7 @@ class KeyResolver {
 
 ### 6.2 ConfigService 与 schema
 
-**字段名与 [UI 侧契约与移交](ui-handoff.md) 第六节逐字一致，共 11 个。**
+**字段名与 [UI 侧契约与移交](UI-HANDOFF.md) 第六节逐字一致，共 11 个。**
 
 ```ts
 const Config = z.object({
@@ -823,55 +807,6 @@ import { resolveDshHome, dshHomePath, dshCachePath, dshHomeDisplay } from '@deep
 
 ---
 
-## 十三、测试
-
-| 层 | 类型 | 覆盖 |
-|---|---|---|
-| Money | 单元 | 解析、格式化、往返 |
-| normalize | 单元 | 结构校验、多币种、非法金额 |
-| pickBalance | 单元 | 顺序跳变、偏好、空数组 |
-| severityOf | 单元 | 5 档 + 阈值边界 |
-| classify | 单元 | 全部错误码 |
-| parseErrorBody | 单元 | 三种变体 + 未知 |
-| BalanceService | 单元 + mock 端口 | 状态机、inflight、stale |
-| Scheduler | 单元 + fake clock | 退避、抖动、缺 key |
-| KeyResolver | 单元 | **无 credentials seam → NO_KEY** |
-| HttpDeepSeekClient | 集成 + msw | 200 / 401 / 429 / 5xx |
-| HTTP routes | 集成 | 契约快照 |
-
-关键用例：官方 200 fixture 归一化正确；401 两种变体解析正确；429 带/不带 `Retry-After`；乱序快照不重复记账；金额解析与格式化往返一致。
-
----
-
-## 十五、需要一并修的 UI 侧（五条）
-
-| # | 文件 | 修正 |
-|---|---|---|
-| 1 | `src/client/model.ts` | 删掉 `selectCurrency` 的挑选逻辑，改读 `response.selected` |
-| 2 | `src/client/index.tsx` / 数据层 | 把 `displayCurrency` 作为查询参数传给后端 |
-| 3 | `src/client/sidebar/SidebarBalance.tsx` | 币种不匹配判定改用 `selected.currency` vs 配置值（UX 不变） |
-| 4 | `src/client/mock/scenarios.ts` | 让 `selected` 与 `displayCurrency` 自洽（`currencyMismatch` 场景已覆盖） |
-| 5 | `src/index.ts` | `apiKeyRef` 默认值改 `'DEEPSEEK_API_KEY'`；`inject` 加 `'credentials'`；`installSection` 换 `register` |
-
-**`src/client/api-types.ts` 不用改** —— `thresholds` 已按币种分，`isAvailable` 已是纯 `boolean`。
-
----
-
-## 十六、待验证（实现阶段第一件事）
-
-| # | 项 | 做法 | 不成立时 |
-|---|---|---|---|
-| 1 | `credentials.resolve('DEEPSEEK_API_KEY')` 是否命中 | **阶段 0 实测** | 走 env；再不行 → `NO_KEY` |
-| 2 | 无 credentials seam 的行为 | 装配测试 | 捕获异常，回落 `NO_KEY` |
-| 3 | 401 错误体确切格式 | 无效 key 请求 | 多路径解析（§7.5） |
-| 4 | 429 是否带 `Retry-After` | 高频请求 | 无则指数退避 |
-| 5 | 余额更新延迟 | 调用后立即拉 | 显示 `ageMs` |
-| 6 | 多币种返回顺序 | 多次请求 | 稳定排序（§7.2） |
-
-**fetch 路由的 `path` 不做归一化依赖**：写死精确路径，不带尾随斜杠。
-
----
-
 ## 十七、明确不做
 
 - Estimation（账本 / 投影 / 定价 / 融合估算）
@@ -883,28 +818,8 @@ import { resolveDshHome, dshHomePath, dshCachePath, dshHomeDisplay } from '@deep
 
 ## 十八、参考
 
-- UI 契约 → [UI 侧契约与移交](ui-handoff.md)
+- UI 契约 → [UI 侧契约与移交](UI-HANDOFF.md)
 - 对照审查与定案 → [后端架构文档对照审查](../.agents/notes/backend-architecture-review.md)
 - 模型融合判定 → [连接与官方模型机制的融合判定](../.agents/notes/model-integration-assessment.md)
 - 架构设计 → [架构说明](ARCHITECTURE.md)
 - 决策记录与依据 → [.agents/notes/](../.agents/notes/)
-
----
-
-## 十九、实现细则（维护者补充 7 条）
-
-1. **凭据轮换 → `accountTag` 变 → 旧快照失配**：加载快照时 tag 不匹配**视为空，不混用**。
-2. **`role('secret')` 的 redact 是自动还是手动**：`GET /api/v1/config` 是自己构造响应、不走 settings 读 —— **实现时必须先确认掩码是否自动生效**；不自动就手动掩。
-3. **handler 每次读最新 config**：配置是动态的（`scope.watch` 更新），闭包捕获旧配置会让用户改了阈值不生效。
-4. **handler 内部异常不能抛**：契约规定余额错误走 `200 + state: error`；抛出去会被宿主包成 500，前端拿不到 `error` 结构。**必须自己 catch 所有异常。**
-5. **`.salt` 丢失 → `accountTag` 全变 → 旧账本孤立**：文档写明，或改成从固定源派生。
-6. **UI 五条改动的先后顺序**：**先 mock → 再 `model.ts` → 再组件**。顺序错了 mock 场景会全崩。
-7. **`DS_BALANCE_TIMEOUT_MS` 每次请求读**：**进程内**改写这份环境后立即生效；**外部**（系统设置、另一个终端）改的环境变量，跑着的进程看不到，要重启 DSH —— 与凭据那一路是同一条边界，见[决策记录](../.agents/notes/2026-09-30-credential-change-refresh-boundary.md)。
-
-### 阶段 0 实测结论（已并入 §3.1 / §9.2 / §10）
-
-- `credentials.resolve('DEEPSEEK_API_KEY')` **命中**：`source: 'env'`、`writable: false`。**「凭据继承官方」成立。**
-- `writable: false` 的设计含义：**卡片不让用户覆盖宿主凭据**；`apiKey` 是插件自己的设置项，**两者语义分清**。
-- 存储域 × 热重挂**通过**：`close()` 释放 `reserved`，热重挂先拆后建。用 `ctx.effect` 关闭即正确。
-- `connection.fetch` 的 `/api` 可达性**成立**（组合里挂了 webserver）。
-

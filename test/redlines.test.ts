@@ -222,6 +222,36 @@ describe('发布流程', () => {
       prereleaseGuarded: true,
     })
   })
+
+  /**
+   * 正文来源两级（草稿 → 回落）与**「草稿真的被读到了吗」那条断言**。
+   *
+   * 为什么连这个都要钉：读不到草稿与「草稿为空」都会走回落，但前者是**配置坏了**
+   * （tag 改名、action 没跑、权限不足），后者是**正常情况**。不区分的话，
+   * 「发版成功但正文其实走了回落」是**静默失败** —— 结果看着对，实际少了一层。
+   */
+  it('发版正文走「草稿 → --generate-notes 回落」，且两级都在', () => {
+    const workflow = readFileSync('.github/workflows/release.yml', 'utf8')
+    // 读草稿：必须点名滚动 tag，不能是 v<版本>（否则会命中存在性判断）。
+    expect(workflow, '没有读 Release Drafter 草稿的步骤').toContain('gh release view next')
+    // 回落仍在。
+    expect(workflow, '回落那一路没了').toContain('--generate-notes')
+    // **断言在位**：草稿读不到时必须发 warning，而不是静默回落。
+    expect(workflow, '草稿读不到时没有 warning —— 那就成了静默回落').toMatch(
+      /warning::读不到 Release Drafter 草稿/,
+    )
+    // 两条路各自传给 gh release create。
+    expect(workflow).toContain('--notes-file /tmp/notes.md')
+  })
+
+  it('上面那条判据有牙齿（去掉断言就该被抓出来）', () => {
+    // 反向控制：拿一份「只回落、不读草稿」的假 workflow 去比对，必须不满足。
+    const noDraft = 'run: gh release create "$tag" --title "$tag" $flags --generate-notes\n'
+    expect(noDraft).not.toContain('gh release view next')
+    // 拿一份「读草稿但读不到时静默」的假 workflow，warning 那条必须不命中。
+    const silent = 'draft="$(gh release view next --json body --jq .body)"\n'
+    expect(silent).not.toMatch(/warning::读不到 Release Drafter 草稿/)
+  })
 })
 
 /**
@@ -337,7 +367,7 @@ describe('文档不抄实测值', () => {
   const RECORDS = [
     /^\.agents\/notes\//,
     /^docs\/postmortem\//,
-    // `ui-handoff.md` 曾在这张表里（当「依据」冻结），本轮改归**活文档** ——
+    // `UI-HANDOFF.md` 曾在这张表里（当「依据」冻结），本轮改归**活文档** ——
     // 它写的是当前界面契约（处境表 / 通道映射 / 来源标签规则 / mock 覆盖），
     // 必须与代码一致。层的登记表也同步改了，见 docs/README.md。
     // 于是「不写会漂的值」这条红线现在**也管它**。
@@ -1177,7 +1207,7 @@ describe('文档链接', () => {
  * **为什么需要这条**：上面两条文档红线只查「链接指不指得到」与「有没有抄实测值」，
  * 而**整份文件被别的文档覆盖**时两者都仍然成立 —— 文件还在、格式合法、链接可解析、
  * 没有会漂的值，于是 `npm test` 全绿，而那份文档的**职责内容已经消失**。
- * 本轮真发生过一次：`docs/ui-handoff.md` 被整份换成了另一个文件的内容（193 行 → 734 行），
+ * 本轮真发生过一次：`docs/UI-HANDOFF.md` 被整份换成了另一个文件的内容（193 行 → 734 行），
  * 三条红线一条都没响，靠人眼看行数才发现。标题是这类损坏最廉价、最稳定的指纹。
  *
  * 标题口径按命名策略：子目录文档用 `# <目录>/ — <职责>` 或主题名；
@@ -1189,8 +1219,8 @@ describe('核心活文档的首行标题', () => {
     ['AGENTS.md', '# ds-balance — 维护索引'],
     ['docs/README.md', '# docs/ — 活文档'],
     ['docs/ARCHITECTURE.md', '# ds-balance 架构说明'],
-    ['docs/ui-handoff.md', '# UI 侧契约与移交'],
-    ['docs/backend-architecture.md', '# 后端架构（修正版）'],
+    ['docs/UI-HANDOFF.md', '# UI 侧契约与移交'],
+    ['docs/BACKEND-ARCHITECTURE.md', '# 后端架构（修正版）'],
   ] as const
 
   for (const [file, title] of TITLED) {
@@ -1209,7 +1239,7 @@ describe('核心活文档的首行标题', () => {
 
   it('判据本身有牙齿（被覆盖的标题必须被抓出来）', () => {
     // 反向控制：拿一份真实文件的首行去比对**另一个**文件的标题，必须不相等。
-    const handoff = readFileSync('docs/ui-handoff.md', 'utf8').split('\n')[0]?.trim()
+    const handoff = readFileSync('docs/UI-HANDOFF.md', 'utf8').split('\n')[0]?.trim()
     const readme = readFileSync('docs/README.md', 'utf8').split('\n')[0]?.trim()
     expect(handoff).not.toBe(readme)
     // 而本轮那次事故的特征正是「ui-handoff 的首行变成了别的文档的 frontmatter」。
