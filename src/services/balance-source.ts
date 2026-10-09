@@ -23,6 +23,7 @@ import {
   type ErrorCode,
   type ErrorInfo,
 } from '../domain/errors.js'
+import { SNAPSHOT_KEEP_N } from '../domain/balance.js'
 import { normalize } from '../domain/normalize.js'
 import { pickBalance } from '../domain/select.js'
 import { severityOf, thresholdsFor } from '../domain/severity.js'
@@ -62,26 +63,6 @@ export interface RefreshResult {
   cooldownMs: number
   state: CacheState
 }
-
-/**
- * 每个账本保留多少条快照。**历史保留深度，不是功能开关。**
- *
- * - 当前**没有任何功能读第二条以后的记录**：唯一读点是 {@link SourceLedger.restore} 调
- *   `loadLatestSnapshot` 取最新一条，仓内没有 `listSnapshots`，也没有历史端点
- *   （`docs/ARCHITECTURE.md` 的阶段边界明写「不做图表」）。所以这个数**不是**为功能服务的，
- *   不要因为「用不到」就调到 1。
- * - 它真正的作用是**故障回退余量**：最新那条写失败、写坏、或落盘途中崩了时还能退到上一条，
- *   覆盖连续两次失败就要 ≥ 3。
- * - **刻意不进配置面**：配置字段用户看得见、改得动，而这个数没有任何用户可感知的语义 ——
- *   改小它用户看不出界面变化，只会在某天丢快照时才后悔。给一个看不出区别的旋钮比不给更糟。
- *   真出现第二个消费方（走势图一类）时，它再升级成配置项也不迟。
- *
- * 量级：一条快照约 0.9 KB，20 条约 18 KB —— 余量与存储成本之间没有取舍压力。
- *
- * **常量住在离唯一调用点（{@link SourceLedger.persist}）最近的地方**：曾为它单开一个
- * `snapshot-retention` 模块，评估后撤掉 —— 那层只是转发，没有抽象价值。
- */
-const SNAPSHOT_KEEP_N = 20
 
 /** 调度器需要的状态切片。 */
 export interface BalanceStatus {
@@ -204,7 +185,11 @@ export class SourceLedger {
       this.state = this.withinWindow() ? 'ok' : 'stale'
       this.publishGauge()
     } catch (error) {
-      this.options.logger?.debug('ds-balance: no snapshot restored', {
+      // **warn 而非 debug**：这条账本没能从存储恢复，是一条降级事实 ——
+      // 记在 debug 级别等于藏起来，使用者只会看到界面空着而无从判断原因。
+      // 仍**不设 state / errorCode**：恢复失败后前端自己会 getView() 走正常抓取，
+      // 在这里塞错误态会让「本来就没有快照」与「存储坏了」混成同一个处境。
+      this.options.logger?.warn('ds-balance: could not restore snapshot for this ledger', {
         source: this.options.source,
         error: describeError(error),
       })
