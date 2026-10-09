@@ -1,7 +1,9 @@
-# 后端架构（修正版）
+# 后端契约
 
 > 本文是**后端契约的 home**：领域模型、端口、应用服务、HTTP API、配置、存储、安全与可观测。
-> **不变的设计与防错清单不在这里** → [ARCHITECTURE.md](ARCHITECTURE.md)。
+> **不变的设计与防错清单不在这里** → [ARCHITECTURE.md](ARCHITECTURE.md)（那份才是「架构」）。
+> 名字里**没有 `architecture` 是有意的**：本文只答「有什么、什么形状」，
+> 答「为什么这么定、不许怎么改」的是 ARCHITECTURE.md —— 两份不是层次关系，是**契约与设计**的分工。
 > 来源：架构师原稿 + 本仓[后端架构文档对照审查](../.agents/notes/backend-architecture-review.md)的九条修正。
 
 ## 〇、一句话任务

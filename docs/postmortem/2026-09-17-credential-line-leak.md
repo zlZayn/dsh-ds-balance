@@ -4,4 +4,4 @@
 - 时间线：阶段 0 周边的一次引用名排查 → `Select-String` 直接输出整行 → 维护者被告知并建议轮换 → 当天补了活跃坑与规则。
 - 根因：把「查一条事实」写成了「打印匹配行」。凭据文件的**每一行都是敏感面**，任何按行回显的工具都会连带泄露同一行的值。
 - 防再犯：探针只取捕获组（`.Matches[0].Groups[1].Value`）或只做布尔判断；这条写进根 AGENTS.md 的活跃坑与[验证配方](../../.agents/notes/2026-09-17-verification-recipes.md)的探针一节；后续所有检查都改成「打印布尔 / 计数 / 派生事实」，不打印原文。
-- 关联：[验证配方](../../.agents/notes/2026-09-17-verification-recipes.md) · [后端架构](../BACKEND-ARCHITECTURE.md)
+- 关联：[验证配方](../../.agents/notes/2026-09-17-verification-recipes.md) · [后端架构](../BACKEND-CONTRACTS.md)

@@ -1,7 +1,7 @@
 # http/ — HTTP 端点手册
 
 - 职责：把应用服务暴露成 `ctx.connection.fetch` 上的一组精确路由。
-- 契约来源：[docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) §3.3 / §8。
+- 契约来源：[docs/BACKEND-CONTRACTS.md](../../docs/BACKEND-CONTRACTS.md) §3.3 / §8。
 - 变更影响路由：改路径或响应形状 → 同步 §8、前端 [src/client/api-types.ts](../client/api-types.ts)、
   `test/http-wire.test.ts` 与 `test/http-routes.test.ts`。
 
@@ -40,6 +40,6 @@
 
 ## 参考
 
-- 后端架构（含端点契约）→ [docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md)
+- 后端架构（含端点契约）→ [docs/BACKEND-CONTRACTS.md](../../docs/BACKEND-CONTRACTS.md)
 - 应用服务 → [src/services/README.md](../services/README.md)
 - 架构与不变约束 → [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)

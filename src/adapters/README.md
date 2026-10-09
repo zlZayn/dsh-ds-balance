@@ -1,7 +1,7 @@
 # adapters/ — 适配器层手册
 
 - 职责：实现 `src/ports/` 定义的接口（Layer 2）。
-- 变更影响路由：改行为 → 同步 [docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) 的 §5 与 §7（错误分类）；改错误映射 → 同步 §7.4。
+- 变更影响路由：改行为 → 同步 [docs/BACKEND-CONTRACTS.md](../../docs/BACKEND-CONTRACTS.md) 的 §5 与 §7（错误分类）；改错误映射 → 同步 §7.4。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 - 回根 → [../../AGENTS.md](../../AGENTS.md)。
 

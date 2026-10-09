@@ -4,7 +4,7 @@
 
 ## 问题
 
-后端与界面是按 `docs/backend-architecture.md` 与 `docs/ui-handoff.md` 实现的。
+后端与界面是按 `docs/BACKEND-CONTRACTS.md` 与 `docs/ui-handoff.md` 实现的。
 实现过程中有若干处**平台实际能力或官方 token 与文档描述不符**，另有几处文档没写到、实现必须自己定。
 这些偏离原先记在已经移除的一次性计划 `docs/PLAN.md` 里，移出时必须换 home，否则下次重诉。
 
@@ -60,4 +60,4 @@
 
 ## 关联
 
-- [后端架构（修正版）](../../docs/backend-architecture.md) · [UI 侧契约与移交](../../docs/ui-handoff.md) · [架构说明](../../docs/ARCHITECTURE.md)
+- [后端契约](../../docs/BACKEND-CONTRACTS.md) · [UI 侧契约与移交](../../docs/ui-handoff.md) · [架构说明](../../docs/ARCHITECTURE.md)
