@@ -43,7 +43,13 @@ import type { ConfigService } from './config-service.js'
 export interface SourceReader {
   /** 这条路的凭据此刻可用吗。 */
   available(): Promise<boolean>
-  /** 这次快照的账本标识；凭据拿不到时抛错（由调用方吸收）。 */
+  /**
+   * 这次快照的账本标识。
+   *
+   * **凭据 / 身份拿不到时抛错，由调用方吸收** —— 不能退化成某个占位标识：
+   * 账本键一旦落成别的值，那条快照就再也读不回来（`restore()` 会静默跳过，
+   * 下一轮拿到真标识后自愈）。
+   */
   tag(): Promise<string>
   /** 抓一次余额，连账本标识一起给。 */
   read(): Promise<{ raw: unknown; accountTag: string }>

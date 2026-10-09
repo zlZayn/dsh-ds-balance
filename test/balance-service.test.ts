@@ -112,6 +112,7 @@ function harness(
     clock,
     account,
     metrics,
+    ledgers,
     /** 翻账号那条路的替身：多数用例不关心它，选源用例自己设。 */
     setAccount: (patch: Partial<AccountSource>) => {
       Object.assign(account, patch)
@@ -530,6 +531,19 @@ describe('restore', () => {
     const h = harness({}, '')
     await expect(h.service.restore()).resolves.toBeUndefined()
     expect(h.store.loadLatestSnapshot).not.toHaveBeenCalled()
+  })
+
+  it('账本标识拿不到（tag() 抛错）时静默跳过，不查存储、不影响后续', async () => {
+    // 这条守的是 accountId 读不到时的路径：tag() 抛 NoKeyError → restore() 吸收 →
+    // 不去查存储、状态保持 empty，且账本仍能正常走下一次抓取。
+    const h = harness()
+    const ledger = h.ledgers.get('deepseek-account')
+    expect(ledger).toBeDefined()
+    await expect(ledger?.restore()).resolves.toBeUndefined()
+    expect(h.service.status().state).toBe('empty')
+    // 关键：吸收之后这条账本没被卡死，下一轮照常取数。
+    const view = await h.service.getView()
+    expect(view.state).toBe('ok')
   })
 })
 
