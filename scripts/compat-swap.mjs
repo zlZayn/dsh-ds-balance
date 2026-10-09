@@ -30,7 +30,21 @@ import { join } from 'node:path'
  */
 const PREFIX = '@deepseek-ai/dsh-'
 
-/** 声明区间可能出现的位置。 */
+/**
+ * 宿主本体：它在 `engines.dsh` 里，不在任何依赖段。
+ *
+ * **`engines.dsh` 必须与受管包一起换** —— 红线（test/redlines.test.ts 的「每个
+ * `@deepseek-ai/dsh-*` 区间与 `engines.dsh` 逐字相同」）要求两者逐字相同。
+ * 换版只动依赖段时，swap 之后 23 处全变成新线版本而 `engines.dsh` 留在旧线，
+ * 那条红线**必然红**，与宿主兼不兼容无关 —— 每周 next 线往前推一个补丁位就触发一次，
+ * 且红的恰好是会掩盖真正不兼容点的那一条（2026-10-05 那轮实测，见 .agents/notes/）。
+ *
+ * 它不带 `PREFIX`（`dsh-` 带尾横线，宿主本体没有），所以天然落在 `managedNames` 之外，
+ * 必须由本函数单独处理。
+ */
+const HOST_PACKAGE = '@deepseek-ai/dsh'
+
+/** 声明区间可能出现的位置。`engines.dsh` 单独处理 —— 它不在任何一个依赖段里。 */
 const MANIFEST_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies']
 
 /**
@@ -143,6 +157,47 @@ async function check() {
   return 0
 }
 
+/**
+ * 把 plan 应用到 manifest 上，就地改写，返回改了几处。
+ *
+ * 抽成纯函数是为了让 {@link selftest} 能**执行**它（不联网、不装依赖）：这条路径上曾经漏掉
+ * `engines.dsh`，而漏掉的症状要等每周巡检 + 那条红线一起发作才看得见。
+ * @param manifest - 待改写的 package.json（就地修改）。
+ * @param plan - `[{ name, version }]`，来自 swap() 的线上版本查询。
+ * @param hostVersion - 宿主本体在目标线上的版本；用于换 `engines.dsh`。
+ * @returns 实际改写的处数（0 = 已经是目标线）。
+ */
+function applyPlan(manifest, plan, hostVersion) {
+  let touched = 0
+  for (const field of MANIFEST_FIELDS) {
+    const block = manifest[field]
+    if (!block) continue
+    for (const { name, version } of plan) {
+      if (!(name in block)) continue
+      const next = swapRange(block[name], version)
+      if (block[name] !== next) {
+        console.log(`${field}: ${name} ${block[name]} -> ${next}`)
+        block[name] = next
+        touched += 1
+      }
+    }
+  }
+
+  // `engines.dsh` 与上面那一撮**必须同进同退**（HOST_PACKAGE 的注释说明理由）。
+  // 宿主本体是声明面的一半：使用者按它选宿主，按 peer 装插件，两者不一致时装不出可用的宿主。
+  const declaredHost = manifest.engines?.dsh
+  if (typeof declaredHost !== 'string') {
+    throw new Error('package.json 没有声明 engines.dsh —— 换版会把它落在半路，请先补上')
+  }
+  const nextHost = swapRange(declaredHost, hostVersion)
+  if (declaredHost !== nextHost) {
+    console.log(`engines.dsh: ${HOST_PACKAGE} ${declaredHost} -> ${nextHost}`)
+    manifest.engines.dsh = nextHost
+    touched += 1
+  }
+  return touched
+}
+
 async function swap(line) {
   const manifest = readManifest()
   const names = managedNames(manifest)
@@ -167,20 +222,13 @@ async function swap(line) {
     )
   }
 
-  let touched = 0
-  for (const field of MANIFEST_FIELDS) {
-    const block = manifest[field]
-    if (!block) continue
-    for (const { name, version } of plan) {
-      if (!(name in block)) continue
-      const next = swapRange(block[name], version)
-      if (block[name] !== next) {
-        console.log(`${field}: ${name} ${block[name]} -> ${next}`)
-        block[name] = next
-        touched += 1
-      }
-    }
+  const hostTags = await distTags(HOST_PACKAGE)
+  const hostVersion = hostTags[line]
+  if (!hostVersion) {
+    throw new Error(`宿主本体 ${HOST_PACKAGE} 在 ${line} 线上没有版本（engines.dsh 无从换起）`)
   }
+
+  const touched = applyPlan(manifest, plan, hostVersion)
 
   if (touched === 0) {
     console.log(`已经是 ${line} 线的版本，package.json 未改动。`)
@@ -223,6 +271,31 @@ async function verify(line) {
   const names = managedNames(manifest)
   let failed = 0
   let skipped = 0
+
+  // `engines.dsh` 先验：它是声明面的一半，verify 漏掉它的话，半换过的 manifest
+  // 会在依赖段全绿的情况下被读成「这次换版是干净的」。
+  const hostTags = await distTags(HOST_PACKAGE)
+  const expectedHost = hostTags[line]
+  const declaredHost = manifest.engines?.dsh
+  if (expectedHost && typeof declaredHost === 'string') {
+    try {
+      const expectedRange = swapRange(declaredHost, expectedHost)
+      if (declaredHost === expectedRange) {
+        console.log(
+          `PASS  engines.dsh —— ${declaredHost}（${HOST_PACKAGE} 在 ${line} 线上是 ${expectedHost}）`,
+        )
+      } else {
+        console.log(
+          `FAIL  engines.dsh —— 声明 ${declaredHost}，${line} 线上的宿主本体是 ${expectedHost}，两者对不上`,
+        )
+        failed += 1
+      }
+    } catch (error) {
+      console.log(`FAIL  engines.dsh —— ${error.message}`)
+      failed += 1
+    }
+  }
+
   for (const name of names) {
     const tags = await distTags(name)
     const expected = tags[line]
@@ -286,6 +359,7 @@ function selftest() {
   ]
   const rejects = ['>=1.0.0 <2.0.0', '1.x || 2.x', '*', 'workspace:^', 'latest', '1.2', '']
   let failed = 0
+  let passes = 0
   for (const [declared, version, expected] of cases) {
     let actual
     try {
@@ -301,6 +375,7 @@ function selftest() {
       continue
     }
     console.log(`PASS  ${declared} → ${actual}`)
+    passes += 1
   }
   for (const declared of rejects) {
     try {
@@ -309,14 +384,58 @@ function selftest() {
       failed += 1
     } catch {
       console.log(`PASS  ${JSON.stringify(declared)} 被拒`)
+      passes += 1
     }
   }
+
+  // 声明面整份换过去，`engines.dsh` 必须**跟着走**。
+  // 这是那条红线的对侧：它要求依赖段与 `engines.dsh` 逐字相同，而换版曾经只动依赖段 ——
+  // swap 成功后两者必然不一致，那条红线每周必红，且红的地方恰好会盖住真正的不兼容点。
+  const sample = {
+    engines: { dsh: '>=0.2.0-rc.1', node: '>=20' },
+    peerDependencies: { '@deepseek-ai/dsh-credentials': '>=0.2.0-rc.1' },
+    devDependencies: { '@deepseek-ai/dsh-client-locale': '>=0.2.0-rc.1' },
+  }
+  const touched = applyPlan(
+    sample,
+    [
+      { name: '@deepseek-ai/dsh-credentials', version: '0.2.0-rc.2' },
+      { name: '@deepseek-ai/dsh-client-locale', version: '0.2.0-rc.2' },
+    ],
+    '0.2.0-rc.2',
+  )
+  const expectedSample = {
+    engines: { dsh: '>=0.2.0-rc.2', node: '>=20' },
+    peerDependencies: { '@deepseek-ai/dsh-credentials': '>=0.2.0-rc.2' },
+    devDependencies: { '@deepseek-ai/dsh-client-locale': '>=0.2.0-rc.2' },
+  }
+  const actualRanges = [
+    ...new Set([
+      sample.engines.dsh,
+      ...Object.values(sample.peerDependencies),
+      ...Object.values(sample.devDependencies),
+    ]),
+  ]
+  if (JSON.stringify(sample) !== JSON.stringify(expectedSample)) {
+    console.log(`FAIL  换版后 engines.dsh 与依赖段没有落到同一条线上：${JSON.stringify(sample)}`)
+    failed += 1
+  } else if (touched !== 3) {
+    console.log(`FAIL  应当改写 3 处（两条依赖 + engines.dsh），实际 ${touched} 处`)
+    failed += 1
+  } else if (actualRanges.length !== 1) {
+    console.log(`FAIL  换版后声明面出现 ${actualRanges.length} 种区间：${actualRanges.join(' / ')}`)
+    failed += 1
+  } else {
+    console.log(`PASS  engines.dsh 与依赖段同进同退（${actualRanges[0]}，改写 ${touched} 处）`)
+    passes += 1
+  }
+
   console.log('')
   if (failed > 0) {
     console.error(`${failed} 条不符合预期 —— 换版会改坏声明面的形状，别信这次换版。`)
     return 1
   }
-  console.log(`${cases.length + rejects.length} 条全部符合预期。`)
+  console.log(`${passes} 条全部符合预期（共 ${passes + failed} 条）。`)
   return 0
 }
 

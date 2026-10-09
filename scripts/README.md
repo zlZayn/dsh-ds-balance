@@ -15,7 +15,8 @@
   与 [docs/PUBLISHING.md](../docs/PUBLISHING.md) 的「打包内容」一节；展示元数据那三面见 [locale 规则层](../locale/AGENTS.md)。
 - 新增脚本 → 在下面「文件」节补一条，并在 [package.json](../package.json) 的 `scripts` 里给出入口。
 - 改 `release-guard.mjs` 的分类常量 → 同步 [发版前确认](../docs/PUBLISHING.md#发版前确认)。
-- 改 `compat-swap.mjs` 的受管前缀 → 同步 [compat.yml](../.github/workflows/compat.yml) 的矩阵。
+- 改 `compat-swap.mjs` 的受管前缀或 `engines.dsh` 的换版口径 → 同步 [compat.yml](../.github/workflows/compat.yml) 的矩阵与
+  [test/redlines.test.ts](../test/redlines.test.ts) 的「区间与 `engines.dsh` 逐字相同」。
 - 改 `check-declaration.mjs` 的 `TRACKED_LINE` → 同步 [README.md](../README.md) 的「版本兼容」一节与 [AGENTS.md](../AGENTS.md) 的判据。
 - 改 `report-compat-failure.mjs` 的固定标题或标签 → 同步 [docs/PUBLISHING.md](../docs/PUBLISHING.md) 的「兼容性」一节。
 - 改 [compat.yml](../.github/workflows/compat.yml) 的作业集合 → 同步 [docs/PUBLISHING.md](../docs/PUBLISHING.md) 的「CI 说明」表。
@@ -42,6 +43,11 @@
   - **换版保形**：`swap` 只换版本号，运算符（`>=` / `^` / `~` …）原样保留 —— 宣言的形状由维护者定，脚本不替人做决定。
     认不出的形状（`||`、空格分隔多段、`*`、`1.x`、`workspace:^`）**报错停下**，不静默改写声明面。
     `selftest` 是这条不变量的可执行断言（不联网、不装依赖），[../test/compat-swap.test.ts](../test/compat-swap.test.ts) 会跑它。
+  - **`engines.dsh` 与依赖段同进同退**：`swap` 一并改写宿主本体那条区间，`verify` 也先验它。
+    它不在任何依赖段里、名字也不带 `dsh-` 前缀（`@deepseek-ai/dsh` 没有尾横线），所以要单独处理。
+    曾经只动依赖段，于是换线后两者必然不一致，[redlines.test.ts](../test/redlines.test.ts) 的
+    「区间与 `engines.dsh` 逐字相同」**每周必红**，且红的恰好是能盖住真正不兼容点的那一条。
+    `selftest` 里那条整份换版的断言就是它的守卫生效证明。
   - **`verify` 不是可选项**：`npm install` 会假绿 —— 它失败但 `node_modules` 停在旧版本上，测试于是跑在旧依赖上、给出与事实相反的信号。
   - 只换 `@deepseek-ai/dsh-` 前缀；`@deepseek-ai/cordis` 与 `@deepseek-ai/schemastery` 不带这个前缀，天然在替换面之外（它们的 `next` 比 `latest` 旧）。
   - 查 dist-tags 用 HTTP 打 registry，不调 `npm view` —— 少一层 shell 依赖。

@@ -156,6 +156,11 @@
 - dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 与 `@deepseek-ai/cordis` / `@deepseek-ai/cordis-plugin-loader` **不在宿主那条线上**（各有自己的版本号），所以 `compat-swap` 的替换面不覆盖它们，改它们要手工看。实际版本现查：`node scripts/compat-swap.mjs check`。
 - **换版脚本保形，不认识的形状会报错停下**：`scripts/compat-swap.mjs` 只换版本号，运算符（`>=` / `^` / `~` …）原样保留；
   认不出的形状（`||`、空格分隔多段、`*`、`1.x`、`workspace:^`）直接红。自检：`node scripts/compat-swap.mjs selftest`（`npm test` 里也有一条）。
+  - **`swap` 一并改写 `engines.dsh`，`verify` 也先验它**：宿主本体是声明面的另一半，却**既不带 `dsh-` 前缀
+    （`@deepseek-ai/dsh` 没有尾横线）、也不在任何依赖段里**，两层都不落在受管面内。曾经只换依赖段，
+    于是换线后 `engines.dsh` 与 23 处依赖必然不一致，[test/redlines.test.ts](test/redlines.test.ts) 的
+    「区间与 `engines.dsh` 逐字相同」**每次换线必红**，且红的位置恰好盖住真正的不兼容点（typecheck 仍绿）。
+    → [决策记录](.agents/notes/2026-10-05-swap-must-move-engines-dsh.md)
 - **`npm ci` 会执行 `prepare`**：所以本仓库**不声明** `prepare`。声明了的话 CI 的 `npm ci` 会先产出 `lib/`，typecheck 就再也看不到「干净检出」这个状态 —— 那正是刚修掉的一类缺陷（`test/artifacts.test.ts` 在 CI 上 TS2307，本机因产物早就在而常绿）。见 [决策记录](.agents/notes/2026-09-17-prepare-script-decision.md)。
 - **写临时探针别用 `os.tmpdir()`**：进程环境为空时它在 Windows 上返回相对路径 `undefined\temp`，会把文件写进工作区，还会让 `robocopy` 自我递归出一棵超 MAX_PATH 的目录树。用 `$env:TEMP` 或显式绝对路径，用完即删。
 - **Agent 的 `write` 工具对「自己刚删掉的文件」会拒绝覆盖**（它缓存里那个文件还在）。换个路径，或用 Node 的 `fs.writeFileSync` 直接写。
