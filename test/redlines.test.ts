@@ -1109,7 +1109,7 @@ describe('菜单材质成对', () => {
  * 从前它在根 AGENTS.md 的「常用命令」里找不到对应命令，是一句没有落点的要求，
  * 于是重命名文件、搬目录、删章节时链接会静默烂掉（本轮对账就修了几处）。
  *
- * **决策记录（`.agents/notes/`）与复盘不查**：它们写死当时的事实、按规则不追改，
+ * **决策与依据记录（`.agents/notes/`）与复盘不查**：它们写死当时的事实、按规则不追改，
  * 里面的链接指向当年的路径是正常的 —— 让红线去逼改冻结记录，是拿规矩打规矩。
  */
 describe('文档链接', () => {
@@ -1168,5 +1168,51 @@ describe('文档链接', () => {
     expect(offlineTargets('[a](https://example.com/x.md)')).toEqual([])
     expect(offlineTargets('[b](#某节)')).toEqual([])
     expect(offlineTargets('[c](docs/ARCHITECTURE.md#关键决策)')).toEqual(['docs/ARCHITECTURE.md'])
+  })
+})
+
+/**
+ * 核心活文档的**首行标题**必须还是它自己。
+ *
+ * **为什么需要这条**：上面两条文档红线只查「链接指不指得到」与「有没有抄实测值」，
+ * 而**整份文件被别的文档覆盖**时两者都仍然成立 —— 文件还在、格式合法、链接可解析、
+ * 没有会漂的值，于是 `npm test` 全绿，而那份文档的**职责内容已经消失**。
+ * 本轮真发生过一次：`docs/ui-handoff.md` 被整份换成了另一个文件的内容（193 行 → 734 行），
+ * 三条红线一条都没响，靠人眼看行数才发现。标题是这类损坏最廉价、最稳定的指纹。
+ *
+ * 标题口径按命名策略：子目录文档用 `# <目录>/ — <职责>` 或主题名；
+ * 根文档用裸项目名（门面允许 HTML 居中 h1，所以根 README 的标题在第 6 行）。
+ */
+describe('核心活文档的首行标题', () => {
+  /** 首行即标题：`# <对象> — <一句话说明>`。 */
+  const TITLED = [
+    ['AGENTS.md', '# ds-balance — 维护索引'],
+    ['docs/README.md', '# docs/ — 活文档'],
+    ['docs/ARCHITECTURE.md', '# ds-balance 架构说明'],
+    ['docs/ui-handoff.md', '# UI 侧契约与移交'],
+    ['docs/backend-architecture.md', '# 后端架构（修正版）'],
+  ] as const
+
+  for (const [file, title] of TITLED) {
+    it(`${file} 的首行标题仍是它自己`, () => {
+      const first = readFileSync(file, 'utf8').split('\n')[0]?.trim()
+      expect(first, `${file} 的首行不再是它自己的标题 —— 整份文件可能被覆盖了`).toBe(title)
+    })
+  }
+
+  it('根 README 的标题仍是裸项目名（门面用 HTML 居中 h1）', () => {
+    // 门面首屏是展示层：`<p align="center">` + `<h1 align="center">项目名</h1>`。
+    // 标题文字本身仍须符合「裸项目名」，不因居中而变形。
+    const head = readFileSync('README.md', 'utf8').split('\n').slice(0, 8).join('\n')
+    expect(head).toContain('<h1 align="center">dsh-ds-balance</h1>')
+  })
+
+  it('判据本身有牙齿（被覆盖的标题必须被抓出来）', () => {
+    // 反向控制：拿一份真实文件的首行去比对**另一个**文件的标题，必须不相等。
+    const handoff = readFileSync('docs/ui-handoff.md', 'utf8').split('\n')[0]?.trim()
+    const readme = readFileSync('docs/README.md', 'utf8').split('\n')[0]?.trim()
+    expect(handoff).not.toBe(readme)
+    // 而本轮那次事故的特征正是「ui-handoff 的首行变成了别的文档的 frontmatter」。
+    expect(handoff?.startsWith('# '), '首行应当是一级标题').toBe(true)
   })
 })
