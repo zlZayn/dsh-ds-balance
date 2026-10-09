@@ -14,4 +14,4 @@ domain/ 特有约束：
   的形态表、[../client/locales.ts](../client/locales.ts) 的文案键。漏一处会红（`Record` 完备性 + 测试）。
 - 结构校验用 `ShapeError`，数值解析用 `ParseError`，两者不混用。
 - 宿主半边相对导入用 `.js` 后缀（会 emit，没有 `allowImportingTsExtensions`）。
-- 新增领域类型必须同步 [docs/backend-architecture.md](../../docs/backend-architecture.md) 的 §4。
+- 新增领域类型必须同步 [docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) 的 §4。

@@ -1,7 +1,7 @@
 /**
  * 插件配置：schemastery schema、常量与派生值。
  *
- * 字段名与 [UI 侧契约与移交](../docs/ui-handoff.md) 第六节逐字一致，共 **11** 个。
+ * 字段名与 [UI 侧契约与移交](../docs/UI-HANDOFF.md) 第六节逐字一致，共 **11** 个。
  * `timeoutMs` **不在 schema 里**：它是常量加环境变量覆盖，UI 不暴露。
  * @module dsh-ds-balance/config
  */

@@ -136,7 +136,7 @@
 - **本目录不做形态判断**：环、文案、中心符号、要不要标来源，全部读 `../situation.ts` 的形态表
   （一次 `presentationOf`）。组件里不再出现 `state` / `severity` / `error.code` 的分支 ——
   从前那三样各拼各的，会出现「环说 A、文案说 B」。
-- 表格（处境 → 环 / 文案）见 [docs/ui-handoff.md](../../../docs/ui-handoff.md) 的 §四；
+- 表格（处境 → 环 / 文案）见 [docs/UI-HANDOFF.md](../../../docs/UI-HANDOFF.md) 的 §四；
   合并意图与「为什么是 5 个族」写在 [../situation.ts](../situation.ts) 的注释里。
 - **五个族对应五种「用户此刻要做什么」**：看数字（`gauge`）/ 等（`pending`，转动的弧）/
   去配置（`needs-credential`，＋）/ 什么都不用做（`empty`，空环）/ 去查（`unreadable`，叉）。

@@ -122,6 +122,41 @@ jobs:
             git push origin "$tag"
           fi
 
+      # 正文来源两级：**草稿 → `--generate-notes` 回落**。
+      #
+      # 草稿由 Release Drafter 维护（tag 是滚动名 `next`，永不与 `v<版本>` 相撞 ——
+      # 所以上面那个 `gh release view "$tag"` 的存在性判断不会命中草稿）。
+      # 草稿为空（无 PR 的直提、或本轮没有带标签的 PR）时回落 GitHub 自动生成。
+      #
+      # **必须断言「草稿真的被读到了吗」**：读不到草稿与「草稿为空」都会走回落，
+      # 但前者是**配置坏了**（tag 改名、action 没跑、权限不足），后者是**正常情况**。
+      # 不区分的话，「发版成功但正文其实走了回落」是静默失败 —— 与
+      # 「npm 发了、Release 页面查不到」同一类：结果看着对，实际少了一层。
+      - name: Pick the release body (draft first, then --generate-notes)
+        id: notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          draft="$(gh release view next --json body --jq '.body' 2>/dev/null || true)"
+          # 草稿正文里那句「未发布」的标记由 .github/release-drafter.yml 的 template 产出；
+          # 用它判「这是草稿，不是别的什么」比判非空更稳（非空可能是一份旧的正式 Release）。
+          if printf '%s' "$draft" | grep -q 'Release Drafter'; then
+            # 去掉草稿末尾那句「未发布」提示 —— 正式 Release 里那句话是错的。
+            printf '%s\n' "$draft" | sed '/由 Release Drafter 自动汇总草稿/d; /gh workflow run release.yml/d' > /tmp/notes.md
+            # 草稿可能只有标题没有条目（无 PR 时）：那种仍算「读到但为空」，走回落。
+            if [ -n "$(grep -E '^[-*] ' /tmp/notes.md || true)" ]; then
+              echo "source=draft" >> "$GITHUB_OUTPUT"
+              echo "::notice::正文来自 Release Drafter 草稿（next）"
+            else
+              echo "source=generate" >> "$GITHUB_OUTPUT"
+              echo "::notice::草稿读到了但没有条目（本版没有带标签的 PR），回落 --generate-notes"
+            fi
+          else
+            echo "source=generate" >> "$GITHUB_OUTPUT"
+            echo "::warning::读不到 Release Drafter 草稿（next）—— 回落 --generate-notes。"
+            echo "::warning::若是配置坏了（tag 改名 / action 没跑 / 权限不足），这条 warning 就是唯一的信号。"
+          fi
+
       - name: Create the GitHub Release
         if: steps.probe.outputs.exists == 'false' && !inputs.dry-run
         env:
@@ -135,6 +170,10 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "$tag 的 Release 已存在，跳过。"
           else
-            echo "建 Release：$tag $flags"
-            gh release create "$tag" --title "$tag" $flags --generate-notes
+            echo "建 Release：$tag $flags（正文来源：${{ steps.notes.outputs.source }}）"
+            if [ "${{ steps.notes.outputs.source }}" = "draft" ]; then
+              gh release create "$tag" --title "$tag" $flags --notes-file /tmp/notes.md
+            else
+              gh release create "$tag" --title "$tag" $flags --generate-notes
+            fi
           fi

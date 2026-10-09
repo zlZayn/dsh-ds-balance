@@ -1,7 +1,7 @@
 # settings/ — 设置卡片手册
 
 - 职责：把本插件的配置渲染成 Plugins 页里该 bundle 详情页上的一张卡片；四组配置各自可折叠，编辑先落本地草稿，保存是草稿变成设置的唯一出口。
-- 变更影响路由：改字段名 → 同步宿主 schema [src/index.ts](../../index.ts) 的 `Config`；改对外可见行为 → 同步 [docs/ui-handoff.md](../../../docs/ui-handoff.md) 的设置小节、根 [README.md](../../../README.md) 与 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)。
+- 变更影响路由：改字段名 → 同步宿主 schema [src/index.ts](../../index.ts) 的 `Config`；改对外可见行为 → 同步 [docs/UI-HANDOFF.md](../../../docs/UI-HANDOFF.md) 的设置小节、根 [README.md](../../../README.md) 与 [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 - 回根 → [../../../AGENTS.md](../../../AGENTS.md)（仓库根）；直接上层是 [../AGENTS.md](../AGENTS.md)（src/client 规则层）。
 

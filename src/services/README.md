@@ -1,7 +1,7 @@
 # services/ — 应用服务手册
 
 - 职责：把端口与领域模型组织成用例（Layer 3）。**不直接碰 `ctx`，只依赖构造时注入的端口。**
-- 变更影响路由：改解析链或调度策略 → 同步 [docs/backend-architecture.md](../../docs/backend-architecture.md) 的 §6；改错误分类 → 同步 §7.4。
+- 变更影响路由：改解析链或调度策略 → 同步 [docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) 的 §6；改错误分类 → 同步 §7.4。
 - 使用约束与工作偏好 → 见 [AGENTS.md](AGENTS.md)。
 - 回根 → [../../AGENTS.md](../../AGENTS.md)。
 
@@ -22,7 +22,7 @@
     落盘失败与修剪失败**分开记账**：写成功时把它报成「没落盘」会让日志说谎。
     `SNAPSHOT_KEEP_N` 取自 [../domain/balance.ts](../domain/balance.ts)；
     **为什么是 20 条、为什么不是配置项**见[决策记录](../../.agents/notes/2026-10-09-snapshot-retention.md)，
-    契约见 [backend-architecture.md](../../docs/backend-architecture.md) §10.4 —— 本文件不重抄理由。
+    契约见 [BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) §10.4 —— 本文件不重抄理由。
   - 只在**首次失败**打 warn，避免日志刷屏；指标键带 `source` 标签，两条路各自可看。
   - **没接入 ≠ 接入了但出错**：判定不在本文件，而在 [../domain/situation.ts](../domain/situation.ts)
     的 `situationOf` —— 账本只负责把六个事实（有无快照 / stale / isAvailable / hasSelected /

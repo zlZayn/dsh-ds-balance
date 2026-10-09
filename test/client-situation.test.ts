@@ -231,10 +231,10 @@ describe('处境形态表', () => {
   it('**整张分层表逐行对账**（处境 → 族 / 悬停 / 来源标签 / 生产者）', () => {
     // 这张表是**处境层的口径总表**：族、悬停文案、来源标签、生产者四列。
     // 各列的展开写在别处，这里只把它们对在一起：
-    // - 族 / 形态 → docs/ui-handoff.md §四（并由 test/render-matrix.test.ts 渲真组件守）；
+    // - 族 / 形态 → docs/UI-HANDOFF.md §四（并由 test/render-matrix.test.ts 渲真组件守）；
     // - **悬停文案** → 规则与"两态一致"由 test/hover-parity.test.ts 渲真组件守，
     //   文案本体在 locales.ts 的 situation.*；
-    // - 来源标签 → docs/ui-handoff.md §二（闸门是 `shown !== null`）。
+    // - 来源标签 → docs/UI-HANDOFF.md §二（闸门是 `shown !== null`）。
     //
     // 把它钉成断言，是为了让**文档与代码对不上时机器会红** —— 从前 `account-unavailable`
     // 的叉就是这么丢的：代码改了、跟着改的测试也改了（改成 null），而文档没改，长期矛盾。

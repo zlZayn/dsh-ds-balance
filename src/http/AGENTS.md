@@ -12,5 +12,5 @@ http/ 特有约束：
 - **`apiKey` 的任何片段都不许进响应体**。掩码是手动的：`redactSecrets` 是显式开关，
   我们这套响应自己构造，不走 settings 读取。
 - 只有 `routes.ts` 碰 `ctx`；`handlers.ts` 与 `wire.ts` 必须能脱离宿主直接测。
-- 新增或改路径必须同步 [docs/backend-architecture.md](../../docs/backend-architecture.md) §8 与
+- 新增或改路径必须同步 [docs/BACKEND-ARCHITECTURE.md](../../docs/BACKEND-ARCHITECTURE.md) §8 与
   `test/http-routes.test.ts` 的端点表断言。
