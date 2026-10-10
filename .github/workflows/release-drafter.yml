@@ -1,17 +1,15 @@
-# 维护草稿 Release：每次合并到 main 后，把这批 PR 按标签追加进一份草稿。
+# Maintains a draft Release: after each merge to main, appends that batch of PRs
+# (categorized by label) into a draft.
 #
-# 权限最小化：只给 contents: write（建/改草稿）。不需要 pull-requests —— 读 PR 的
-# 事由 action 用 GITHUB_TOKEN 内部完成，显式声明反而多余。
-#
-# runner 固定 ubuntu-latest：windows-latest 的路径分隔符会让 action 读不到
-# .github/release-drafter.yml（404），且草稿会空着而不报错。
+# Minimal permissions: only contents: write (create/update the draft).
+# Runner pinned to ubuntu-latest: on windows-latest the path separator makes the action
+# fail to read .github/release-drafter.yml (404), and the draft ends up empty with no error.
 name: release-drafter
 
 on:
   push:
     branches:
       - main
-  # 改完配置想立刻试一次，不用等下一次合并。
   workflow_dispatch:
 
 permissions:
@@ -24,5 +22,4 @@ jobs:
     steps:
       - uses: release-drafter/release-drafter@v7
         with:
-          # 草稿不是发布：真正发版走 release.yml（手动）。这里只维护草稿。
           disable-autolabeler: true
