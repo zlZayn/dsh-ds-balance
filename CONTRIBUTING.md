@@ -45,8 +45,9 @@
 - 不打、或打了上表之外的标签 —— 落 `Other Changes` 兜底。
 - `skip-changelog` —— 依赖更新这类「合了但用户看不到」的改动，从**所有**分类里排除。
 
-**注意**：草稿汇总的是 **PR**，不是 commit。直提 `main` 的提交对草稿不可见
-（最近几笔小改动就是这么合的）。这不影响发版 —— 发版正文另有来源。
+**注意**：草稿汇总的是 **PR**，不是 commit。走 PR 才是合进 `main` 的常态
+（`main` 有 `protect-main` ruleset，直推会被拒）；admin 可 bypass ruleset 直推，
+那种提交对草稿同样不可见。这不影响发版 —— 发版正文另有来源。
 机制与本仓适配情况见 [docs/RELEASE-DRAFTER.md](docs/RELEASE-DRAFTER.md)。
 
 ## issue 标题

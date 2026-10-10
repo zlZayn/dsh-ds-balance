@@ -57,9 +57,10 @@ The draft Release groups changes by label, so label your PR before merging:
 - `skip-changelog` — for dependency bumps and the like: merged but invisible to users.
   Excluded from **every** category.
 
-**Note**: the draft summarises **PRs**, not commits. Commits pushed straight to `main`
-are invisible to it (several small changes were merged that way lately). That does not
-affect releases — the release body comes from a different source.
+**Note**: the draft summarises **PRs**, not commits. A pull request is the normal way
+onto `main` (its `protect-main` ruleset rejects direct pushes); repository admins can
+bypass that ruleset, and commits pushed straight to `main` that way are still invisible
+to the draft. That does not affect releases — the release body comes from a different source.
 How the mechanism works and how it fits this repo is in
 [docs/RELEASE-DRAFTER.md](docs/RELEASE-DRAFTER.md).
 

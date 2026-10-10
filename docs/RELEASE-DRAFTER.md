@@ -1,12 +1,23 @@
 # Release Drafter — 草稿 Release 的维护
 
-- 层：**活**。它描述的是本仓当前的配置与状态，改配置就同批改它。
+- 层：**活**。它描述的是本仓当前的触发 workflow 与组织级配置，改任一处就同批改它。
 - 它**不发布任何东西**。本仓唯一的发布入口是 [release.yml](../.github/workflows/release.yml)（手动 `workflow_dispatch`），
   流程与版本号判定见 [PUBLISHING.md](PUBLISHING.md)。
 
+## 两层分工
+
+| 件 | 位置 | 职责 |
+|---|---|---|
+| 配置 | 组织级 [.github 仓库](https://github.com/dsh-plugin-lab/.github) 的 [.github/release-drafter.yml](https://github.com/dsh-plugin-lab/.github/blob/main/.github/release-drafter.yml) | 分类、排除、tag 与标题模板、版本解析 |
+| 触发 | 本仓 [.github/workflows/release-drafter.yml](../.github/workflows/release-drafter.yml) | 何时跑、权限、runner |
+
+- 本仓**没有**自己的 `release-drafter.yml`：文件已删。
+  组织级那份按 GitHub 的约定提供给该组织下所有未自带配置的仓，本仓因此继承它。
+- 配置只有一个 home（组织级仓库），本页不复制其内容。
+
 ## 它做什么
 
-每次有内容合并进 `main`，[release-drafter.yml](../.github/release-drafter.yml) 会把这些 PR
+每次有内容合并进 `main`，组织级配置会让这些 PR
 **按标签分类追加进一份草稿 Release**。
 
 它**不碰版本号、不打 tag、不发布** —— 草稿只是「下一版可能包含什么」的草稿，
@@ -17,7 +28,8 @@
 
 | 项 | 状态 |
 |---|---|
-| 两个配置文件 | 已就位（[release-drafter.yml](../.github/release-drafter.yml) + [workflow](../.github/workflows/release-drafter.yml)） |
+| 配置文件 | 在组织级 [.github 仓库](https://github.com/dsh-plugin-lab/.github) 的 `.github/release-drafter.yml`（本仓不自带） |
+| 触发 workflow | 已就位（[../.github/workflows/release-drafter.yml](../.github/workflows/release-drafter.yml)） |
 | 草稿 tag | `next`（滚动名，见下「为什么不是 `v<版本>`」） |
 | **草稿正文是否接入发布流程** | **否** —— `release.yml` 仍用 `--generate-notes`，本批**没有**改它 |
 | 下一步 | 让草稿积累几笔 PR 合并内容后，再决定要不要让发布脚本读它（改 `release.yml` 是独立任务） |
@@ -49,31 +61,34 @@
 **Release Drafter 读的是 PR，不是 commit。** 而本仓有两段历史：
 
 - **早期（约 #2–#13）走 PR**，那批 PR 都带标签 —— 分类法在它们身上验证过；
-- **最近的改动直提 `main`**（本仓对小改动的既定做法，见 [../AGENTS.md](../AGENTS.md) 的 PR 粒度）。
+- **此后的改动直提 `main`**（当时对小改动的既定做法）。
 
-所以：**直提 `main` 的提交对草稿是不可见的。** 落地后实测确认过 ——
-直提一次 `main` 后草稿确实生成了，但正文是 `No changes`，而 workflow 仍然报 `success`。
+`main` 现在有 `protect-main` ruleset：合并**必须走 PR**，直推只对 admin bypass 与 `dsh-shipwright` App 开放
+（见 [../AGENTS.md](../AGENTS.md) 的 PR 粒度）。
+
+所以：**绕过 PR 落到 `main` 的提交对草稿是不可见的**（admin bypass 直推、App 推送皆然）。
+落地后实测确认过 —— 直提一次 `main` 后草稿确实生成了，但正文是 `No changes`，而 workflow 仍然报 `success`。
 **空草稿是静默的**，不会有人被红脸提醒。
 
-结论：**要用它就得走 PR**（至少改动要有 PR）。直提的小改动（纯文档、typo）不划算开 PR，
-那种就让它不进草稿 —— 但注意这意味着草稿会**漏掉**它们，这是取舍不是缺陷。
+结论：**要用它就得走 PR**。规则的常态就是走 PR；bypass 只留给发布链这类确实绕不开的推送，
+那种推送不进草稿 —— 但注意这意味着草稿会**漏掉**它们，这是取舍不是缺陷。
 
-### 「直提进不了草稿」不是缺陷，是设计对上了（本轮结论）
+### 「绕过 PR 的推送进不了草稿」不是缺陷，是设计对上了（本轮结论）
 
 一度把这条当成缺口，想调研「有没有从 commit 解析的选项」。**结论是：不需要，也不该做。**
 
-判据是本仓自己的 [PR 粒度表](../CONTRIBUTING.md)：**直提的前提就是「不影响用户可见行为」**
+判据是本仓自己的 [PR 粒度表](../CONTRIBUTING.md)：**绕过 PR 的前提就是「不影响用户可见行为」**
 （纯文档、typo、单个事实修正）。而 Release 正文是**给用户看的**（「这一版变了什么」）——
 不影响用户的东西**本来就不该进正文**。
 
 所以两件事是同一件事的两面：
 
-| | 直提 | 走 PR |
+| | 绕过 PR | 走 PR |
 |---|---|---|
 | 影响用户可见行为 | ❌ 不允许（判据） | ✅ 通常 |
 | 该进 Release 正文 | ❌ 不该 | ✅ 该 |
 
-「草稿收不到直提」正好等于「不影响用户的改动不进正文」——**规则自洽，不是漏收**。
+「草稿收不到绕过 PR 的推送」正好等于「不影响用户的改动不进正文」——**规则自洽，不是漏收**。
 
 （若哪天出现「不影响用户但确实该写进正文」的改动，那说明 PR 粒度判错了，
 该改的是那次改动的走法，不是给草稿加一条 commit 解析路径。）
@@ -95,8 +110,9 @@ if gh release view "$tag" >/dev/null 2>&1; then
 
 ## 改配置时
 
-- 改分类 / 排除规则 → [release-drafter.yml](../.github/release-drafter.yml)
-- 改触发条件 / 权限 / runner → [release-drafter.yml workflow](../.github/workflows/release-drafter.yml)
+- 改分类 / 排除 / 模板 / 版本解析 → 组织级 [.github 仓库](https://github.com/dsh-plugin-lab/.github) 的 `.github/release-drafter.yml`
+  （**影响该组织下所有不自带配置的仓**，不止本仓；改完到各仓的草稿各看一次）。
+- 改触发条件 / 权限 / runner → 本仓 [.github/workflows/release-drafter.yml](../.github/workflows/release-drafter.yml)
 - **runner 必须 ubuntu-latest**：`windows-latest` 的路径分隔符会让 action 读不到配置（404），
   草稿会静默变空 —— 与上面「空草稿不报错」是同一类静默失败。
 - 配置读不到或草稿空，**都不会让 workflow 变红**，所以改完配置要真的看一次草稿内容，别只看 run 状态。
@@ -105,4 +121,4 @@ if gh release view "$tag" >/dev/null 2>&1; then
 
 - [PUBLISHING.md](PUBLISHING.md) —— 发布流程与版本号判定（本仓唯一发布入口）
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) —— PR 标签与 issue 标题约定
-- [../.github/release-drafter.yml](../.github/release-drafter.yml) · [../.github/workflows/release-drafter.yml](../.github/workflows/release-drafter.yml)
+- [.github/workflows/release-drafter.yml](../.github/workflows/release-drafter.yml) · 组织级 [.github 仓库](https://github.com/dsh-plugin-lab/.github) 的 `.github/release-drafter.yml`
