@@ -33,7 +33,7 @@
 
 ## 影响
 
-- 推翻 [ui-handoff.md](../../docs/ui-handoff.md) §五 的旧口径（「设置页保留用户的选择，不自动改」+ 浮层只改本地）；
+- 推翻 [ui-handoff.md](../../docs/UI-HANDOFF.md) §五 的旧口径（「设置页保留用户的选择，不自动改」+ 浮层只改本地）；
   那份文档的同步由 Lead 统一做，不在本条内。
 - `writeFieldValue` 成为跨两半的写入口：设置卡片与侧栏条目都从它落盘，判据只有 `landedWrite` 一份。
 - 落盘判定的三条路（成功 / 宿主静默拒绝 / `set` 返回 Promise）在

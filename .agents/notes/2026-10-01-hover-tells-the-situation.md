@@ -69,4 +69,4 @@
 - 新增守卫 `test/hover-parity.test.ts`：渲两态真组件、从 DOM 里各读一次实际显示的内容，
   逐条比对，并钉住「`stale` / `account-unavailable` 有数字也不显数字」这条反向断言。
 - 文案的真源仍是 [locales.ts](../../src/client/locales.ts) 的 `situation.*`（七条）；
-  悬停规则写在 [docs/ui-handoff.md](../../docs/ui-handoff.md) §四。
+  悬停规则写在 [docs/ui-handoff.md](../../docs/UI-HANDOFF.md) §四。

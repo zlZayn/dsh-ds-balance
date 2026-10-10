@@ -179,6 +179,6 @@ namespace 必须匹配 `/^[a-z][a-z0-9-]*$/` → `ds-balance` 合法。
 
 ## 参考
 
-- UI 侧契约 → [UI 侧契约与移交](../../docs/ui-handoff.md)
+- UI 侧契约 → [UI 侧契约与移交](../../docs/UI-HANDOFF.md)
 - 模型融合判定 → [连接与官方模型机制的融合判定](model-integration-assessment.md)
 - 架构设计 → [架构说明](../../docs/ARCHITECTURE.md)

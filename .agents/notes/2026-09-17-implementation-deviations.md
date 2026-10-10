@@ -60,4 +60,4 @@
 
 ## 关联
 
-- [后端契约](../../docs/BACKEND-CONTRACTS.md) · [UI 侧契约与移交](../../docs/ui-handoff.md) · [架构说明](../../docs/ARCHITECTURE.md)
+- [后端契约](../../docs/BACKEND-CONTRACTS.md) · [UI 侧契约与移交](../../docs/UI-HANDOFF.md) · [架构说明](../../docs/ARCHITECTURE.md)

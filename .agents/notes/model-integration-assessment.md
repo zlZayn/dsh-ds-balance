@@ -178,5 +178,5 @@ pending → 最后一次 request header → 进程默认
 
 ## 参考
 
-- 本插件的后端契约 → [UI 侧契约与移交](../../docs/ui-handoff.md)
+- 本插件的后端契约 → [UI 侧契约与移交](../../docs/UI-HANDOFF.md)
 - 原生集成勘察 → [原生 UI 与插件机制勘察](recon-native-integration.md)
