@@ -177,7 +177,7 @@
   - 判据：**首行标题**。已加红线「核心活文档的首行标题」覆盖 6 份（`AGENTS.md`、`docs/README.md`、`docs/ARCHITECTURE.md`、`docs/UI-HANDOFF.md`、`docs/BACKEND-CONTRACTS.md`、根 `README.md` 的居中 h1）。
   - 手工判据：`git diff --stat` 里**行数剧变**（不是几十行而是几百行）就是可疑信号，别只看测试绿。
   - 成因：把某个 skill / 文档的**整份内容**读进上下文后，写入时误当成目标文件的内容。**改文档时用定点 `edit`，不用整份 `write`** —— 后者会把「当前上下文里那份东西」整体落盘。
-- **提交前先确认自己在哪个分支**：本轮两次把该走 PR 的改动直接提到了 `main`（第二次靠 `--force-with-lease` 回滚重来）。`git branch --show-current` 应当与「这次改动要不要 PR」的判断一致 —— 纯文档措辞可直提，其余走 PR（理由：红线要在 CI 独立环境跑一遍，且 Release Drafter 只读 PR）。
+- **提交前先确认自己在哪个分支**：本轮两次把该走 PR 的改动直接提到了 `main`（第二次靠 `--force-with-lease` 回滚重来）。`git branch --show-current` 应当与「这次改动要不要 PR」的判断一致 —— 纯文档措辞可 admin bypass 直提，其余走 PR（理由：红线要在 CI 独立环境跑一遍，且 Release Drafter 只读 PR）。
 - **`package-lock.json` 的根条目会漏 `peerDependencies`**：`npm ci` 不校验它，所以这种漂移能一路绿到底。改完 peer 之后跑一次 `npm install --package-lock-only` 让 lockfile 对齐清单。
 - **跨字段约束宿主侧已经拦不住 → [settings 规则层](src/client/settings/AGENTS.md)**：登记接缝被删之后，
   「告急低于预警」只剩消费侧回落与 `POST /api/v1/config` 的写入侧先验两道。**官方 Plugins 页那条写路径拦不住**，
