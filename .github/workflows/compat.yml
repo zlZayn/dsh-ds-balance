@@ -66,8 +66,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # alpha 已停：换承诺线之后它是我们不支持的旧线（见文件头）。只剩 next（RC 线）。
-        line: [next]
+        include:
+          # 承诺线（RC 族）：红了必须修。
+          - line: next
+            only: ''
+            blocking: true
+          # 声明面承诺的**第二族**（旧 RC 族，有真实使用者停在那里）：用**版本前缀**定位
+          # （实测没有任何 dist-tag 指向它），并 `--only` 把声明面**临时收窄成只有这一族** ——
+          # 并集区间会被 npm 解析成「装匹配集里最高的那族」，不收窄就装不到低族。
+          # 只记录不阻断（continue-on-error 在作业级，见本 job 末尾），但它红要当回事。
+          - line: 0.1.7-rc
+            only: '--only 0.1.7-rc'
+            blocking: false
+    name: swap (${{ matrix.line }})
     steps:
       - uses: actions/checkout@v7
 
@@ -84,20 +95,25 @@ jobs:
       # 不回头确认实际装到了什么，后面的测试就跑在旧依赖上、给出与事实相反的信号。
       - name: Swap onto the ${{ matrix.line }} line and confirm what got installed
         id: swap
-        run: node scripts/compat-swap.mjs swap --line ${{ matrix.line }}
+        # 记录线（声明面里承诺、但不是承诺线的那一族）红了**不阻断 run**，但换版失败同样要
+        # 看得见 —— 阻断与否是「阻断 / 记录」的区别，不是「看得见 / 看不见」的区别。
+        continue-on-error: ${{ !matrix.blocking }}
+        run: node scripts/compat-swap.mjs swap --line ${{ matrix.line }} ${{ matrix.only }}
 
       - name: Typecheck
         id: typecheck
+        continue-on-error: ${{ !matrix.blocking }}
         run: npm run typecheck
 
       - name: Test
         id: test
+        continue-on-error: ${{ !matrix.blocking }}
         run: npm test
 
       # 作业级 continue-on-error 免掉的是「阻断」，不是「可见」：
-      # 哪条线、红在哪一步都进跟踪 issue。
+      # 哪条线、红在哪一步都进跟踪 issue —— 但只报**承诺线**（记录线红了不追issue，见文件头）。
       - name: Record the failure on the tracking issue
-        if: failure()
+        if: failure() && matrix.blocking
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SWAP_OUTCOME: ${{ steps.swap.outcome }}

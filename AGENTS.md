@@ -35,7 +35,8 @@
   两份语言文件的键集、门面引用与「图标必须与圆环同形」在 [test/redlines.test.ts](test/redlines.test.ts)。
 - 颜色只由后端 `severity` 决定；前端读阈值的唯一去处是圆环弧长，且只读 `warn`、只当刻度
 - 样式只用 CSS Modules + `--dsw-alias-*`；禁 Tailwind、禁组件库、禁字面色值
-- **所有 `@deepseek-ai/dsh-*` 声明的下限不得低于 `engines.dsh` 的下限**，且**形状也要一致**（本仓统一写 `>=<下限>`，不设上限）。两份声明自相矛盾时，使用者按我们给的区间装不出可用的宿主。抬过两批：2026-09-20（peer 8 条 + 仅 dev 的 2 条）与本次接缝迁移（12 条受管包 + `engines.dsh` 一起改），分别见[决策记录](.agents/notes/2026-09-20-declaration-floor-alignment.md)与[本轮记录](.agents/notes/2026-09-22-settings-seam-migration.md)。红线在 [test/redlines.test.ts](test/redlines.test.ts)。
+- **所有 `@deepseek-ai/dsh-*` 声明与 `engines.dsh` 逐字相同**（同形状、同区间、逐字符）。两份声明自相矛盾时，使用者按我们给的区间装不出可用的宿主。抬过三批：2026-09-20（peer 8 条 + 仅 dev 的 2 条）、本次接缝迁移（12 条受管包 + `engines.dsh` 一起改）、2026-10-10（加回旧 RC 族改成两族并集，23 条 + `engines.dsh` 一起改），分别见[决策记录](.agents/notes/2026-09-20-declaration-floor-alignment.md)、[本轮记录](.agents/notes/2026-09-22-settings-seam-migration.md)与[两族那条](.agents/notes/2026-10-10-two-families-declared.md)。红线在 [test/redlines.test.ts](test/redlines.test.ts)。
+- **声明面是若干个族（`||`）的并集**：要同时承诺两族（RC 族与仍可用的旧 RC 族），npm 的预发布语义下单区间罩不住（预发布候选只与「同 `major.minor.patch` 且也带预发布段」的比较子匹配）。换版语义随之是「**保留旧族、只替换目标族**」；巡检矩阵 = **声明面承诺哪些族就测哪些族**（承诺一族 = 声明面加一族 + [compat.yml](.github/workflows/compat.yml) 矩阵加一行；宿主发新族**不**自动进矩阵，是否加承诺人工决定）。
 - **依赖写在 peer 还是 dev，判据是「我们与它的关系」，不是它住在哪一侧** —— 两类，缺一类就会出事：
   - **只做类型面（module augmentation）、我们不消费它提供的服务** → 只写 `devDependencies`。目前是
     `@deepseek-ai/dsh-client-ui-plugin-manager`（模块增强）与 `@deepseek-ai/cordis-plugin-loader`（`loader/volatile-update` 的事件键声明）。
@@ -154,8 +155,16 @@
 - **探针脚本绝不要打印凭据文件的整行**：`Select-String` 默认回显整行，会把 `key: value` 里的密钥一起打出来，直接进对话记录。只取捕获组（`$_.Matches[0].Groups[1].Value`）或只做布尔判断。  **同理别整读 `~/.npmrc`**：它通常带着一枚 `//registry.npmjs.org/:_authToken=`（本轮踩过 —— token 就这么进了对话记录，只能靠轮换补救）。
   要确认 registry 就问 `npm config get registry`，不要 `Get-Content` 整个文件。
 - dist-tag 的 `latest` 指向很旧的版本，装依赖必须点名版本线；`@deepseek-ai/schemastery` 与 `@deepseek-ai/cordis` / `@deepseek-ai/cordis-plugin-loader` **不在宿主那条线上**（各有自己的版本号），所以 `compat-swap` 的替换面不覆盖它们，改它们要手工看。实际版本现查：`node scripts/compat-swap.mjs check`。
-- **换版脚本保形，不认识的形状会报错停下**：`scripts/compat-swap.mjs` 只换版本号，运算符（`>=` / `^` / `~` …）原样保留；
-  认不出的形状（`||`、空格分隔多段、`*`、`1.x`、`workspace:^`）直接红。自检：`node scripts/compat-swap.mjs selftest`（`npm test` 里也有一条）。
+- **换版脚本按「族」工作（2026-10-10）**：声明面是 `||` 并集，`compat-swap` 把区间拆成族、
+  按「元组相同」定位要换的那一族、**其余族原样保留**，运算符与上界原样保留；**单族**区间跨元组换线
+  仍合法（单族 = 「就承诺这一条线」），**多族**缺目标族时报错停下（不静默新增承诺）。
+  认不出的形状（`*`、`1.x`、`workspace:^`、族内 `||`）仍直接红。自检：`node scripts/compat-swap.mjs selftest`（`npm test` 里也有一条，22 条）。
+  - **线的参数既收 dist-tag 也收**版本前缀**（如某条旧 RC 族）**：实测**没有任何 dist-tag 指向它**，
+    所以巡检那条记录线靠前缀定位族（取该前缀下最高的已发布版本）。
+  - **`--only <前缀>`：测某一族时把声明面临时收窄成只有那一族**。为什么必需 —— 并集区间对 npm 的含义是
+    「这几族都合法」，它给每个包选的是**匹配集里最高**的那族（实测：保留两族换到低族时装到的仍是最高族，
+    `verify` 全红）。收窄后的清单是**一次性测量、不提交**（提交的那份始终是并集声明面）。
+  - **`--drop <前缀>`**：显式删掉一族（换线到新族、放弃旧族时用）。
   - **`swap` 一并改写 `engines.dsh`，`verify` 也先验它**：宿主本体是声明面的另一半，却**既不带 `dsh-` 前缀
     （`@deepseek-ai/dsh` 没有尾横线）、也不在任何依赖段里**，两层都不落在受管面内。曾经只换依赖段，
     于是换线后 `engines.dsh` 与 23 处依赖必然不一致，[test/redlines.test.ts](test/redlines.test.ts) 的

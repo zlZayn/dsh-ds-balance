@@ -103,7 +103,7 @@ The division of labour is fixed: **the ring answers "roughly how much is left", 
 
 ### Requirements
 
-- **DSH**: the range is whatever [package.json](package.json) declares; this plugin follows the host's current **RC line** (the dist-tag is `next`).
+- **DSH**: the range lives in `engines.dsh` in [package.json](package.json) — the single source of truth, character-for-character identical to every `@deepseek-ai/dsh-*` entry. This plugin follows the host's current **RC line** (the dist-tag is `next`). The declared surface commits to **two** prerelease families (the RC family and the still-usable older one, enumerated with `||` — npm only matches prereleases within the same `major.minor.patch`, so a single range cannot cover two families); the exact value drifts, so look it up rather than trusting this file.
 - **Node**: `>= 20` (declared in the same place).
 
 Install the host by **naming the version line explicitly**: neither `alpha` nor `latest` of `@deepseek-ai/dsh` is the line we declare — a default install lands outside the declared range.

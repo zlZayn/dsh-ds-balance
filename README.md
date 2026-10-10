@@ -101,7 +101,7 @@
 
 ### 前置
 
-- **DSH**：版本范围以 [package.json](package.json) 的声明为准，本插件跟的是宿主当前那条 **RC 线**（dist-tag 是 `next`）。
+- **DSH**：版本范围以 [package.json](package.json) 的 `engines.dsh` 为唯一真源（与全部 `@deepseek-ai/dsh-*` 声明逐字相同），本插件跟的是宿主当前那条 **RC 线**（dist-tag 是 `next`）。声明面同时承诺**两族**（RC 族与仍可用的旧 RC 族，用 `||` 显式枚举 —— npm 只在同一 `major.minor.patch` 的预发布之间匹配，单区间罩不住两族），具体值一律现查，本文件不抄那个会漂的值。
 - **Node**：`>= 20`（同一处声明）。
 
 装宿主时**要显式点名版本线**：`@deepseek-ai/dsh` 的 `alpha` 与 `latest` 都**不是**我们声明的那条线 —— 按默认方式装会落在声明范围之外。
@@ -153,8 +153,9 @@ dsh plugin --profile web add "$PWD"
   浏览器半边会整个不渲染 —— 圆环与浮层也一起消失）。插件不查宿主版本号，而是**当场探测那个能力**；
   拿不到时浮层里会多一行英文提示，说明配置界面为什么不可用、该往哪儿升级。
   技术细节见 [配置表单的能力探测](docs/ARCHITECTURE.md)。
-- **兼容性不是推断出来的**：每周由 [compat.yml](.github/workflows/compat.yml) 在 `next`（RC 线）上
-  换包实跑一遍现有测试，另有一步单独判声明面罩不罩得住；红了会开或更新一条固定标题的跟踪 issue。
+- **兼容性不是推断出来的**：每周由 [compat.yml](.github/workflows/compat.yml) 在 `next`（RC 线，承诺线）与
+  声明面里的**第二族**（旧 RC 族，记录线）上换包实跑一遍现有测试，另有一步单独判声明面罩不罩得住；
+  承诺线红了会开或更新一条固定标题的跟踪 issue。
   当前结论与红了怎么办见 [兼容性](docs/PUBLISHING.md#兼容性)。
 
 ## 配置

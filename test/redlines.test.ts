@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
@@ -417,8 +418,14 @@ describe('文档不抄实测值', () => {
     expect(files.length).toBeGreaterThan(10)
 
     for (const file of files) {
+      const isWorkflow = file.startsWith('.github/workflows/')
       const lines = readFileSync(file, 'utf8').split('\n')
       lines.forEach((line, index) => {
+        // workflow 里只扫**注释行**：那里的文字是给人读的用法说明（会漂、该指真源）。
+        // 非注释行是**机器消费的输入** —— 矩阵值、步骤名、run 命令 —— 与 package.json 同一类
+        // （声明面本身就是真源，它当然含版本号）。本仓确实需要一处：compat.yml 的矩阵用
+        // **版本前缀**定位一个没有 dist-tag 的族，那是配置而非散文。
+        if (isWorkflow && !line.trimStart().startsWith('#')) return
         for (const value of line.match(HOST_VERSION) ?? []) {
           if (FACADE.includes(file) && line.includes(HOME)) continue
           throw new Error(
@@ -608,6 +615,33 @@ describe('设置接缝', () => {
       }
     }
     expect([...ranges]).toEqual([pkg.engines?.dsh])
+  })
+
+  it('engines.dsh 同时承诺两族（|| 并集），删掉一族等于缩窄对外承诺', () => {
+    // 0.1.7 那族是**真实兼容修复**：有使用者停在 0.1.7 族宿主上，2026-10-01 换线时下限被抬到
+    // RC 族起点，把他们判成了不兼容。删掉这一族会让那批使用者再次装不上，且没有任何别处会红。
+    //
+    // 读**已提交**的那份声明（`git show HEAD:package.json`）：compat 巡检的 `swap --only` 会把
+    // 工作区清单**临时收窄成单族**去测低族（一次性测量、不提交），判工作区会把测量误报成
+    // 「声明面缩窄」。无 git 时读不到已提交那份 —— 跳过本条而不是误判。
+    const committed = (() => {
+      try {
+        const r = spawnSync('git', ['show', 'HEAD:package.json'], { encoding: 'utf8' })
+        if (r.status !== 0 || typeof r.stdout !== 'string') return undefined
+        return JSON.parse(r.stdout) as { engines?: { dsh?: string } }
+      } catch {
+        return undefined
+      }
+    })()
+    if (committed === undefined) return
+    const engine = committed.engines?.dsh ?? ''
+    const families = engine
+      .split('||')
+      .map((branch) => /(\d+)\.(\d+)\.(\d+)/.exec(branch)?.[0])
+      .filter((t): t is string => t !== undefined)
+    expect(families, 'engines.dsh 读不出任何族').toHaveLength(2)
+    expect(families).toContain('0.1.7')
+    expect(families).toContain('0.2.0')
   })
 })
 
